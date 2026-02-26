@@ -169,7 +169,7 @@ describe("getSkillTotal", () => {
 
   it("handles missing skillProficiencies gracefully (old PC data)", () => {
     const pc = makePC();
-    // @ts-ignore intentionally deleting to simulate old saved data
+    // @ts-expect-error intentionally deleting to simulate old saved data
     delete pc.skillProficiencies;
     // Should fall back to "none" — just the ability mod
     assert.equal(getSkillTotal(pc, "stealth"), 3);

@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { X } from "lucide-react";
 import * as RadixDialog from "@radix-ui/react-dialog";
@@ -286,7 +287,7 @@ export const ConditionPicker = ({
   /** Currently active condition strings. */
   active: string[];
   /** Full list of known conditions to show as chips (e.g. SRD_CONDITIONS). */
-  conditions: string[];
+  conditions: readonly string[];
   /** Called with the full next active list whenever a condition is toggled or added. */
   onChange: (next: string[]) => void;
 }) => {

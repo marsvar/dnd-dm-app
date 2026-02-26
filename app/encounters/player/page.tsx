@@ -85,12 +85,6 @@ export default function EncounterPlayerPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [selectedEncounter]);
 
-  // Derive combatMode from the encounter's event-sourced state (with legacy localStorage fallback)
-  const combatMode = selectedEncounter?.combatMode === "live" ||
-    (selectedEncounter?.combatMode === undefined &&
-      typeof window !== "undefined" &&
-      localStorage.getItem(`combatMode_${selectedEncounter?.id}`) === "true");
-
   const activeIndex = selectedEncounter
     ? orderedParticipants.findIndex(
         (participant) => participant.id === selectedEncounter.activeParticipantId
@@ -142,6 +136,10 @@ export default function EncounterPlayerPage() {
       ? selectedTargetId
       : "";
   const encounterNames = selectedEncounter?.participants.map((participant) => participant.name) ?? [];
+
+  // combatMode is derived from the encounter event log (COMBAT_MODE_SET), not local state.
+  // This means it survives page reloads and is part of the undoable event history.
+  const combatMode = selectedEncounter?.combatMode === "live";
 
   const getSaveValue = (key: "str" | "dex" | "con" | "int" | "wis" | "cha") => {
     if (!activePc) {

@@ -193,4 +193,55 @@ describe("applyEncounterEvent", () => {
     assert.equal(fullState.participants.length, 1);
     assert.equal(undoState.participants.length, 2);
   });
+
+  it("sets combatMode to 'live' on COMBAT_MODE_SET(live)", () => {
+    const encounter = createEncounter();
+    const event: EncounterEvent = {
+      id: "evt-mode-1",
+      at: "2026-02-13T00:00:00.000Z",
+      t: "COMBAT_MODE_SET",
+      mode: "live",
+    };
+    const next = applyEncounterEvent(encounter, event);
+    assert.equal(next.combatMode, "live");
+  });
+
+  it("sets combatMode to 'prep' on COMBAT_MODE_SET(prep)", () => {
+    const encounter = createEncounter({ combatMode: "live" });
+    const event: EncounterEvent = {
+      id: "evt-mode-2",
+      at: "2026-02-13T00:00:00.000Z",
+      t: "COMBAT_MODE_SET",
+      mode: "prep",
+    };
+    const next = applyEncounterEvent(encounter, event);
+    assert.equal(next.combatMode, "prep");
+  });
+
+  it("marks encounter completed on ENCOUNTER_COMPLETED", () => {
+    const encounter = createEncounter({ isRunning: true });
+    const event: EncounterEvent = {
+      id: "evt-done-1",
+      at: "2026-02-13T00:00:00.000Z",
+      t: "ENCOUNTER_COMPLETED",
+      notes: "Party survived!",
+    };
+    const next = applyEncounterEvent(encounter, event);
+    assert.equal(next.status, "completed");
+    assert.equal(next.isRunning, false);
+    assert.equal(next.activeParticipantId, null);
+  });
+
+  it("ENCOUNTER_COMPLETED is undoable (event pop restores running state)", () => {
+    const encounter = createEncounter();
+    const events: EncounterEvent[] = [
+      { id: "e1", at: "2026-02-13T00:00:00.000Z", t: "COMBAT_STARTED" },
+      { id: "e2", at: "2026-02-13T00:00:01.000Z", t: "ENCOUNTER_COMPLETED" },
+    ];
+    const completed = applyEvents(encounter, events);
+    const beforeComplete = applyEvents(encounter, events.slice(0, 1));
+    assert.equal(completed.status, "completed");
+    assert.equal(beforeComplete.isRunning, true);
+    assert.equal(beforeComplete.status, undefined);
+  });
 });

@@ -75,7 +75,7 @@ export default function PartyPage() {
   };
 
   return (
-    <PageShell title="Party Tracker">
+    <PageShell>
       <div className="space-y-6">
         {state.pcs.length === 0 && (
           <p className="text-sm text-[var(--color-text-muted)]">
