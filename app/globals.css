@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f3ee;
+  --foreground: #1f1b16;
+  --surface: #fffaf2;
+  --surface-strong: #f1e8dc;
+  --accent: #7a4b1e;
+  --accent-strong: #513010;
+  --muted: #5a4f45;
+  --ring: rgba(122, 75, 30, 0.35);
+
+  /* HP state colors */
+  --hp-full: #2d7a3a;
+  --hp-full-bg: #d4f0da;
+  --hp-mid: #8a6200;
+  --hp-mid-bg: #fdecc8;
+  --hp-low: #b83030;
+  --hp-low-bg: #fcd8d8;
+  --hp-zero: #5a4f45;
+  --hp-zero-bg: #e8e0d8;
+
+  /* Condition chip */
+  --condition-bg: #ede0cf;
+  --condition-fg: #5a3a1a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-muted: var(--muted);
+  --color-ring: var(--ring);
+  --font-body: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  /* HP state */
+  --color-hp-full: var(--hp-full);
+  --color-hp-full-bg: var(--hp-full-bg);
+  --color-hp-mid: var(--hp-mid);
+  --color-hp-mid-bg: var(--hp-mid-bg);
+  --color-hp-low: var(--hp-low);
+  --color-hp-low-bg: var(--hp-low-bg);
+  --color-hp-zero: var(--hp-zero);
+  --color-hp-zero-bg: var(--hp-zero-bg);
+
+  /* Condition */
+  --color-condition-bg: var(--condition-bg);
+  --color-condition-fg: var(--condition-fg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0c09;
+    --foreground: #f1e8dc;
+    --surface: #1a1410;
+    --surface-strong: #241c16;
+    --accent: #e3b36f;
+    --accent-strong: #f7d39b;
+    --muted: #b5a495;
+    --ring: rgba(227, 179, 111, 0.3);
+
+    /* HP state colors (dark) */
+    --hp-full: #6fcf8a;
+    --hp-full-bg: #1a3d23;
+    --hp-mid: #e8b84d;
+    --hp-mid-bg: #3a2e0a;
+    --hp-low: #e87070;
+    --hp-low-bg: #3a1515;
+    --hp-zero: #b5a495;
+    --hp-zero-bg: #241c16;
+
+    /* Condition chip (dark) */
+    --condition-bg: #2e2218;
+    --condition-fg: #e3b36f;
+  }
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(122, 75, 30, 0.12), transparent 55%),
+    linear-gradient(135deg, rgba(122, 75, 30, 0.08), transparent 60%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), serif;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.04), transparent 55%),
+    radial-gradient(circle at 80% 15%, rgba(0, 0, 0, 0.05), transparent 50%),
+    radial-gradient(circle at 50% 85%, rgba(0, 0, 0, 0.06), transparent 55%);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+  z-index: -1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), serif;
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: inherit;
+}
+
+input[type="number"] {
+  padding-right: 2.25rem;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+select,
+input,
+textarea {
+  color: var(--foreground) !important;
+  background-color: var(--surface-strong) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  caret-color: var(--foreground) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+input:active,
+textarea:active,
+select:active {
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+}
+
+input[type="number"] {
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  text-shadow: 0 0 0 var(--foreground);
+}
+
+input[type="number"]::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted) !important;
+  -webkit-text-fill-color: var(--muted) !important;
+  opacity: 1;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground) !important;
+  box-shadow: 0 0 0 1000px var(--surface-strong) inset !important;
+  caret-color: var(--foreground) !important;
+}
+
+select option {
+  color: var(--foreground);
+  background-color: var(--surface);
+}
+
+.targeted-outline {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
