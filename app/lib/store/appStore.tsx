@@ -185,29 +185,54 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On mount: fetch from Supabase and overwrite local state if the user is authenticated.
-  // localStorage is used for the fast first paint above; Supabase is source of truth.
+  // On mount: subscribe to auth state changes and fetch from Supabase whenever the
+  // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
+  // SIGNED_IN fires when the user logs in mid-session, e.g. in a fresh incognito tab).
+  // localStorage is the fast first-paint cache; Supabase is source of truth.
   useEffect(() => {
-    (async () => {
-      try {
-        const { createSupabaseClient } = await import("../supabase/client");
-        const supabase = createSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase
-          .from("user_app_state")
-          .select("state")
-          .eq("user_id", user.id)
-          .single();
-        if (data?.state) {
-          const remote = normalizeState(data.state as AppState);
-          setState(remote);
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+    let cancelled = false;
+
+    const run = async () => {
+      const { createSupabaseClient } = await import("../supabase/client");
+      const supabase = createSupabaseClient();
+
+      const fetchRemoteState = async (userId: string) => {
+        try {
+          const { data } = await supabase
+            .from("user_app_state")
+            .select("state")
+            .eq("user_id", userId)
+            .single();
+          if (!cancelled && data?.state) {
+            const remote = normalizeState(data.state as AppState);
+            setState(remote);
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+          }
+        } catch {
+          // Remote fetch failure is non-fatal — continue with localStorage state.
         }
-      } catch {
-        // Remote fetch failure is non-fatal — continue with localStorage state.
-      }
-    })();
+      };
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (
+          (event === "INITIAL_SESSION" || event === "SIGNED_IN") &&
+          session?.user
+        ) {
+          fetchRemoteState(session.user.id);
+        }
+      });
+
+      return () => {
+        cancelled = true;
+        subscription.unsubscribe();
+      };
+    };
+
+    let cleanup: (() => void) | undefined;
+    run().then((fn) => { cleanup = fn; });
+    return () => { cancelled = true; cleanup?.(); };
   }, []);
 
   // Persist every state change: immediately to localStorage, debounced to Supabase.
