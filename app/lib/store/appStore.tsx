@@ -86,12 +86,18 @@ const normalizeParticipant = (
 
 const getEncounterBaseline = (encounter: Encounter): EncounterBaseline => {
   if (encounter.eventLogBase) {
+    // Patch campaignId back in for baselines saved before this field was included
+    // (backwards-compat: encounters that ran before this fix lost campaignId from their baseline)
+    if (!encounter.eventLogBase.campaignId && encounter.campaignId) {
+      return { ...encounter.eventLogBase, campaignId: encounter.campaignId };
+    }
     return encounter.eventLogBase;
   }
   return {
     id: encounter.id,
     name: encounter.name,
     location: encounter.location,
+    campaignId: encounter.campaignId,
     round: Math.max(1, encounter.round || 1),
     isRunning: false,
     activeParticipantId: null,
