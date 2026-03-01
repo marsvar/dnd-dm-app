@@ -4,14 +4,29 @@
  * /player — "Who are you?" selector.
  * Players pick their campaign (if more than one exists) and then their
  * character; selections are persisted in usePlayerSession.
+ *
+ * PCs with a PIN set by the DM are selectable — the player enters the PIN
+ * to unlock their character. PCs without a PIN are visible but inaccessible
+ * (the DM must set one first).
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { useAppStore } from "../lib/store/appStore";
 import { usePlayerSession } from "../lib/store/usePlayerSession";
-import { Card, SectionTitle, Button } from "../components/ui";
+import {
+  Button,
+  Card,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  Input,
+  SectionTitle,
+} from "../components/ui";
 import { ParticipantAvatar } from "../components/ParticipantAvatar";
+import type { Pc } from "../lib/models/types";
 
 export default function PlayerSelectPage() {
   const { state } = useAppStore();
@@ -39,9 +54,33 @@ export default function PlayerSelectPage() {
     return state.pcs.filter((pc) => memberPcIds.has(pc.id));
   }, [campaignId, state.pcs, state.campaignMembers]);
 
-  function handleSelect(pcId: string) {
-    selectPc(pcId);
-    router.push("/player/character");
+  // PIN dialog state
+  const [pendingPc, setPendingPc] = useState<Pc | null>(null);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
+
+  function handlePcClick(pc: Pc) {
+    if (!pc.pin) return; // no PIN = inaccessible
+    setPendingPc(pc);
+    setPinInput("");
+    setPinError(false);
+  }
+
+  function handlePinSubmit() {
+    if (!pendingPc) return;
+    if (pinInput === pendingPc.pin) {
+      selectPc(pendingPc.id);
+      setPendingPc(null);
+      router.push("/player/character");
+    } else {
+      setPinError(true);
+    }
+  }
+
+  function handleDialogClose() {
+    setPendingPc(null);
+    setPinInput("");
+    setPinError(false);
   }
 
   // Show campaign picker when there are multiple campaigns and none is selected.
@@ -107,39 +146,63 @@ export default function PlayerSelectPage() {
               </Card>
             ) : (
               <ul className="flex flex-col gap-3">
-                {visiblePcs.map((pc) => (
-                  <li key={pc.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelect(pc.id)}
-                      className="w-full text-left"
-                    >
-                      <Card className="flex items-center gap-4 transition-shadow hover:shadow-xl active:scale-[0.98]">
-                        <ParticipantAvatar
-                          name={pc.name}
-                          visual={pc.visual}
-                          size="lg"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-base font-semibold text-foreground">
-                            {pc.name}
-                          </p>
-                          <p className="truncate text-sm text-muted">
-                            {pc.playerName && (
-                              <span className="mr-2 text-accent">{pc.playerName}</span>
-                            )}
-                            {[pc.race, pc.className, `Level ${pc.level}`]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
-                        </div>
-                        <div className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                          Play
-                        </div>
-                      </Card>
-                    </button>
-                  </li>
-                ))}
+                {visiblePcs.map((pc) => {
+                  const hasPin = Boolean(pc.pin);
+                  return (
+                    <li key={pc.id}>
+                      <button
+                        type="button"
+                        onClick={() => handlePcClick(pc)}
+                        disabled={!hasPin}
+                        className="w-full text-left disabled:cursor-not-allowed"
+                        aria-label={
+                          hasPin
+                            ? `Select ${pc.name} — enter PIN`
+                            : `${pc.name} — no PIN set, ask your DM`
+                        }
+                      >
+                        <Card
+                          className={`flex items-center gap-4 transition-shadow ${
+                            hasPin
+                              ? "hover:shadow-xl active:scale-[0.98]"
+                              : "opacity-50"
+                          }`}
+                        >
+                          <ParticipantAvatar
+                            name={pc.name}
+                            visual={pc.visual}
+                            size="lg"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-base font-semibold text-foreground">
+                              {pc.name}
+                            </p>
+                            <p className="truncate text-sm text-muted">
+                              {pc.playerName && (
+                                <span className="mr-2 text-accent">{pc.playerName}</span>
+                              )}
+                              {[pc.race, pc.className, `Level ${pc.level}`]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          </div>
+                          {hasPin ? (
+                            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-xs font-semibold text-muted">
+                              <Lock className="h-3 w-3" />
+                              Enter PIN
+                            </div>
+                          ) : (
+                            <div className="shrink-0 text-right text-xs text-muted/60">
+                              Ask your DM
+                              <br />
+                              for a PIN
+                            </div>
+                          )}
+                        </Card>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>
@@ -152,6 +215,40 @@ export default function PlayerSelectPage() {
           </Button>
         </p>
       </div>
+
+      {/* --- PIN dialog --- */}
+      <Dialog open={Boolean(pendingPc)} onOpenChange={(open) => !open && handleDialogClose()}>
+        {pendingPc && (
+          <DialogContent maxWidth="sm">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <DialogTitle>Enter PIN for {pendingPc.name}</DialogTitle>
+              <DialogClose asChild>
+                <Button variant="ghost" className="px-2 py-1 text-xs" aria-label="Close">
+                  ✕
+                </Button>
+              </DialogClose>
+            </div>
+
+            <div className="space-y-3">
+              <Input
+                type="password"
+                placeholder="PIN"
+                value={pinInput}
+                onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
+                onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
+                autoFocus
+                className={pinError ? "border-red-400 focus:border-red-400" : ""}
+              />
+              {pinError && (
+                <p className="text-xs text-red-500">Incorrect PIN. Try again.</p>
+              )}
+              <Button className="w-full" onClick={handlePinSubmit}>
+                Access character
+              </Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

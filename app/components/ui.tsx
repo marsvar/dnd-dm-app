@@ -25,9 +25,9 @@ export const SectionTitle = ({
   title: string;
   subtitle?: string;
 }) => (
-  <div className="mb-6 flex flex-col gap-1">
-    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{title}</h2>
-    {subtitle ? <p className="text-sm text-muted">{subtitle}</p> : null}
+  <div className="mb-6 flex flex-col gap-1.5">
+    <h2 className="text-2xl font-semibold tracking-wide text-foreground sm:text-3xl">{title}</h2>
+    {subtitle ? <p className="text-sm leading-relaxed text-muted">{subtitle}</p> : null}
   </div>
 );
 
@@ -38,7 +38,7 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.08)]",
+      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)]",
       className
     )}
     {...props}
@@ -46,13 +46,14 @@ export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) =>
 );
 
 const buttonBase =
-  "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-all";
+  "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.96]";
 
 const buttonVariants = {
-  primary: "bg-accent text-white shadow-sm hover:bg-accent-strong",
+  primary:
+    "bg-accent text-white shadow-[0_1px_3px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-accent-strong active:shadow-none",
   outline:
-    "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent",
-  ghost: "bg-transparent text-muted hover:text-accent",
+    "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent active:bg-surface-strong",
+  ghost: "bg-transparent text-muted hover:text-accent active:opacity-70",
 };
 
 export const Button = ({
@@ -235,11 +236,11 @@ export const HpBar = ({
       aria-valuenow={current}
       aria-valuemin={0}
       aria-valuemax={max}
-      className={cn("h-1.5 w-full overflow-hidden rounded-full", className)}
+      className={cn("h-2 w-full overflow-hidden rounded-full", className)}
       style={{ backgroundColor: bg }}
     >
       <div
-        className="h-full rounded-full transition-[width]"
+        className="h-full rounded-full transition-[width] duration-300"
         style={{ width: `${pct * 100}%`, backgroundColor: fg }}
       />
     </div>
@@ -411,7 +412,7 @@ export const DialogContent = ({
     <RadixDialog.Content
       {...props}
       className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-2xl outline-none",
+        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] outline-none",
         fullHeight
           ? "bottom-8 flex flex-col overflow-hidden"
           : "max-h-[calc(100vh-4rem)] overflow-y-auto",

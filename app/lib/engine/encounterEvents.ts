@@ -24,6 +24,8 @@ export type EncounterEvent =
       id: string;
       at: string;
       t: "ROLL_RECORDED";
+      /** PC or participant id who made the roll. Omit for DM rolls. */
+      actorId?: string;
       mode: "digital" | "manual" | "dm";
       context: string;
       formula: string;

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Alegreya_Sans, Marcellus, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppStoreProvider } from "./lib/store/appStore";
+import { RoleStoreProvider } from "./lib/store/roleStore";
 import { Nav } from "./components/Nav";
+import { DmLayoutGuard } from "./components/DmLayoutGuard";
 
 const bodyFont = Alegreya_Sans({
   variable: "--font-body",
@@ -38,12 +40,14 @@ export default function RootLayout({
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased text-foreground`}
       >
         <AppStoreProvider>
-          <div className="min-h-screen">
-            <Nav />
-            <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-10 sm:px-8">
-              {children}
-            </main>
-          </div>
+          <RoleStoreProvider>
+            <div className="min-h-screen">
+              <Nav />
+              <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-10 sm:px-8">
+                <DmLayoutGuard>{children}</DmLayoutGuard>
+              </main>
+            </div>
+          </RoleStoreProvider>
         </AppStoreProvider>
       </body>
     </html>

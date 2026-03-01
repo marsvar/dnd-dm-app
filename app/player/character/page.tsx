@@ -6,7 +6,7 @@
  * Full edit access via updatePc (matches DM edit scope per design decision).
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "../../lib/store/appStore";
 import { usePlayerSession } from "../../lib/store/usePlayerSession";
 import { PlayerShell } from "../../components/PlayerShell";
@@ -38,15 +38,16 @@ import {
 import type { AbilityScores, Pc } from "../../lib/models/types";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Sparkles, Plus } from "lucide-react";
+import { Dices, Plus, Sparkles } from "lucide-react";
 
-type Tab = "overview" | "skills" | "combat" | "bio";
+type Tab = "overview" | "skills" | "combat" | "bio" | "rolls";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "skills", label: "Skills" },
   { id: "combat", label: "Combat" },
   { id: "bio", label: "Bio" },
+  { id: "rolls", label: "Rolls" },
 ];
 
 export default function PlayerCharacterPage() {
@@ -110,6 +111,7 @@ export default function PlayerCharacterPage() {
       {tab === "skills" && <SkillsTab pc={pc} up={up} />}
       {tab === "combat" && <CombatTab pc={pc} up={up} />}
       {tab === "bio" && <BioTab pc={pc} up={up} />}
+      {tab === "rolls" && <RollsTab pcId={pc.id} pcName={pc.name} />}
     </PlayerShell>
   );
 }
@@ -599,6 +601,209 @@ function BioTab({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
           onChange={(e) => up({ notes: e.target.value })}
           placeholder="Backstory, goals, personality traits…"
         />
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Rolls tab — record rolls in or out of combat, view roll history
+// ---------------------------------------------------------------------------
+function RollsTab({ pcId, pcName }: { pcId: string; pcName: string }) {
+  const { state, dispatchEncounterEvent, addLogEntry } = useAppStore();
+  const { campaignId } = usePlayerSession();
+
+  const [context, setContext] = useState("");
+  const [mode, setMode] = useState<"digital" | "manual">("digital");
+  const [manualValue, setManualValue] = useState("");
+  const [lastRoll, setLastRoll] = useState<number | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState(false);
+
+  // Find the running encounter scoped to this player's campaign.
+  const activeEncounter = useMemo(() => {
+    if (campaignId) {
+      return state.encounters.find((e) => e.campaignId === campaignId && e.isRunning) ?? null;
+    }
+    return state.encounters.find((e) => e.isRunning) ?? null;
+  }, [state.encounters, campaignId]);
+
+  function rollD20() {
+    const result = Math.floor(Math.random() * 20) + 1;
+    setLastRoll(result);
+    setPendingConfirm(true);
+  }
+
+  function recordRoll(total: number, rollMode: "digital" | "manual") {
+    const contextLabel = context.trim() || "Roll";
+    if (activeEncounter) {
+      dispatchEncounterEvent(activeEncounter.id, {
+        t: "ROLL_RECORDED",
+        actorId: pcId,
+        mode: rollMode,
+        context: contextLabel,
+        formula: "1d20",
+        rawRolls: [total],
+        total,
+      });
+    } else {
+      addLogEntry({
+        text: `${pcName} rolled ${total}${contextLabel !== "Roll" ? ` — ${contextLabel}` : ""}`,
+        source: "auto",
+        campaignId: campaignId ?? undefined,
+      });
+    }
+    setContext("");
+    setManualValue("");
+    setLastRoll(null);
+    setPendingConfirm(false);
+  }
+
+  // Roll history: ROLL_RECORDED events in encounters + session log auto entries.
+  const rollHistory = useMemo(() => {
+    const campaignEncounters = campaignId
+      ? state.encounters.filter((e) => e.campaignId === campaignId)
+      : state.encounters;
+
+    const encRolls: Array<{ at: string; label: string }> = [];
+    for (const enc of campaignEncounters) {
+      for (const ev of enc.eventLog) {
+        if (ev.t === "ROLL_RECORDED" && ev.actorId === pcId) {
+          encRolls.push({
+            at: ev.at,
+            label: `${ev.total} — ${ev.context} (${enc.name})`,
+          });
+        }
+      }
+    }
+
+    const logRolls: Array<{ at: string; label: string }> = state.log
+      .filter(
+        (e) =>
+          e.source === "auto" &&
+          e.text.includes(pcName) &&
+          e.text.includes("rolled")
+      )
+      .map((e) => ({ at: e.timestamp, label: e.text }));
+
+    return [...encRolls, ...logRolls]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 30);
+  }, [state.encounters, state.log, pcId, pcName, campaignId]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Roll input */}
+      <Card className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Dices size={14} className="text-muted" />
+          <span className="text-xs uppercase tracking-[0.25em] text-muted">
+            {activeEncounter ? `Active combat: ${activeEncounter.name}` : "Out of combat"}
+          </span>
+        </div>
+
+        <Input
+          placeholder="What are you rolling? (optional)"
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+        />
+
+        {/* Mode toggle */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { setMode("digital"); setLastRoll(null); setPendingConfirm(false); }}
+            className={cn(
+              "flex-1 rounded-full border py-1.5 text-xs font-semibold transition",
+              mode === "digital"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-black/10 text-muted hover:border-accent/50"
+            )}
+          >
+            Roll d20 for me
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("manual"); setLastRoll(null); setPendingConfirm(false); }}
+            className={cn(
+              "flex-1 rounded-full border py-1.5 text-xs font-semibold transition",
+              mode === "manual"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-black/10 text-muted hover:border-accent/50"
+            )}
+          >
+            Enter result
+          </button>
+        </div>
+
+        {/* Digital roll */}
+        {mode === "digital" && (
+          pendingConfirm && lastRoll !== null ? (
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-accent bg-accent/10">
+                <span className="font-mono text-2xl font-bold text-accent">{lastRoll}</span>
+              </div>
+              <div className="flex flex-1 gap-2">
+                <Button className="flex-1 text-xs" onClick={() => recordRoll(lastRoll, "digital")}>
+                  Record
+                </Button>
+                <Button variant="ghost" className="text-xs" onClick={() => { setLastRoll(null); setPendingConfirm(false); }}>
+                  Reroll
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button className="w-full" onClick={rollD20}>Roll d20</Button>
+          )
+        )}
+
+        {/* Manual entry */}
+        {mode === "manual" && (
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              max={30}
+              placeholder="Result"
+              value={manualValue}
+              onChange={(e) => setManualValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = Number(manualValue);
+                  if (v > 0) recordRoll(v, "manual");
+                }
+              }}
+              className="flex-1"
+            />
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                const v = Number(manualValue);
+                if (v > 0) recordRoll(v, "manual");
+              }}
+            >
+              Record
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* Roll history */}
+      <Card>
+        <p className="mb-3 text-xs uppercase tracking-[0.25em] text-muted">Roll history</p>
+        {rollHistory.length === 0 ? (
+          <p className="text-sm text-muted">No rolls recorded yet.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-black/5">
+            {rollHistory.map((r, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 py-2">
+                <span className="flex-1 text-sm text-foreground">{r.label}</span>
+                <span className="shrink-0 text-xs text-muted">
+                  {new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );
