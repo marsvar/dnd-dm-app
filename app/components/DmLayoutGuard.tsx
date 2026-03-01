@@ -35,14 +35,15 @@ export function DmLayoutGuard({ children }: { children: ReactNode }) {
   const isPublic =
     ALWAYS_ALLOWED.includes(pathname) || pathname.startsWith(PLAYER_PREFIX);
 
-  // Check Supabase auth state once on mount.
+  // Subscribe to auth state changes (fires immediately with current session).
   useEffect(() => {
-    createSupabaseClient()
-      .auth.getUser()
-      .then(({ data: { user } }) => {
-        setIsAuthenticated(!!user);
-      })
-      .catch(() => setIsAuthenticated(false));
+    const supabase = createSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // Redirect when both auth and role state are resolved.

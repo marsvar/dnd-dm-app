@@ -33,18 +33,21 @@ export const Nav = () => {
       ? state.campaigns.find((c) => c.id === state.activeCampaignId) ?? null
       : null;
 
-  // Load the authenticated user's display name once.
+  // Keep display name in sync with auth state changes.
   useEffect(() => {
-    createSupabaseClient()
-      .auth.getUser()
-      .then(({ data: { user } }) => {
-        if (user) {
-          setDisplayName(
-            user.user_metadata?.display_name ?? user.email ?? null
-          );
-        }
-      })
-      .catch(() => {});
+    const supabase = createSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setDisplayName(
+          session.user.user_metadata?.display_name ?? session.user.email ?? null
+        );
+      } else {
+        setDisplayName(null);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSwitchRole = () => {
