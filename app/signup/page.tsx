@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const supabase = createSupabaseClient();
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -34,6 +35,11 @@ export default function SignupPage() {
       });
       if (authError) {
         setError(authError.message);
+        return;
+      }
+      // If Supabase returns a user but no session, email confirmation is required.
+      if (data.user && !data.session) {
+        setNeedsConfirmation(true);
         return;
       }
       router.push("/select-role");
@@ -63,8 +69,20 @@ export default function SignupPage() {
           <p className="text-sm text-muted">Create your account</p>
         </div>
 
+        {/* Email confirmation notice */}
+        {needsConfirmation && (
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-4 py-4 text-center space-y-2">
+            <p className="text-sm font-semibold text-foreground">Check your inbox</p>
+            <p className="text-xs text-muted">
+              We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>.
+              Click it to activate your account, then{" "}
+              <Link href="/login" className="font-semibold text-accent hover:underline">sign in</Link>.
+            </p>
+          </div>
+        )}
+
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {!needsConfirmation && <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
             <Input
               type="text"
@@ -101,7 +119,7 @@ export default function SignupPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating account…" : "Create account"}
           </Button>
-        </form>
+        </form>}
 
         {/* Footer */}
         <p className="text-center text-sm text-muted">

@@ -25,7 +25,14 @@ export default function LoginPage() {
         password,
       });
       if (authError) {
-        setError("Invalid email or password. Please try again.");
+        // Surface the real Supabase error message; map known codes to friendlier text.
+        if (authError.message.toLowerCase().includes("email not confirmed")) {
+          setError("Please confirm your email address before signing in. Check your inbox for a confirmation link.");
+        } else if (authError.message.toLowerCase().includes("invalid login credentials") || authError.message.toLowerCase().includes("invalid email or password")) {
+          setError("Invalid email or password. Please try again.");
+        } else {
+          setError(authError.message);
+        }
         return;
       }
       router.push("/select-role");
