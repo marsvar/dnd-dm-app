@@ -8,10 +8,15 @@
  * PCs with a PIN set by the DM are selectable — the player enters the PIN
  * to unlock their character. PCs without a PIN are visible but inaccessible
  * (the DM must set one first).
+ *
+ * Cross-device access: the DM shares a link like /player?u=<dmUserId>.
+ * On first visit, the player's browser stores the DM's userId and fetches
+ * the DM's game state via connectToGame(). Subsequent visits auto-load
+ * from the stored userId without needing the link again.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock } from "lucide-react";
 import { useAppStore } from "../lib/store/appStore";
 import { usePlayerSession } from "../lib/store/usePlayerSession";
@@ -28,10 +33,23 @@ import {
 import { ParticipantAvatar } from "../components/ParticipantAvatar";
 import type { Pc } from "../lib/models/types";
 
-export default function PlayerSelectPage() {
-  const { state } = useAppStore();
+// Inner component — needs Suspense because useSearchParams opts out of static
+// rendering (Next.js requirement).
+function PlayerSelectContent() {
+  const { state, connectToGame } = useAppStore();
   const { campaignId, setCampaignId, selectPc, clearSession } = usePlayerSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // If the URL contains ?u=<dmUserId>, connect to that DM's game then
+  // strip the param so it doesn't persist in the address bar.
+  const connectParam = searchParams.get("u");
+  useEffect(() => {
+    if (connectParam) {
+      connectToGame(connectParam);
+      router.replace("/player");
+    }
+  }, [connectParam, connectToGame, router]);
 
   const campaigns = state.campaigns;
 
@@ -250,5 +268,13 @@ export default function PlayerSelectPage() {
         )}
       </Dialog>
     </div>
+  );
+}
+
+export default function PlayerSelectPage() {
+  return (
+    <Suspense>
+      <PlayerSelectContent />
+    </Suspense>
   );
 }

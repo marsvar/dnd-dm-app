@@ -19,9 +19,20 @@ import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEve
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
 
+// localStorage key that stores the DM's user ID when a player has connected
+// via a /player?u=<dmUserId> link. Persists across page reloads so the player
+// doesn't need to re-enter the link every session.
+const PLAYER_CONNECT_KEY = "dnd_player_connect_id";
+
 type AppStore = {
   state: AppState;
   hydrated: boolean;
+  /**
+   * Connect to a DM's game as an unauthenticated player.
+   * Stores the DM's userId in localStorage and fetches their app state from
+   * Supabase, hydrating the store for the player view.
+   */
+  connectToGame: (dmUserId: string) => Promise<void>;
   addMonster: (monster: Omit<Monster, "id" | "source"> & { source?: Monster["source"] }) => void;
   updateMonster: (id: string, updates: Partial<Monster>) => void;
   removeMonster: (id: string) => void;
@@ -227,6 +238,17 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           session?.user
         ) {
           fetchRemoteState(session.user.id);
+        } else if (event === "INITIAL_SESSION" && !session?.user) {
+          // Unauthenticated page load — check for a stored DM user ID.
+          // This powers the "Player Connect" flow: the player visited
+          // /player?u=<dmUserId> at some point and we stored that ID.
+          const connectId =
+            typeof window !== "undefined"
+              ? window.localStorage.getItem(PLAYER_CONNECT_KEY)
+              : null;
+          if (connectId) {
+            fetchRemoteState(connectId);
+          }
         }
       });
 
@@ -724,10 +746,41 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     setState({ ...seedState });
   }, []);
 
+  /**
+   * Connect to a DM's game as an unauthenticated player.
+   * Called when the player visits /player?u=<dmUserId> for the first time.
+   * The DM's userId is persisted in localStorage so subsequent page loads
+   * automatically fetch the DM's state without re-entering the link.
+   */
+  const connectToGame = useCallback(async (dmUserId: string) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PLAYER_CONNECT_KEY, dmUserId);
+    }
+    try {
+      const { createSupabaseClient } = await import("../supabase/client");
+      const supabase = createSupabaseClient();
+      const { data } = await supabase
+        .from("user_app_state")
+        .select("state")
+        .eq("user_id", dmUserId)
+        .single();
+      if (data?.state) {
+        const remote = normalizeState(data.state as AppState);
+        setState(remote);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        }
+      }
+    } catch {
+      // Non-fatal — player continues with whatever state is in localStorage.
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       state,
       hydrated,
+      connectToGame,
       addMonster,
       updateMonster,
       removeMonster,
@@ -761,6 +814,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     [
       state,
       hydrated,
+      connectToGame,
       addMonster,
       updateMonster,
       removeMonster,

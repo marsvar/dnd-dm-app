@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Menu, X, Swords, LogOut, Shield } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Menu, X, Swords, LogOut, Shield, Link2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "./ui";
 import { useAppStore } from "../lib/store/appStore";
@@ -24,6 +24,8 @@ const dmLinks = [
 export const Nav = () => {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [dmUserId, setDmUserId] = useState<string | null>(null);
+  const [playerLinkCopied, setPlayerLinkCopied] = useState(false);
   const { state } = useAppStore();
   const { activeRole, clearRole } = useRoleStore();
   const router = useRouter();
@@ -43,8 +45,10 @@ export const Nav = () => {
         setDisplayName(
           session.user.user_metadata?.display_name ?? session.user.email ?? null
         );
+        setDmUserId(session.user.id);
       } else {
         setDisplayName(null);
+        setDmUserId(null);
       }
     });
     return () => subscription.unsubscribe();
@@ -54,6 +58,18 @@ export const Nav = () => {
     clearRole();
     router.push("/select-role");
   };
+
+  // Copy the player join link to the clipboard. The link embeds the DM's userId
+  // so players on any device can connect to this game without their own account.
+  const handleCopyPlayerLink = useCallback(() => {
+    if (!dmUserId || typeof window === "undefined") return;
+    const url = `${window.location.origin}/player?u=${dmUserId}`;
+    navigator.clipboard.writeText(url).catch(() => {
+      // Clipboard API not available — silent fail (link can be shared another way)
+    });
+    setPlayerLinkCopied(true);
+    setTimeout(() => setPlayerLinkCopied(false), 2500);
+  }, [dmUserId]);
 
   const handleSignOut = async () => {
     await createSupabaseClient().auth.signOut();
@@ -91,10 +107,21 @@ export const Nav = () => {
                 {link.label}
               </Link>
             ))}
+            {dmUserId && (
+              <button
+                type="button"
+                onClick={handleCopyPlayerLink}
+                className="ml-2 flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+                title="Copy player join link"
+              >
+                <Link2 size={13} />
+                {playerLinkCopied ? "Copied!" : "Player Link"}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSwitchRole}
-              className="ml-2 flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
               title="Switch role"
             >
               <LogOut size={13} />
@@ -181,6 +208,19 @@ export const Nav = () => {
               </li>
             ))}
             <li className="mt-2 border-t border-black/5 pt-2">
+              {dmUserId && (
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); handleCopyPlayerLink(); }}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted",
+                    "transition-colors hover:bg-surface-strong hover:text-foreground"
+                  )}
+                >
+                  <Link2 size={15} />
+                  {playerLinkCopied ? "Copied!" : "Copy Player Link"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { setOpen(false); handleSwitchRole(); }}
