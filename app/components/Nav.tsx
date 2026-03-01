@@ -44,7 +44,7 @@ export const Nav = () => {
           <span className="text-xs uppercase tracking-[0.3em] text-muted">
             {activeRole === "dm" ? "DM Toolkit" : activeRole === "player" ? "Player View" : "D&D 5e Assistant"}
           </span>
-          <span className="text-lg font-semibold text-foreground">
+          <span className="text-xl font-semibold text-foreground" style={{ fontFamily: "var(--font-display), serif", letterSpacing: "0.01em" }}>
             Vault of Encounters
           </span>
           {activeCampaign && activeRole === "dm" && (

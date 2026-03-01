@@ -12,14 +12,14 @@
  * Enemy HP masking is a presentational filter only — no event types were changed.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "../../lib/store/appStore";
 import { usePlayerSession } from "../../lib/store/usePlayerSession";
 import { PlayerShell } from "../../components/PlayerShell";
-import { Card, HpBar, ConditionChip, Pill, cn } from "../../components/ui";
+import { Button, Card, HpBar, ConditionChip, Input, Pill, cn } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import type { EncounterParticipant } from "../../lib/models/types";
-import { Shield, Swords } from "lucide-react";
+import { Dices, Shield, Swords } from "lucide-react";
 
 // ------------------------------------------------------------------
 // HP masking helper — returns a tone + label for enemy/NPC combatants
@@ -39,7 +39,7 @@ function hpTier(
 
 export default function PlayerEncounterPage() {
   const { selectedPcId, campaignId } = usePlayerSession();
-  const { state } = useAppStore();
+  const { state, dispatchEncounterEvent } = useAppStore();
   const encounters = state.encounters;
 
   // Find the running encounter scoped to the player's campaign (if set),
@@ -194,6 +194,15 @@ export default function PlayerEncounterPage() {
           );
         })}
       </ul>
+
+      {/* Player roll section */}
+      {selectedPcId && (
+        <RollSection
+          encounterId={encounter.id}
+          actorId={selectedPcId}
+          onDispatch={dispatchEncounterEvent}
+        />
+      )}
     </PlayerShell>
   );
 }
@@ -295,5 +304,146 @@ function InitiativeRow({
         )}
       </div>
     </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Roll section — player records a roll into the encounter event log
+// ---------------------------------------------------------------------------
+function RollSection({
+  encounterId,
+  actorId,
+  onDispatch,
+}: {
+  encounterId: string;
+  actorId: string;
+  onDispatch: (encounterId: string, event: { t: "ROLL_RECORDED"; actorId?: string; mode: "digital" | "manual"; context: string; formula: string; rawRolls: number[]; total: number }) => void;
+}) {
+  const [context, setContext] = useState("");
+  const [mode, setMode] = useState<"digital" | "manual">("digital");
+  const [manualValue, setManualValue] = useState("");
+  const [lastRoll, setLastRoll] = useState<number | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState(false);
+
+  function rollD20() {
+    const result = Math.floor(Math.random() * 20) + 1;
+    setLastRoll(result);
+    setPendingConfirm(true);
+  }
+
+  function confirmRoll(total: number, rawMode: "digital" | "manual") {
+    onDispatch(encounterId, {
+      t: "ROLL_RECORDED",
+      actorId,
+      mode: rawMode,
+      context: context.trim() || "Roll",
+      formula: "1d20",
+      rawRolls: [total],
+      total,
+    });
+    setContext("");
+    setManualValue("");
+    setLastRoll(null);
+    setPendingConfirm(false);
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="mb-2 flex items-center gap-2">
+        <Dices size={14} className="text-muted" />
+        <p className="text-xs uppercase tracking-[0.25em] text-muted">Your rolls</p>
+      </div>
+      <Card className="space-y-3">
+        {/* Context label */}
+        <Input
+          placeholder="What are you rolling? (optional)"
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+        />
+
+        {/* Mode toggle */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { setMode("digital"); setLastRoll(null); setPendingConfirm(false); }}
+            className={cn(
+              "flex-1 rounded-full border py-1.5 text-xs font-semibold transition",
+              mode === "digital"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-black/10 text-muted hover:border-accent/50"
+            )}
+          >
+            Roll d20 for me
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("manual"); setLastRoll(null); setPendingConfirm(false); }}
+            className={cn(
+              "flex-1 rounded-full border py-1.5 text-xs font-semibold transition",
+              mode === "manual"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-black/10 text-muted hover:border-accent/50"
+            )}
+          >
+            Enter result
+          </button>
+        </div>
+
+        {/* Digital mode */}
+        {mode === "digital" && (
+          <div className="space-y-2">
+            {pendingConfirm && lastRoll !== null ? (
+              <div className="flex items-center gap-3">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-accent bg-accent/10">
+                  <span className="font-mono text-2xl font-bold text-accent">{lastRoll}</span>
+                </div>
+                <div className="flex flex-1 gap-2">
+                  <Button className="flex-1 text-xs" onClick={() => confirmRoll(lastRoll, "digital")}>
+                    Record
+                  </Button>
+                  <Button variant="ghost" className="text-xs" onClick={() => { setLastRoll(null); setPendingConfirm(false); }}>
+                    Reroll
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button className="w-full" onClick={rollD20}>
+                Roll d20
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Manual mode */}
+        {mode === "manual" && (
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              max={30}
+              placeholder="Result"
+              value={manualValue}
+              onChange={(e) => setManualValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = Number(manualValue);
+                  if (v > 0) confirmRoll(v, "manual");
+                }
+              }}
+              className="flex-1"
+            />
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                const v = Number(manualValue);
+                if (v > 0) confirmRoll(v, "manual");
+              }}
+            >
+              Record
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }

@@ -162,6 +162,8 @@ const loadState = (): AppState => {
         visual: normalizeVisual(pc.visual),
         // Migration: backfill skillProficiencies for PCs saved before this field existed
         skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+        // Migration: backfill pin for PCs saved before this field existed
+        pin: pc.pin ?? null,
       })),
       encounters: normalizedEncounters,
     };

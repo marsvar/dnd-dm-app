@@ -120,6 +120,8 @@ export type Pc = {
   inspiration: boolean;
   conditions: string[];
   visual?: ParticipantVisual;
+  /** Player access PIN. null/undefined = no player access configured. */
+  pin?: string | null;
 };
 
 export type EncounterParticipant = {
