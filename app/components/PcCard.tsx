@@ -28,7 +28,7 @@ import {
   SKILL_LABELS,
 } from "../lib/engine/pcEngine";
 import { SRD_CONDITIONS } from "../lib/data/srd";
-import { ChevronDown, Upload, X } from "lucide-react";
+import { ChevronDown, Lock, Upload, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -526,6 +526,17 @@ function AbilitiesTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void
 // Tab: Background & Notes
 // ---------------------------------------------------------------------------
 function BackgroundTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void }) {
+  const [pinEditMode, setPinEditMode] = useState(false);
+  const [pinDraft, setPinDraft] = useState("");
+
+  const handleSavePin = () => {
+    const trimmed = pinDraft.trim();
+    if (trimmed.length < 4) return;
+    update({ pin: trimmed });
+    setPinEditMode(false);
+    setPinDraft("");
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-3">
@@ -533,6 +544,75 @@ function BackgroundTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => voi
         <div>
           <FieldLabel>Player</FieldLabel>
           <Input value={pc.playerName} onChange={(e) => update({ playerName: e.target.value })} />
+        </div>
+
+        {/* Player Access PIN */}
+        <div>
+          <FieldLabel>Player Access PIN</FieldLabel>
+          {pinEditMode ? (
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Min 4 characters"
+                value={pinDraft}
+                onChange={(e) => setPinDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSavePin();
+                  if (e.key === "Escape") { setPinEditMode(false); setPinDraft(""); }
+                }}
+                className="flex-1"
+                autoFocus
+              />
+              <Button
+                className="shrink-0 px-3 py-1 text-xs"
+                onClick={handleSavePin}
+              >
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                className="shrink-0 px-3 py-1 text-xs"
+                onClick={() => { setPinEditMode(false); setPinDraft(""); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {pc.pin ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-sm text-muted">
+                    <Lock className="h-3 w-3" /> PIN set
+                  </span>
+                  <Button
+                    variant="ghost"
+                    className="px-2 py-1 text-xs"
+                    onClick={() => { setPinEditMode(true); setPinDraft(pc.pin ?? ""); }}
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="px-2 py-1 text-xs"
+                    onClick={() => update({ pin: null })}
+                  >
+                    Clear PIN
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm text-muted">No PIN — players cannot access this character</span>
+                  <Button
+                    variant="ghost"
+                    className="shrink-0 px-2 py-1 text-xs"
+                    onClick={() => setPinEditMode(true)}
+                  >
+                    Set PIN
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div>
           <FieldLabel>Race</FieldLabel>
@@ -661,6 +741,15 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
               </span>
             )}
           </div>
+        )}
+
+        {pc.pin && (
+          <span
+            title="Player PIN set"
+            className="hidden sm:flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface shrink-0"
+          >
+            <Lock className="h-2.5 w-2.5 text-muted" />
+          </span>
         )}
 
         {pc.inspiration && (
