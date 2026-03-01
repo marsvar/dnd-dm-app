@@ -226,7 +226,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           user_id: user.id,
           state: state as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: "user_id" });
       } catch {
         // Sync failure is non-fatal — state is safely in localStorage.
       }
