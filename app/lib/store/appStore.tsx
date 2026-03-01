@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppState,
   Campaign,
@@ -114,6 +114,56 @@ const rebuildEncounterFromEvents = (
   };
 };
 
+/**
+ * Apply migrations and normalize a raw parsed AppState object.
+ * Used both by the localStorage loader and the Supabase remote loader.
+ */
+const normalizeState = (parsed: AppState): AppState => {
+  if (!parsed.version || parsed.version !== seedState.version) {
+    return seedState;
+  }
+  const parsedMonsters = Array.isArray(parsed.monsters) ? parsed.monsters : [];
+  const parsedPcs = Array.isArray(parsed.pcs) ? parsed.pcs : seedState.pcs;
+  const missingSeedMonsters = seedState.monsters.filter(
+    (monster) => !parsedMonsters.some((existing) => existing.id === monster.id)
+  );
+  // Build a lookup so SRD seed images can be applied to existing saved monsters
+  // that don't yet have a user-set imageUrl.
+  const seedById = Object.fromEntries(seedState.monsters.map((m) => [m.id, m]));
+  const normalizedEncounters = (parsed.encounters ?? []).map((encounter) => ({
+    ...encounter,
+    eventLog: Array.isArray(encounter.eventLog) ? encounter.eventLog : [],
+    participants: Array.isArray(encounter.participants)
+      ? encounter.participants.map(normalizeParticipant)
+      : [],
+  }));
+  return {
+    ...seedState,
+    ...parsed,
+    campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : [],
+    campaignMembers: Array.isArray(parsed.campaignMembers) ? parsed.campaignMembers : [],
+    activeCampaignId: parsed.activeCampaignId ?? null,
+    monsters: [...parsedMonsters, ...missingSeedMonsters].map((monster) => {
+      const seed = seedById[monster.id];
+      // Apply seed imageUrl as a default only when the user hasn't set their own.
+      const visual = normalizeVisual(monster.visual);
+      if (!visual.imageUrl && seed?.visual?.imageUrl) {
+        visual.imageUrl = seed.visual.imageUrl;
+      }
+      return { ...monster, visual };
+    }),
+    pcs: parsedPcs.map((pc) => ({
+      ...pc,
+      visual: normalizeVisual(pc.visual),
+      // Migration: backfill skillProficiencies for PCs saved before this field existed
+      skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+      // Migration: backfill pin for PCs saved before this field existed
+      pin: pc.pin ?? null,
+    })),
+    encounters: normalizedEncounters,
+  };
+};
+
 const loadState = (): AppState => {
   if (typeof window === "undefined") {
     return seedState;
@@ -124,49 +174,7 @@ const loadState = (): AppState => {
   }
   try {
     const parsed = JSON.parse(raw) as AppState;
-    if (!parsed.version || parsed.version !== seedState.version) {
-      return seedState;
-    }
-    const parsedMonsters = Array.isArray(parsed.monsters) ? parsed.monsters : [];
-    const parsedPcs = Array.isArray(parsed.pcs) ? parsed.pcs : seedState.pcs;
-    const missingSeedMonsters = seedState.monsters.filter(
-      (monster) => !parsedMonsters.some((existing) => existing.id === monster.id)
-    );
-    // Build a lookup so SRD seed images can be applied to existing saved monsters
-    // that don't yet have a user-set imageUrl.
-    const seedById = Object.fromEntries(seedState.monsters.map((m) => [m.id, m]));
-    const normalizedEncounters = (parsed.encounters ?? []).map((encounter) => ({
-      ...encounter,
-      eventLog: Array.isArray(encounter.eventLog) ? encounter.eventLog : [],
-      participants: Array.isArray(encounter.participants)
-        ? encounter.participants.map(normalizeParticipant)
-        : [],
-    }));
-    return {
-      ...seedState,
-      ...parsed,
-      campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : [],
-      campaignMembers: Array.isArray(parsed.campaignMembers) ? parsed.campaignMembers : [],
-      activeCampaignId: parsed.activeCampaignId ?? null,
-      monsters: [...parsedMonsters, ...missingSeedMonsters].map((monster) => {
-        const seed = seedById[monster.id];
-        // Apply seed imageUrl as a default only when the user hasn't set their own.
-        const visual = normalizeVisual(monster.visual);
-        if (!visual.imageUrl && seed?.visual?.imageUrl) {
-          visual.imageUrl = seed.visual.imageUrl;
-        }
-        return { ...monster, visual };
-      }),
-      pcs: parsedPcs.map((pc) => ({
-        ...pc,
-        visual: normalizeVisual(pc.visual),
-        // Migration: backfill skillProficiencies for PCs saved before this field existed
-        skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
-        // Migration: backfill pin for PCs saved before this field existed
-        pin: pc.pin ?? null,
-      })),
-      encounters: normalizedEncounters,
-    };
+    return normalizeState(parsed);
   } catch {
     return seedState;
   }
@@ -175,11 +183,79 @@ const loadState = (): AppState => {
 export const AppStoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<AppState>(() => loadState());
   const hydrated = true;
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Persist every state change to localStorage.
+  // On mount: subscribe to auth state changes and fetch from Supabase whenever the
+  // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
+  // SIGNED_IN fires when the user logs in mid-session, e.g. in a fresh incognito tab).
+  // localStorage is the fast first-paint cache; Supabase is source of truth.
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const { createSupabaseClient } = await import("../supabase/client");
+      const supabase = createSupabaseClient();
+
+      const fetchRemoteState = async (userId: string) => {
+        try {
+          const { data } = await supabase
+            .from("user_app_state")
+            .select("state")
+            .eq("user_id", userId)
+            .single();
+          if (!cancelled && data?.state) {
+            const remote = normalizeState(data.state as AppState);
+            setState(remote);
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+          }
+        } catch {
+          // Remote fetch failure is non-fatal — continue with localStorage state.
+        }
+      };
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (
+          (event === "INITIAL_SESSION" || event === "SIGNED_IN") &&
+          session?.user
+        ) {
+          fetchRemoteState(session.user.id);
+        }
+      });
+
+      return () => {
+        cancelled = true;
+        subscription.unsubscribe();
+      };
+    };
+
+    let cleanup: (() => void) | undefined;
+    run().then((fn) => { cleanup = fn; });
+    return () => { cancelled = true; cleanup?.(); };
+  }, []);
+
+  // Persist every state change: immediately to localStorage, debounced to Supabase.
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // Debounced Supabase sync (500 ms) — non-blocking, non-fatal.
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const { createSupabaseClient } = await import("../supabase/client");
+        const supabase = createSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("user_app_state").upsert({
+          user_id: user.id,
+          state: state as unknown as Record<string, unknown>,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+      } catch {
+        // Sync failure is non-fatal — state is safely in localStorage.
+      }
+    }, 500);
   }, [state]);
 
   // React to changes made by the DM in another tab/window.

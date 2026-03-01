@@ -2,7 +2,8 @@ import { createBrowserClient } from "@supabase/ssr";
 
 /**
  * createSupabaseClient — browser-side Supabase client.
- * Safe to call in components / hooks; re-uses the same instance per request.
+ * Safe to call in components / hooks; creates a new instance per call
+ * (the underlying library de-duplicates by URL + key).
  */
 export function createSupabaseClient() {
   return createBrowserClient(

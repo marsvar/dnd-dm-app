@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X, Swords, LogOut, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "./ui";
 import { useAppStore } from "../lib/store/appStore";
 import { useRoleStore } from "../lib/store/roleStore";
+import { createSupabaseClient } from "../lib/supabase/client";
 
 const dmLinks = [
   { href: "/", label: "Dashboard" },
@@ -22,6 +23,7 @@ const dmLinks = [
 
 export const Nav = () => {
   const [open, setOpen] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const { state } = useAppStore();
   const { activeRole, clearRole } = useRoleStore();
   const router = useRouter();
@@ -31,9 +33,32 @@ export const Nav = () => {
       ? state.campaigns.find((c) => c.id === state.activeCampaignId) ?? null
       : null;
 
+  // Keep display name in sync with auth state changes.
+  useEffect(() => {
+    const supabase = createSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setDisplayName(
+          session.user.user_metadata?.display_name ?? session.user.email ?? null
+        );
+      } else {
+        setDisplayName(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleSwitchRole = () => {
     clearRole();
     router.push("/select-role");
+  };
+
+  const handleSignOut = async () => {
+    await createSupabaseClient().auth.signOut();
+    clearRole();
+    router.push("/login");
   };
 
   return (
@@ -73,7 +98,16 @@ export const Nav = () => {
               title="Switch role"
             >
               <LogOut size={13} />
-              Exit DM
+              Switch Role
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+              title="Sign out"
+            >
+              <LogOut size={13} />
+              {displayName ?? "Sign out"}
             </button>
           </nav>
         )}
@@ -94,6 +128,16 @@ export const Nav = () => {
               <Shield size={13} />
               {activeRole === "player" ? "Switch Role" : "Choose Role"}
             </button>
+            {displayName && (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                <LogOut size={13} />
+                Sign out
+              </button>
+            )}
           </nav>
         )}
 
@@ -105,7 +149,7 @@ export const Nav = () => {
             className="flex items-center gap-1 rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium text-muted"
           >
             <LogOut size={12} />
-            {activeRole === "dm" ? "Exit DM" : "Roles"}
+            {activeRole === "dm" ? "Switch Role" : "Roles"}
           </button>
           {activeRole === "dm" && (
             <button
@@ -146,7 +190,7 @@ export const Nav = () => {
                 )}
               >
                 <Swords size={15} />
-                Exit DM Mode
+                Switch Role
               </button>
             </li>
           </ul>

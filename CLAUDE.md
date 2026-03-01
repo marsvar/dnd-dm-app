@@ -11,8 +11,8 @@
 
 ```
 Last worked on: 2026-03-01
-Current focus:  PC PIN gate + player rolls
-Recently completed: PIN per PC (set/clear via DM, PIN-gated player selection), player roll input in encounter view + character sheet Rolls tab; actorId added to ROLL_RECORDED event
+Current focus:  Encounter runner UI polish
+Recently completed: Phase 1 auth + cross-device sync fully smoke-tested. Fixed 3 auth bugs: DmLayoutGuard, Nav, and appStore all used one-shot auth.getUser() which ran before login and never re-ran — replaced with onAuthStateChange subscriptions throughout.
 Blocked on / open questions: —
 Next task: Encounter runner UI polish (active turn highlight, round controls, undo button)
 ```
@@ -22,6 +22,7 @@ Next task: Encounter runner UI polish (active turn highlight, round controls, un
 | Area | Status | Notes |
 |---|---|---|
 | Persistence (localStorage) | ✅ Done | Every state change persisted; cross-tab sync via `storage` event |
+| Auth + cloud sync (Phase 1) | ✅ Done | Supabase Auth (email+password); blob sync to `user_app_state`; /login + /signup; DM PIN removed |
 | Campaign CRUD | ✅ Done | Full CRUD, party membership, `/campaigns` page |
 | CI/CD pipeline | ✅ Done | `.github/workflows/ci.yml`: lint + test + build |
 | Event-driven combat | ✅ Done | All live edits go through events; undo implemented |
@@ -103,18 +104,21 @@ Conventional commit messages preferred (e.g. `feat:`, `fix:`, `chore:`, `docs:`)
 /app/lib/data/srd.ts         SRD seed data
 /app/lib/engine/             Event engine (pure reducers, selectors)
 /app/lib/store/appStore.tsx  Client state (single source of truth)
-/app/lib/store/roleStore.tsx DM/player role and PIN
+/app/lib/store/roleStore.tsx DM/player role (session-level only; DM PIN removed)
 /app/lib/store/usePlayerSession.ts Player-selected PC and campaign
+/app/lib/supabase/client.ts  Browser Supabase client
+/app/lib/supabase/server.ts  Server-side Supabase client
 /app/components/             Shared UI primitives
 /docs/                       Reference docs (DOMAIN.md, ENGINE.md, etc.)
+proxy.ts                     Next.js middleware: session refresh + DM route protection
 ```
 
 ### State ownership
 
 | Store | Owns | Storage |
 |---|---|---|
-| `appStore.tsx` | All persistent game data: campaigns, PCs, monsters, encounters, notes, log | `localStorage` |
-| `roleStore.tsx` | Who is at the screen: DM/player role, DM PIN | `localStorage` (PIN), `sessionStorage` (role) |
+| `appStore.tsx` | All persistent game data: campaigns, PCs, monsters, encounters, notes, log | `localStorage` (cache) + Supabase `user_app_state` (source of truth) |
+| `roleStore.tsx` | Who is at the screen: DM/player role (session-level only) | `sessionStorage` (role) |
 | `usePlayerSession.ts` | Player-specific session: selected PC and campaign | `localStorage` |
 | Engine (`/engine/`) | Pure functions only — no I/O, no state | — |
 
@@ -355,8 +359,9 @@ Current coverage: unit tests exist and are well-structured. Integration and smok
 - **No error boundary in combat reducer** — if `applyEncounterEvent` throws (e.g. unexpected event shape), the state update silently fails. Should add try/catch with a visible error state.
 - **`conditions` is `string[]` not rich objects** — CLAUDE.md previously specified conditions as objects with id/source/duration. Current implementation uses `string[]`. Richer condition tracking is possible but deferred.
 - **Player view reads DM data directly** — the player view uses `useAppStore()` (same data as DM). In a true shared-table future, this needs a separate read path. Architecturally isolated via `usePlayerSession` but the data model isn't separated yet.
-- **`hydrated` is hardcoded to `true` in appStore** — `const hydrated = true` at line 175. The hydration flash prevention is incomplete (roleStore has it properly; appStore does not).
+- **`hydrated` is hardcoded to `true` in appStore** — `const hydrated = true`. The hydration flash prevention is incomplete (roleStore has it properly; appStore does not).
 - **Button has icon-only usage in some pages** — `campaigns/page.tsx` uses `<Trash2>` in a Button without a text label (aria-label only). Revisit for consistency.
+- **Auth pattern: always use `onAuthStateChange`, never one-shot `getUser()`** — Components in the root layout (DmLayoutGuard, Nav, appStore) mount before the user is logged in. `getUser()` with `[]` deps runs once, gets null, and never re-runs. Use `onAuthStateChange` with subscription cleanup for any component that needs to react to auth state. In appStore, only fire the Supabase fetch on `INITIAL_SESSION` and `SIGNED_IN` events (not `TOKEN_REFRESHED`).
 
 ---
 
@@ -380,14 +385,12 @@ See `docs/ROADMAP.md` for the full roadmap with sequencing rationale.
 
 ### Later
 - Legendary actions / lair actions — reminder system for boss monsters
-- Accounts and sharing — multi-campaign, player/DM collaboration, real-time updates
+- Phase 2 auth: player accounts, PC ownership, campaign invites, remove per-PC PIN from player flow, normalized schema (`campaigns`, `pcs`, `encounters`, `encounter_events`), Supabase Realtime for live encounter state
 - Campaign depth — timeline, session summaries, encounter templates
 - Schema migration chain — replace reset-to-seed with proper migrate() function
 
 ### Open questions
-- Best minimal auth approach without harming local-first workflows
-- What data should be shareable to players during live combat
-- Before implementing auth/sync: define what data is stored, where, and under what terms (GDPR applies)
+- What data should be shareable to players during live combat (read-only encounter state?)
 
 ---
 
