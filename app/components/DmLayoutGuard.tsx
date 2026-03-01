@@ -4,50 +4,66 @@
  * DmLayoutGuard
  *
  * Sits inside the root layout and guards every route that is not
- * a player route or the role-selector.
+ * a player route, the role-selector, or the auth pages.
  *
- * - /select-role      → always allowed
- * - /player/**        → always allowed
- * - everything else   → requires activeRole === "dm"
+ * - /login, /signup    → always allowed (public auth pages)
+ * - /select-role       → always allowed
+ * - /player/**         → always allowed
+ * - everything else    → requires authenticated user AND activeRole === "dm"
  *
- * When the role hasn't been chosen yet the guard redirects to /select-role.
- * While storage is hydrating it renders nothing to prevent a flash.
+ * The middleware handles the server-side auth redirect; this guard adds
+ * a client-side layer that also checks the Supabase session.
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Shield } from "lucide-react";
 import { useRoleStore } from "../lib/store/roleStore";
+import { createSupabaseClient } from "../lib/supabase/client";
 import { Button } from "./ui";
 
-const ALWAYS_ALLOWED = ["/select-role"];
+const ALWAYS_ALLOWED = ["/select-role", "/login", "/signup"];
 const PLAYER_PREFIX = "/player";
 
 export function DmLayoutGuard({ children }: { children: ReactNode }) {
   const { activeRole, hydrated } = useRoleStore();
   const pathname = usePathname();
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const isPublic =
     ALWAYS_ALLOWED.includes(pathname) || pathname.startsWith(PLAYER_PREFIX);
 
-  // Redirect unauthenticated visitors on DM routes to the role selector
+  // Check Supabase auth state once on mount.
   useEffect(() => {
-    if (!hydrated) return;
-    if (!isPublic && activeRole !== "dm") {
+    createSupabaseClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => {
+        setIsAuthenticated(!!user);
+      })
+      .catch(() => setIsAuthenticated(false));
+  }, []);
+
+  // Redirect when both auth and role state are resolved.
+  useEffect(() => {
+    if (!hydrated || isAuthenticated === null) return;
+    if (isPublic) return;
+    if (!isAuthenticated) {
+      router.replace("/login");
+    } else if (activeRole !== "dm") {
       router.replace("/select-role");
     }
-  }, [hydrated, activeRole, isPublic, router]);
+  }, [hydrated, isAuthenticated, activeRole, isPublic, router]);
 
-  // Prevent flash while reading storage
-  if (!hydrated) return null;
+  // Render nothing on protected routes while loading.
+  if (!isPublic && (isAuthenticated === null || !hydrated)) return null;
 
-  // Public routes always render
+  // Public routes always render.
   if (isPublic) return <>{children}</>;
 
-  // DM route – show an access screen while the redirect is in flight
-  if (activeRole !== "dm") {
+  // DM route with wrong role — show access screen while redirect is in flight.
+  if (!isAuthenticated || activeRole !== "dm") {
     return (
       <div className="flex min-h-[calc(100dvh-65px)] flex-col items-center justify-center gap-6 px-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
@@ -59,8 +75,8 @@ export function DmLayoutGuard({ children }: { children: ReactNode }) {
             This section is restricted to the Dungeon Master.
           </p>
         </div>
-        <Link href="/select-role">
-          <Button>Choose your role</Button>
+        <Link href={isAuthenticated ? "/select-role" : "/login"}>
+          <Button>{isAuthenticated ? "Choose your role" : "Sign in"}</Button>
         </Link>
       </div>
     );

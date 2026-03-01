@@ -11,10 +11,10 @@
 
 ```
 Last worked on: 2026-03-01
-Current focus:  PC PIN gate + player rolls
-Recently completed: PIN per PC (set/clear via DM, PIN-gated player selection), player roll input in encounter view + character sheet Rolls tab; actorId added to ROLL_RECORDED event
+Current focus:  Auth + cross-device sync (Phase 1)
+Recently completed: Supabase Auth (email+password), blob sync (user_app_state), /login + /signup pages, DM PIN removed, DmLayoutGuard auth check, Nav sign-out
 Blocked on / open questions: —
-Next task: Encounter runner UI polish (active turn highlight, round controls, undo button)
+Next task: Smoke test cross-device sync; then encounter runner UI polish (active turn highlight, round controls, undo button)
 ```
 
 ### Implementation status (as of 2026-03-01)
@@ -22,6 +22,7 @@ Next task: Encounter runner UI polish (active turn highlight, round controls, un
 | Area | Status | Notes |
 |---|---|---|
 | Persistence (localStorage) | ✅ Done | Every state change persisted; cross-tab sync via `storage` event |
+| Auth + cloud sync (Phase 1) | ✅ Done | Supabase Auth (email+password); blob sync to `user_app_state`; /login + /signup; DM PIN removed |
 | Campaign CRUD | ✅ Done | Full CRUD, party membership, `/campaigns` page |
 | CI/CD pipeline | ✅ Done | `.github/workflows/ci.yml`: lint + test + build |
 | Event-driven combat | ✅ Done | All live edits go through events; undo implemented |
