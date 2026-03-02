@@ -22,7 +22,7 @@ import { Button, Card, HpBar, ConditionChip, Input, Pill, cn } from "../../compo
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import type { DeathSaves, EncounterParticipant, Weapon } from "../../lib/models/types";
 import { formatMod, getWeaponDiceFormula } from "../../lib/engine/pcEngine";
-import { Shield, Swords } from "lucide-react";
+import { Shield, Swords, Dices } from "lucide-react";
 
 // ------------------------------------------------------------------
 // Dice helpers

@@ -26,6 +26,8 @@ import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEve
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
 
+const PLAYER_CONNECT_KEY = "dnd_player_connect_id";
+
 /**
  * v8 fields are optional in addPc so callers that don't supply them get
  * sensible defaults.  All other Pc fields (minus id) are still required.

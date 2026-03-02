@@ -52,7 +52,7 @@ import type {
 } from "../../lib/models/types";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Sparkles, Plus, Trash2 } from "lucide-react";
+import { Sparkles, Plus, Trash2, Dices } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types & constants
