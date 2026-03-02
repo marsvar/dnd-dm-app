@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
@@ -45,6 +45,7 @@ export default function EncounterPlayerPage() {
   const [expandedPrepIds, setExpandedPrepIds] = useState<Set<string>>(new Set());
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
   const [endEncounterNotes, setEndEncounterNotes] = useState("");
+  const participantRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const selectedEncounter = useMemo(() => {
     if (selectedId) {
@@ -207,6 +208,14 @@ export default function EncounterPlayerPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [advanceEncounterTurn, selectedEncounter]);
+
+  useEffect(() => {
+    if (!selectedEncounter?.activeParticipantId) return;
+    const el = participantRowRefs.current.get(selectedEncounter.activeParticipantId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedEncounter?.activeParticipantId]);
 
   const setInitiative = (participantId: string, value: number | null) => {
     if (!selectedEncounter) {
@@ -890,6 +899,13 @@ export default function EncounterPlayerPage() {
                   {orderedParticipants.map((participant, index) => (
                     <div
                       key={participant.id}
+                      ref={(el) => {
+                        if (el) {
+                          participantRowRefs.current.set(participant.id, el);
+                        } else {
+                          participantRowRefs.current.delete(participant.id);
+                        }
+                      }}
                       className={`rounded-xl border px-3 py-3 text-sm transition hover:border-accent/50 ${
                         index === activeIndex
                           ? "border-l-4 border-accent bg-surface-strong text-foreground ring-2 ring-[var(--ring)]"
