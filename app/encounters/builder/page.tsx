@@ -102,6 +102,25 @@ export default function EncounterBuilderPage() {
 
   const builderLocked = !!selectedEncounter?.isRunning;
 
+  // Split encounters into active (prep/live) and completed, respecting the campaign filter.
+  const campaignEncounters = useMemo(
+    () =>
+      state.activeCampaignId
+        ? state.encounters.filter((e) => e.campaignId === state.activeCampaignId)
+        : state.encounters,
+    [state.encounters, state.activeCampaignId]
+  );
+
+  const activeEncounters = useMemo(
+    () => campaignEncounters.filter((e) => e.status !== "completed"),
+    [campaignEncounters]
+  );
+
+  const completedEncounters = useMemo(
+    () => campaignEncounters.filter((e) => e.status === "completed"),
+    [campaignEncounters]
+  );
+
   const monstersById = useMemo(
     () => new Map(state.monsters.map((monster) => [monster.id, monster])),
     [state.monsters]
@@ -340,7 +359,7 @@ export default function EncounterBuilderPage() {
     setCreatePartyIds(new Set());
     setIsCreateOpen(false);
     closeMonsterPicker();
-  }, [addEncounter, addEncounterParticipant, closeMonsterPicker, createDraftMonsters, createForm.location, createForm.name, createPartyMembers]);
+  }, [addEncounter, addEncounterParticipant, closeMonsterPicker, createDraftMonsters, createForm.location, createForm.name, createPartyMembers, state.activeCampaignId]);
 
   const saveEncounterMeta = () => {
     if (!selectedEncounter || builderLocked) {
@@ -583,10 +602,7 @@ export default function EncounterBuilderPage() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(state.activeCampaignId
-            ? state.encounters.filter((e) => e.campaignId === state.activeCampaignId)
-            : state.encounters
-          ).map((encounter) => {
+          {activeEncounters.map((encounter) => {
             const previewParticipants = encounter.participants.slice(0, 6);
             const overflowCount = Math.max(0, encounter.participants.length - previewParticipants.length);
             return (
@@ -641,9 +657,7 @@ export default function EncounterBuilderPage() {
               </div>
             );
           })}
-          {!(state.activeCampaignId
-            ? state.encounters.some((e) => e.campaignId === state.activeCampaignId)
-            : state.encounters.length) ? (
+          {!activeEncounters.length ? (
             <p className="text-sm text-muted">
               {state.activeCampaignId
                 ? "No encounters in this campaign yet. Add one to start building."
@@ -652,6 +666,65 @@ export default function EncounterBuilderPage() {
           ) : null}
         </div>
       </Card>
+
+      {completedEncounters.length > 0 && (
+        <Card className="space-y-4">
+          <h3 className="text-lg font-semibold">Completed Encounters</h3>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {completedEncounters.map((encounter) => {
+              const previewParticipants = encounter.participants.slice(0, 6);
+              const overflowCount = Math.max(0, encounter.participants.length - previewParticipants.length);
+              return (
+                <div
+                  key={encounter.id}
+                  className="rounded-2xl border border-black/10 bg-surface p-4 opacity-75"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{encounter.name}</p>
+                      <p className="text-xs text-muted">{encounter.location || "Unknown location"}</p>
+                    </div>
+                    <Pill label="DONE" tone="neutral" />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {previewParticipants.map((participant) => (
+                      <ParticipantAvatar
+                        key={participant.id}
+                        name={participant.name}
+                        visual={participant.visual}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.65rem] font-semibold text-muted"
+                      />
+                    ))}
+                    {overflowCount > 0 ? (
+                      <span className="text-xs text-muted">+{overflowCount} more</span>
+                    ) : null}
+                    {!encounter.participants.length ? (
+                      <span className="text-xs text-muted">No participants</span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => openEditOverlay(encounter.id)}
+                    >
+                      Review
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => removeEncounter(encounter.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent maxWidth="6xl">

@@ -51,10 +51,13 @@ export function RoleStoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   // Hydrate from sessionStorage once on client mount.
+  // This is an intentional one-time hydration read: localStorage → React state.
+  // The eslint-disable below suppresses the false-positive for this pattern.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storedRole = sessionStorage.getItem(ROLE_SESSION_KEY) as ActiveRole;
     if (storedRole === "dm" || storedRole === "player") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveRoleState(storedRole);
     }
     setHydrated(true);
