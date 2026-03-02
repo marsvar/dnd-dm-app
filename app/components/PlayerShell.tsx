@@ -19,7 +19,14 @@ const tabs = [
   { href: "/player/party", label: "Party", Icon: Users },
 ];
 
-export function PlayerShell({ children }: { children: ReactNode }) {
+export function PlayerShell({
+  children,
+  wide = false,
+}: {
+  children: ReactNode;
+  /** Expand max-width to 5xl for desktop sheet mode (character page). */
+  wide?: boolean;
+}) {
   const { selectedPcId, hydrated } = usePlayerSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +46,7 @@ export function PlayerShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[calc(100dvh-65px)] flex-col">
       {/* Scrollable content area — padded so it clears the tab bar */}
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-6">
+      <main className={cn("mx-auto w-full flex-1 px-4 pb-24 pt-6", wide ? "max-w-5xl" : "max-w-2xl")}>
         {children}
       </main>
 

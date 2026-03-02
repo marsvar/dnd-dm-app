@@ -15,6 +15,7 @@ const createParticipants = (): EncounterParticipant[] => [
     currentHp: 12,
     tempHp: 0,
     conditions: [],
+    deathSaves: null,
   },
   {
     id: "p-2",
@@ -26,6 +27,7 @@ const createParticipants = (): EncounterParticipant[] => [
     currentHp: 9,
     tempHp: 0,
     conditions: [],
+    deathSaves: null,
   },
 ];
 
@@ -106,6 +108,7 @@ describe("applyEncounterEvent", () => {
           currentHp: 3,
           tempHp: 0,
           conditions: [],
+          deathSaves: null,
         },
       ],
     });
@@ -152,6 +155,7 @@ describe("applyEncounterEvent", () => {
         tempHp: 0,
         conditions: [],
         notes: "",
+        deathSaves: null,
       },
     };
     const next = applyEncounterEvent(encounter, event);

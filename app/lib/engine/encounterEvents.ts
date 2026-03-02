@@ -1,4 +1,4 @@
-import type { EncounterParticipant } from "../models/types";
+import type { DeathSaves, EncounterParticipant } from "../models/types";
 
 export type EncounterEvent =
   | { id: string; at: string; t: "COMBAT_STARTED" }
@@ -20,6 +20,15 @@ export type EncounterEvent =
   | { id: string; at: string; t: "NOTES_SET"; participantId: string; value: string }
   | { id: string; at: string; t: "COMBAT_MODE_SET"; mode: "prep" | "live" }
   | { id: string; at: string; t: "ENCOUNTER_COMPLETED"; notes?: string }
+  | {
+      id: string;
+      at: string;
+      t: "DEATH_SAVES_SET";
+      participantId: string;
+      /** pcId links this event to the canonical Pc record for writeback. */
+      pcId: string;
+      value: DeathSaves;
+    }
   | {
       id: string;
       at: string;

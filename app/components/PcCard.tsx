@@ -528,6 +528,8 @@ function AbilitiesTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void
 function BackgroundTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void }) {
   const [pinEditMode, setPinEditMode] = useState(false);
   const [pinDraft, setPinDraft] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  const currencyKeys = ["pp", "gp", "ep", "sp", "cp"] as const;
 
   const handleSavePin = () => {
     const trimmed = pinDraft.trim();
@@ -538,131 +540,189 @@ function BackgroundTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => voi
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-3">
-        <ImageUploader pc={pc} update={update} />
-        <div>
-          <FieldLabel>Player</FieldLabel>
-          <Input value={pc.playerName} onChange={(e) => update({ playerName: e.target.value })} />
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3">
+          <ImageUploader pc={pc} update={update} />
+          <div>
+            <FieldLabel>Player</FieldLabel>
+            <Input value={pc.playerName} onChange={(e) => update({ playerName: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Race</FieldLabel>
+            <Input value={pc.race} onChange={(e) => update({ race: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Background</FieldLabel>
+            <Input value={pc.background} onChange={(e) => update({ background: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Alignment</FieldLabel>
+            <Input value={pc.alignment} onChange={(e) => update({ alignment: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Experience (XP)</FieldLabel>
+            <Input
+              type="number"
+              value={pc.experiencePoints}
+              onChange={(e) => update({ experiencePoints: Number(e.target.value) || 0 })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Senses</FieldLabel>
+            <Input value={pc.senses} onChange={(e) => update({ senses: e.target.value })} />
+          </div>
         </div>
 
-        {/* Player Access PIN */}
-        <div>
-          <FieldLabel>Player Access PIN</FieldLabel>
-          {pinEditMode ? (
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Min 4 characters"
-                value={pinDraft}
-                onChange={(e) => setPinDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSavePin();
-                  if (e.key === "Escape") { setPinEditMode(false); setPinDraft(""); }
-                }}
-                className="flex-1"
-                autoFocus
-              />
-              <Button
-                className="shrink-0 px-3 py-1 text-xs"
-                onClick={handleSavePin}
-              >
-                Save
-              </Button>
-              <Button
-                variant="ghost"
-                className="shrink-0 px-3 py-1 text-xs"
-                onClick={() => { setPinEditMode(false); setPinDraft(""); }}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {pc.pin ? (
-                <>
-                  <span className="flex items-center gap-1.5 text-sm text-muted">
-                    <Lock className="h-3 w-3" /> PIN set
-                  </span>
-                  <Button
-                    variant="ghost"
-                    className="px-2 py-1 text-xs"
-                    onClick={() => { setPinEditMode(true); setPinDraft(pc.pin ?? ""); }}
-                  >
-                    Change
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="px-2 py-1 text-xs"
-                    onClick={() => update({ pin: null })}
-                  >
-                    Clear PIN
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm text-muted">No PIN — players cannot access this character</span>
-                  <Button
-                    variant="ghost"
-                    className="shrink-0 px-2 py-1 text-xs"
-                    onClick={() => setPinEditMode(true)}
-                  >
-                    Set PIN
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-        <div>
-          <FieldLabel>Race</FieldLabel>
-          <Input value={pc.race} onChange={(e) => update({ race: e.target.value })} />
-        </div>
-        <div>
-          <FieldLabel>Background</FieldLabel>
-          <Input value={pc.background} onChange={(e) => update({ background: e.target.value })} />
-        </div>
-        <div>
-          <FieldLabel>Alignment</FieldLabel>
-          <Input value={pc.alignment} onChange={(e) => update({ alignment: e.target.value })} />
-        </div>
-        <div>
-          <FieldLabel>Experience (XP)</FieldLabel>
-          <Input
-            type="number"
-            value={pc.experiencePoints}
-            onChange={(e) => update({ experiencePoints: Number(e.target.value) || 0 })}
-          />
-        </div>
-        <div>
-          <FieldLabel>Senses</FieldLabel>
-          <Input value={pc.senses} onChange={(e) => update({ senses: e.target.value })} />
+        <div className="space-y-3">
+          <div>
+            <FieldLabel>Proficiencies & Languages</FieldLabel>
+            <Textarea rows={3} value={pc.proficiencies} onChange={(e) => update({ proficiencies: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Equipment</FieldLabel>
+            <Textarea rows={3} value={pc.equipment} onChange={(e) => update({ equipment: e.target.value })} />
+          </div>
+          <div>
+            <FieldLabel>Resources</FieldLabel>
+            <Textarea
+              rows={2}
+              value={pc.resources.join(", ")}
+              onChange={(e) =>
+                update({ resources: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })
+              }
+            />
+          </div>
+          <div>
+            <FieldLabel>Notes</FieldLabel>
+            <Textarea rows={5} value={pc.notes} onChange={(e) => update({ notes: e.target.value })} />
+          </div>
+          {/* Player Access PIN */}
+          <div>
+            <FieldLabel>Player Access PIN</FieldLabel>
+            {pinEditMode ? (
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Min 4 characters"
+                  value={pinDraft}
+                  onChange={(e) => setPinDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSavePin();
+                    if (e.key === "Escape") { setPinEditMode(false); setPinDraft(""); }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button className="shrink-0 px-3 py-1 text-xs" onClick={handleSavePin}>Save</Button>
+                <Button variant="ghost" className="shrink-0 px-3 py-1 text-xs" onClick={() => { setPinEditMode(false); setPinDraft(""); }}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {pc.pin ? (
+                  <>
+                    <span className="flex items-center gap-1.5 text-sm text-muted">
+                      <Lock className="h-3 w-3" /> PIN set
+                    </span>
+                    <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => { setPinEditMode(true); setPinDraft(pc.pin ?? ""); }}>Change</Button>
+                    <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => update({ pin: null })}>Clear PIN</Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-muted">No PIN — players cannot access this character</span>
+                    <Button variant="ghost" className="shrink-0 px-2 py-1 text-xs" onClick={() => setPinEditMode(true)}>Set PIN</Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div>
-          <FieldLabel>Proficiencies & Languages</FieldLabel>
-          <Textarea rows={3} value={pc.proficiencies} onChange={(e) => update({ proficiencies: e.target.value })} />
-        </div>
-        <div>
-          <FieldLabel>Equipment</FieldLabel>
-          <Textarea rows={3} value={pc.equipment} onChange={(e) => update({ equipment: e.target.value })} />
-        </div>
-        <div>
-          <FieldLabel>Resources</FieldLabel>
-          <Textarea
-            rows={2}
-            value={pc.resources.join(", ")}
-            onChange={(e) =>
-              update({ resources: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })
-            }
+      {/* ── Collapsible: Personality & Currency ── */}
+      <div className="rounded-xl border border-black/10 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className="flex w-full items-center justify-between px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-muted transition hover:bg-surface hover:text-foreground"
+        >
+          Personality & Currency
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform duration-200",
+              showMore && "rotate-180"
+            )}
           />
-        </div>
-        <div>
-          <FieldLabel>Notes</FieldLabel>
-          <Textarea rows={5} value={pc.notes} onChange={(e) => update({ notes: e.target.value })} />
-        </div>
+        </button>
+
+        {showMore && (
+          <div className="space-y-3 border-t border-black/10 p-3">
+            {/* Personality traits grid */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <FieldLabel>Personality Traits</FieldLabel>
+                <Textarea
+                  rows={2}
+                  value={pc.personalityTraits ?? ""}
+                  onChange={(e) => update({ personalityTraits: e.target.value })}
+                  placeholder="I always have a plan…"
+                />
+              </div>
+              <div>
+                <FieldLabel>Ideals</FieldLabel>
+                <Textarea
+                  rows={2}
+                  value={pc.ideals ?? ""}
+                  onChange={(e) => update({ ideals: e.target.value })}
+                  placeholder="Greater good. It is each person's responsibility…"
+                />
+              </div>
+              <div>
+                <FieldLabel>Bonds</FieldLabel>
+                <Textarea
+                  rows={2}
+                  value={pc.bonds ?? ""}
+                  onChange={(e) => update({ bonds: e.target.value })}
+                  placeholder="I protect those who cannot protect themselves."
+                />
+              </div>
+              <div>
+                <FieldLabel>Flaws</FieldLabel>
+                <Textarea
+                  rows={2}
+                  value={pc.flaws ?? ""}
+                  onChange={(e) => update({ flaws: e.target.value })}
+                  placeholder="I have a weakness for the vices of the city…"
+                />
+              </div>
+            </div>
+
+            {/* Currency */}
+            <div>
+              <FieldLabel>Currency</FieldLabel>
+              <div className="mt-1 grid grid-cols-5 gap-1.5">
+                {currencyKeys.map((k) => (
+                  <div key={k} className="flex flex-col items-center gap-0.5">
+                    <span className="text-[0.6rem] uppercase tracking-widest text-muted">
+                      {k.toUpperCase()}
+                    </span>
+                    <Input
+                      type="number"
+                      value={pc.currency?.[k] ?? 0}
+                      onChange={(e) =>
+                        update({
+                          currency: { ...(pc.currency ?? { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 }), [k]: Number(e.target.value) || 0 },
+                        })
+                      }
+                      className="text-center px-1"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1 text-[0.6rem] text-muted/60">PP · GP · EP · SP · CP</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

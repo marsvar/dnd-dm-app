@@ -63,6 +63,93 @@ export type SaveProficiencies = {
   cha: boolean;
 };
 
+// ---------------------------------------------------------------------------
+// v8 sub-types
+// ---------------------------------------------------------------------------
+
+/**
+ * Death save tally for a PC at 0 HP.
+ * successes/failures are each clamped 0–3 by the engine.
+ * stable=true means the PC has stabilised (3 successes) and stops rolling.
+ */
+export type DeathSaves = {
+  successes: number;
+  failures: number;
+  stable: boolean;
+};
+
+/**
+ * Coin purse. All values are whole non-negative numbers.
+ * 1 pp = 10 gp = 100 sp = 1000 cp; 1 ep = 5 sp.
+ */
+export type Currency = {
+  pp: number;
+  gp: number;
+  ep: number;
+  sp: number;
+  cp: number;
+};
+
+/**
+ * A class feature, racial trait, or feat with optional limited-use tracking.
+ * Features without limited uses omit `uses`/`maxUses`/`recharge`.
+ */
+export type Feature = {
+  id: string;
+  name: string;
+  description: string;
+  uses?: number;
+  maxUses?: number;
+  /** When uses reset: "Short Rest" | "Long Rest" | "Dawn" | free text */
+  recharge?: string;
+};
+
+/**
+ * Spell slot tracking for one spell level (1–9).
+ * `total` is the class maximum; `used` is how many have been expended.
+ */
+export type SpellSlot = {
+  level: number; // 1–9
+  total: number;
+  used: number;
+};
+
+/**
+ * Spellcasting header data.
+ * `spellcastingAbility` drives getSpellSaveDc and getSpellAttackBonus in pcEngine.
+ * `spellSlots` is the per-level slot array.
+ */
+export type SpellcastingInfo = {
+  spellcastingAbility: keyof AbilityScores | null;
+  spellSlots: SpellSlot[];
+};
+
+/**
+ * A weapon on the character sheet.
+ * `attackBonus` is the total to-hit modifier (player fills in their own value).
+ * `damageBonus` is the flat damage modifier (added on top of damage dice in the roll).
+ */
+export type Weapon = {
+  id: string;
+  name: string;
+  /** Total to-hit modifier including ability mod + proficiency, e.g. 5 */
+  attackBonus: number;
+  /** Damage dice expression, e.g. "1d8", "2d6" */
+  damageDice: string;
+  /** Flat damage modifier, e.g. 3 (shown as +3 in formula) */
+  damageBonus: number;
+  /** Damage type label, e.g. "slashing", "piercing", "fire" */
+  damageType: string;
+  /** Range label, e.g. "5 ft." or "20/60 ft." */
+  range: string;
+  /** Free-text notes: "finesse, versatile (1d10)", "light, thrown" */
+  notes: string;
+};
+
+// ---------------------------------------------------------------------------
+// Core entity types (unchanged shape)
+// ---------------------------------------------------------------------------
+
 export type ParticipantVisual = {
   imageUrl?: string;
   fallback: "initials";
@@ -122,6 +209,16 @@ export type Pc = {
   visual?: ParticipantVisual;
   /** Player access PIN. null/undefined = no player access configured. */
   pin?: string | null;
+  // --- v8 ---
+  deathSaves: DeathSaves;
+  currency: Currency;
+  features: Feature[];
+  spellcasting: SpellcastingInfo;
+  weapons: Weapon[];
+  personalityTraits: string;
+  ideals: string;
+  bonds: string;
+  flaws: string;
 };
 
 export type EncounterParticipant = {
@@ -137,6 +234,8 @@ export type EncounterParticipant = {
   conditions: string[];
   notes?: string;
   visual?: ParticipantVisual;
+  /** Mirrors Pc.deathSaves for PC participants at 0 HP; null for monsters/NPCs. */
+  deathSaves: DeathSaves | null;
 };
 
 export type Campaign = {
