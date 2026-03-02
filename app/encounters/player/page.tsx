@@ -517,54 +517,81 @@ export default function EncounterPlayerPage() {
                   ) : (
                     <>
                   {combatMode ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => dispatchEncounterEvent(selectedEncounter.id, { t: "COMBAT_MODE_SET", mode: "prep" })}
-                    >
-                      Back to prep mode
-                    </Button>
+                    <div className="flex w-full flex-col gap-2">
+                      {/* Primary row: Prev | [NEXT TURN] | Stop/Start */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="px-4 py-2 text-sm"
+                          onClick={() => advanceEncounterTurn(selectedEncounter.id, -1)}
+                          disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
+                          aria-label="Previous turn"
+                        >
+                          ← Prev
+                        </Button>
+                        <Button
+                          className="flex-1 py-3 text-base font-bold tracking-wide"
+                          onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
+                          disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
+                          aria-label="Next turn (N)"
+                        >
+                          Next Turn ↵
+                        </Button>
+                        {selectedEncounter.isRunning ? (
+                          <Button
+                            variant="outline"
+                            className="px-4 py-2 text-sm"
+                            onClick={() => stopEncounter(selectedEncounter.id)}
+                          >
+                            Stop
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="px-4 py-2 text-sm"
+                            onClick={() => startEncounter(selectedEncounter.id)}
+                            disabled={!combatRequirementsMet}
+                          >
+                            Start
+                          </Button>
+                        )}
+                      </div>
+                      {/* Secondary row: Back to prep | End Encounter */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          className="px-3 py-1 text-xs"
+                          onClick={() =>
+                            dispatchEncounterEvent(selectedEncounter.id, {
+                              t: "COMBAT_MODE_SET",
+                              mode: "prep",
+                            })
+                          }
+                        >
+                          ← Back to prep
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="ml-auto px-3 py-1 text-xs"
+                          onClick={() => {
+                            setEndEncounterNotes("");
+                            setIsEndEncounterOpen(true);
+                          }}
+                          disabled={selectedEncounter.isRunning}
+                        >
+                          End Encounter
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
+                    <>
                     <Button
                       onClick={() => dispatchEncounterEvent(selectedEncounter.id, { t: "COMBAT_MODE_SET", mode: "live" })}
                       disabled={!selectedEncounter.isRunning && !combatRequirementsMet}
                     >
                       Go to combat mode
                     </Button>
-                  )}
-                  {combatMode ? (
-                    <>
-                      {!selectedEncounter.isRunning ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => startEncounter(selectedEncounter.id)}
-                          disabled={!combatRequirementsMet}
-                        >
-                          Start
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          onClick={() => stopEncounter(selectedEncounter.id)}
-                        >
-                          Stop
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        onClick={() => advanceEncounterTurn(selectedEncounter.id, -1)}
-                        disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
-                        disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
-                      >
-                        Next
-                      </Button>
-                    </>
-                  ) : (
-                    !selectedEncounter.isRunning ? (
+                    {!selectedEncounter.isRunning ? (
                       <Button
                         variant="outline"
                         onClick={() => startEncounter(selectedEncounter.id)}
@@ -579,17 +606,18 @@ export default function EncounterPlayerPage() {
                       >
                         Stop
                       </Button>
-                    )
+                    )}
+                    {/* End Encounter — graduates this encounter to 'completed' */}
+                    <Button
+                      variant="outline"
+                      className="ml-auto text-xs"
+                      onClick={() => { setEndEncounterNotes(""); setIsEndEncounterOpen(true); }}
+                      disabled={selectedEncounter.isRunning}
+                    >
+                      End Encounter
+                    </Button>
+                    </>
                   )}
-                  {/* End Encounter — graduates this encounter to 'completed' */}
-                  <Button
-                    variant="outline"
-                    className="ml-auto text-xs"
-                    onClick={() => { setEndEncounterNotes(""); setIsEndEncounterOpen(true); }}
-                    disabled={selectedEncounter.isRunning}
-                  >
-                    End Encounter
-                  </Button>
                     </>
                   )}
                 </div>
