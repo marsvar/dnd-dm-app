@@ -219,6 +219,7 @@ export type Pc = {
   ideals: string;
   bonds: string;
   flaws: string;
+  pin?: string | null;
 };
 
 export type EncounterParticipant = {
