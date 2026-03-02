@@ -14,10 +14,49 @@ import type {
   Pc,
 } from "../models/types";
 import { seedState } from "../data/srd";
-import { DEFAULT_SKILL_PROFICIENCIES } from "../engine/pcEngine";
+import {
+  DEFAULT_CURRENCY,
+  DEFAULT_DEATH_SAVES,
+  DEFAULT_FEATURES,
+  DEFAULT_SKILL_PROFICIENCIES,
+  DEFAULT_SPELLCASTING,
+  DEFAULT_WEAPONS,
+} from "../engine/pcEngine";
 import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEvents";
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
+
+/**
+ * v8 fields are optional in addPc so callers that don't supply them get
+ * sensible defaults.  All other Pc fields (minus id) are still required.
+ */
+type AddPcInput = Omit<
+  Pc,
+  | "id"
+  | "deathSaves"
+  | "currency"
+  | "features"
+  | "spellcasting"
+  | "weapons"
+  | "personalityTraits"
+  | "ideals"
+  | "bonds"
+  | "flaws"
+> &
+  Partial<
+    Pick<
+      Pc,
+      | "deathSaves"
+      | "currency"
+      | "features"
+      | "spellcasting"
+      | "weapons"
+      | "personalityTraits"
+      | "ideals"
+      | "bonds"
+      | "flaws"
+    >
+  >;
 
 type AppStore = {
   state: AppState;
@@ -25,7 +64,7 @@ type AppStore = {
   addMonster: (monster: Omit<Monster, "id" | "source"> & { source?: Monster["source"] }) => void;
   updateMonster: (id: string, updates: Partial<Monster>) => void;
   removeMonster: (id: string) => void;
-  addPc: (pc: Omit<Pc, "id">) => void;
+  addPc: (pc: AddPcInput) => void;
   updatePc: (id: string, updates: Partial<Pc>) => void;
   removePc: (id: string) => void;
   addEncounter: (name: string, location?: string, campaignId?: string) => string;
@@ -82,6 +121,7 @@ const normalizeParticipant = (
 ): EncounterParticipant => ({
   ...participant,
   visual: normalizeVisual(participant.visual),
+  deathSaves: participant.deathSaves ?? null,
 });
 
 const getEncounterBaseline = (encounter: Encounter): EncounterBaseline => {
@@ -160,8 +200,18 @@ const loadState = (): AppState => {
       pcs: parsedPcs.map((pc) => ({
         ...pc,
         visual: normalizeVisual(pc.visual),
-        // Migration: backfill skillProficiencies for PCs saved before this field existed
+        // v7: backfill skillProficiencies
         skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+        // v8: backfill new required fields
+        deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
+        currency: pc.currency ?? { ...DEFAULT_CURRENCY },
+        features: pc.features ?? [...DEFAULT_FEATURES],
+        spellcasting: pc.spellcasting ?? { ...DEFAULT_SPELLCASTING },
+        weapons: pc.weapons ?? [...DEFAULT_WEAPONS],
+        personalityTraits: pc.personalityTraits ?? "",
+        ideals: pc.ideals ?? "",
+        bonds: pc.bonds ?? "",
+        flaws: pc.flaws ?? "",
       })),
       encounters: normalizedEncounters,
     };
@@ -232,10 +282,28 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     }));
   }, []);
 
-  const addPc = useCallback((pc: Omit<Pc, "id">) => {
+  const addPc = useCallback((pc: AddPcInput) => {
     setState((prev) => ({
       ...prev,
-      pcs: [...prev.pcs, { ...pc, id: createId(), visual: normalizeVisual(pc.visual) }],
+      pcs: [
+        ...prev.pcs,
+        {
+          // Spread caller values first, then apply v8 defaults via ?? so
+          // existing keys win and TypeScript doesn't raise TS2783.
+          ...pc,
+          id: createId(),
+          visual: normalizeVisual(pc.visual),
+          deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
+          currency: pc.currency ?? { ...DEFAULT_CURRENCY },
+          features: pc.features ?? [...DEFAULT_FEATURES],
+          spellcasting: pc.spellcasting ?? { ...DEFAULT_SPELLCASTING },
+          weapons: pc.weapons ?? [...DEFAULT_WEAPONS],
+          personalityTraits: pc.personalityTraits ?? "",
+          ideals: pc.ideals ?? "",
+          bonds: pc.bonds ?? "",
+          flaws: pc.flaws ?? "",
+        },
+      ],
     }));
   }, []);
 
@@ -472,8 +540,43 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           const baseline = getEncounterBaseline(encounter);
           return rebuildEncounterFromEvents(baseline, eventLog);
         });
+
+        // --- PC side-effects ---
+        let updatedPcs = prev.pcs;
+
+        // Death save writeback: atomically sync deathSaves to canonical Pc record.
+        if (fullEvent.t === "DEATH_SAVES_SET") {
+          const dsEvent = fullEvent as Extract<EncounterEvent, { t: "DEATH_SAVES_SET" }>;
+          updatedPcs = prev.pcs.map((pc) =>
+            pc.id === dsEvent.pcId ? { ...pc, deathSaves: dsEvent.value } : pc
+          );
+        }
+
+        // HP writeback on encounter completion: sync currentHp / tempHp back to Pc.
+        if (fullEvent.t === "ENCOUNTER_COMPLETED") {
+          const completedEncounter = updatedEncounters.find((e) => e.id === encounterId);
+          if (completedEncounter) {
+            const hpMap = new Map(
+              completedEncounter.participants
+                .filter((p) => p.kind === "pc" && p.refId)
+                .map((p) => [p.refId!, { currentHp: p.currentHp, tempHp: p.tempHp }])
+            );
+            if (hpMap.size > 0) {
+              updatedPcs = prev.pcs.map((pc) => {
+                const hp = hpMap.get(pc.id);
+                if (!hp) return pc;
+                return {
+                  ...pc,
+                  currentHp: hp.currentHp ?? pc.currentHp,
+                  tempHp: hp.tempHp ?? 0,
+                };
+              });
+            }
+          }
+        }
+
         if (!AUTO_LOG_EVENTS.has(fullEvent.t)) {
-          return { ...prev, encounters: updatedEncounters };
+          return { ...prev, encounters: updatedEncounters, pcs: updatedPcs };
         }
         const sourceEncounter = prev.encounters.find((e) => e.id === encounterId);
         const encounterName = sourceEncounter?.name ?? "Unknown encounter";
@@ -497,6 +600,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         return {
           ...prev,
           encounters: updatedEncounters,
+          pcs: updatedPcs,
           log: [...prev.log, autoEntry],
         };
       });
