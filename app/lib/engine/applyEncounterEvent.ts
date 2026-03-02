@@ -59,6 +59,7 @@ export function applyEncounterEvent(
         ...event.participant,
         conditions: event.participant.conditions ?? [],
         tempHp: event.participant.tempHp ?? null,
+        deathSaves: event.participant.deathSaves ?? null,
         visual: {
           fallback: "initials",
           ...(event.participant.visual ?? {}),
@@ -197,6 +198,23 @@ export function applyEncounterEvent(
         participants: encounter.participants.map((participant) =>
           participant.id === event.participantId
             ? { ...participant, notes: event.value }
+            : participant
+        ),
+      };
+    }
+    case "DEATH_SAVES_SET": {
+      return {
+        ...encounter,
+        participants: encounter.participants.map((participant) =>
+          participant.id === event.participantId
+            ? {
+                ...participant,
+                deathSaves: {
+                  successes: Math.min(3, Math.max(0, event.value.successes)),
+                  failures: Math.min(3, Math.max(0, event.value.failures)),
+                  stable: event.value.stable,
+                },
+              }
             : participant
         ),
       };

@@ -338,6 +338,7 @@ export default function EncounterBuilderPage() {
         tempHp: 0,
         conditions: [],
         visual: monster.visual,
+        deathSaves: null,
       });
     });
     createPartyMembers.forEach((pc) => {
@@ -352,6 +353,7 @@ export default function EncounterBuilderPage() {
         tempHp: pc.tempHp,
         conditions: [...pc.conditions],
         visual: pc.visual,
+        deathSaves: pc.deathSaves ?? null,
       });
     });
     setCreateForm({ name: "", location: "" });
@@ -401,6 +403,7 @@ export default function EncounterBuilderPage() {
           tempHp: pc.tempHp,
           conditions: [],
           visual: pc.visual,
+          deathSaves: pc.deathSaves ?? null,
         });
       });
     setIsPartyModalOpen(false);
@@ -426,6 +429,7 @@ export default function EncounterBuilderPage() {
       tempHp: 0,
       conditions: [],
       visual: monster.visual,
+      deathSaves: null,
     });
   };
 
@@ -448,6 +452,7 @@ export default function EncounterBuilderPage() {
       tempHp: 0,
       conditions: [],
       visual: { fallback: "initials" },
+      deathSaves: null,
     });
     setCustomForm({ name: "", kind: "npc", ac: "", hp: "" });
   };
@@ -489,6 +494,7 @@ export default function EncounterBuilderPage() {
       tempHp: 0,
       conditions: [],
       visual: activeVariantSource.visual,
+      deathSaves: null,
     });
     setIsVariantModalOpen(false);
     setVariantSourceId(null);

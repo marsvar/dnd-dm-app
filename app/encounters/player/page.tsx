@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select } from "../../components/ui";
+import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
 import { getPassivePerception } from "../../lib/engine/pcEngine";
 import { useAppStore } from "../../lib/store/appStore";
+import type { DeathSaves, Pc } from "../../lib/models/types";
 
 const isDefeated = (currentHp: number | null) =>
   currentHp !== null && currentHp <= 0;
@@ -325,6 +326,8 @@ export default function EncounterPlayerPage() {
         return `Notes updated: ${name || "Participant"}`;
       case "ROLL_RECORDED":
         return `Roll ${event.context}: ${event.total}`;
+      case "DEATH_SAVES_SET":
+        return `Death saves: ${name || "Participant"} (${event.value.successes}S/${event.value.failures}F)`;
       default:
         return "Action recorded";
     }
@@ -366,6 +369,7 @@ export default function EncounterPlayerPage() {
     conditions: string[];
     notes?: string;
     visual?: { imageUrl?: string; fallback: "initials" };
+    deathSaves: DeathSaves | null;
   }) => {
     if (!selectedEncounter) {
       return;
@@ -396,6 +400,7 @@ export default function EncounterPlayerPage() {
       conditions: [],
       notes: "",
       visual: { fallback: "initials" },
+      deathSaves: null,
     });
     setCustomParticipantForm({ name: "", kind: "npc", ac: "", hp: "", initiative: "" });
     setIsAddParticipantOpen(false);
@@ -420,7 +425,8 @@ export default function EncounterPlayerPage() {
       tempHp: pc.tempHp,
       conditions: [...pc.conditions],
       notes: pc.notes,
-        visual: pc.visual,
+      visual: pc.visual,
+      deathSaves: pc.deathSaves ?? null,
     });
     setPremadePcSelectionId("");
     setIsAddParticipantOpen(false);
@@ -443,6 +449,7 @@ export default function EncounterPlayerPage() {
       conditions: [],
       notes: "",
       visual: monster.visual,
+      deathSaves: null,
     });
     setIsAddParticipantOpen(false);
   };
@@ -937,6 +944,26 @@ export default function EncounterPlayerPage() {
                           ) : null}
                         </div>
                       </div>
+                      {/* Death save tracker — shown for PC participants at 0 HP */}
+                      {participant.kind === "pc" &&
+                        participant.currentHp !== null &&
+                        participant.currentHp <= 0 &&
+                        participant.refId && (
+                          <DmDeathSaveTracker
+                            deathSaves={
+                              participant.deathSaves ?? { successes: 0, failures: 0, stable: false }
+                            }
+                            onSave={(ds) => {
+                              if (!selectedEncounter) return;
+                              dispatchEncounterEvent(selectedEncounter.id, {
+                                t: "DEATH_SAVES_SET",
+                                participantId: participant.id,
+                                pcId: participant.refId!,
+                                value: ds,
+                              });
+                            }}
+                          />
+                        )}
                     </div>
                   ))}
                   {!orderedParticipants.length ? (
@@ -1041,6 +1068,9 @@ export default function EncounterPlayerPage() {
                         <p className="text-xs uppercase tracking-[0.2em] text-muted">Notes</p>
                         <p>{activePc.notes || "--"}</p>
                       </div>
+                      {(activePc.spellcasting?.spellSlots?.length ?? 0) > 0 && (
+                        <SpellSlotsReadout pc={activePc} />
+                      )}
                     </div>
                   ) : activeMonster ? (
                     <div className="mt-3 space-y-2">
@@ -1486,5 +1516,130 @@ export default function EncounterPlayerPage() {
         </DialogContent>
       </Dialog>
     </PageShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DmDeathSaveTracker — compact death save circles for the DM encounter view
+// ---------------------------------------------------------------------------
+function DmDeathSaveTracker({
+  deathSaves,
+  onSave,
+}: {
+  deathSaves: DeathSaves;
+  onSave: (ds: DeathSaves) => void;
+}) {
+  const { successes, failures, stable } = deathSaves;
+
+  if (stable || successes >= 3) {
+    return (
+      <div className="mt-2 text-xs font-semibold text-green-600">
+        ✓ Stable
+      </div>
+    );
+  }
+  if (failures >= 3) {
+    return (
+      <div className="mt-2 text-xs font-semibold text-red-600">
+        ✗ Death
+      </div>
+    );
+  }
+
+  const handleCircle = (type: "success" | "failure", i: number) => {
+    const current = type === "success" ? successes : failures;
+    const next = Math.max(0, Math.min(3, i < current ? i : i + 1));
+    if (type === "success") onSave({ successes: next, failures, stable: next >= 3 });
+    else onSave({ successes, failures: next, stable });
+  };
+
+  return (
+    <div className="mt-2 flex items-center gap-3 text-xs">
+      <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted">Death saves</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[0.6rem] text-green-600 mr-0.5">S</span>
+        {Array.from({ length: 3 }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => handleCircle("success", i)}
+            className={cn(
+              "h-3.5 w-3.5 rounded-full border-2 transition-colors",
+              i < successes
+                ? "border-green-500 bg-green-500"
+                : "border-black/20 bg-transparent hover:border-green-400"
+            )}
+            aria-label={`Death save success ${i + 1}`}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-[0.6rem] text-red-500 mr-0.5">F</span>
+        {Array.from({ length: 3 }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => handleCircle("failure", i)}
+            className={cn(
+              "h-3.5 w-3.5 rounded-full border-2 transition-colors",
+              i < failures
+                ? "border-red-500 bg-red-500"
+                : "border-black/20 bg-transparent hover:border-red-400"
+            )}
+            aria-label={`Death save failure ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SpellSlotsReadout — read-only spell slot pips for the Reference panel
+// ---------------------------------------------------------------------------
+function SpellSlotsReadout({ pc }: { pc: Pc }) {
+  const slots = pc.spellcasting?.spellSlots ?? [];
+  const ability = pc.spellcasting?.spellcastingAbility;
+  if (!slots.length) return null;
+
+  const abilityMod = ability ? getAbilityMod(pc.abilities[ability]) : 0;
+  const saveDc = ability ? 8 + pc.proficiencyBonus + abilityMod : null;
+  const atkBonus = ability ? pc.proficiencyBonus + abilityMod : null;
+
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted">Spell Slots</p>
+      {saveDc !== null && (
+        <p className="mb-1 text-xs text-muted">
+          Save DC {saveDc} · Atk {atkBonus! >= 0 ? `+${atkBonus}` : `${atkBonus}`}
+        </p>
+      )}
+      <div className="space-y-1">
+        {slots.map((slot) => {
+          const available = slot.total - slot.used;
+          return (
+            <div key={slot.level} className="flex items-center gap-2">
+              <span className="w-8 text-[0.65rem] text-muted">Lv {slot.level}</span>
+              <div className="flex gap-1">
+                {Array.from({ length: slot.total }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-3 w-3 rounded-full border",
+                      i < available
+                        ? "border-accent bg-accent"
+                        : "border-black/20 bg-transparent"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="text-[0.65rem] text-muted">
+                {available}/{slot.total}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
