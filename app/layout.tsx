@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Alegreya_Sans, Marcellus, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppStoreProvider } from "./lib/store/appStore";
 import { RoleStoreProvider } from "./lib/store/roleStore";
 import { Nav } from "./components/Nav";
@@ -49,6 +51,8 @@ export default function RootLayout({
             </div>
           </RoleStoreProvider>
         </AppStoreProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -28,7 +28,7 @@ import {
   SKILL_LABELS,
 } from "../lib/engine/pcEngine";
 import { SRD_CONDITIONS } from "../lib/data/srd";
-import { ChevronDown, Upload, X } from "lucide-react";
+import { ChevronDown, Lock, Upload, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -752,6 +752,15 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
               </span>
             )}
           </div>
+        )}
+
+        {pc.pin && (
+          <span
+            title="Player PIN set"
+            className="hidden sm:flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface shrink-0"
+          >
+            <Lock className="h-2.5 w-2.5 text-muted" />
+          </span>
         )}
 
         {pc.inspiration && (
