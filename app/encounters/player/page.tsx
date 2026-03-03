@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
+import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Textarea, cn } from "../../components/ui";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
 import { getPassivePerception } from "../../lib/engine/pcEngine";
@@ -820,6 +820,25 @@ export default function EncounterPlayerPage() {
                           }}
                         />
                       </div>
+                      {effectiveTargetId && (
+                        <div className="mt-3 border-t border-black/10 pt-3">
+                          <p className="text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+                            Notes
+                          </p>
+                          <Textarea
+                            className="mt-1 min-h-[3rem] resize-none text-xs"
+                            placeholder="Add a note for this participant…"
+                            value={
+                              selectedEncounter.participants.find(
+                                (p) => p.id === effectiveTargetId
+                              )?.notes ?? ""
+                            }
+                            onChange={(e) => {
+                              setNotes(effectiveTargetId, e.target.value);
+                            }}
+                          />
+                        </div>
+                      )}
                       <div className="mt-4 border-t border-black/10 pt-3">
                         <p className="text-[0.65rem] uppercase tracking-[0.25em] text-muted">
                           Add participant
