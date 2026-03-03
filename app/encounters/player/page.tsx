@@ -634,54 +634,66 @@ export default function EncounterPlayerPage() {
 
               {combatMode ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/5 bg-surface-strong px-3 py-2 text-xs text-muted">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="uppercase tracking-[0.25em]">Round</span>
+                  <div className="rounded-2xl border border-black/5 bg-surface-strong px-4 py-3 text-xs text-muted">
+                    {/* Row 1: Round controls + Undo + last event */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em]">Round</span>
+                        <Button
+                          variant="outline"
+                          className="h-6 w-6 p-0 text-xs"
+                          onClick={() => adjustRound(-1)}
+                          aria-label="Previous round"
+                        >
+                          −
+                        </Button>
+                        <span className="min-w-[1.5rem] text-center font-mono text-sm font-bold text-foreground">
+                          {selectedEncounter.round}
+                        </span>
+                        <Button
+                          variant="outline"
+                          className="h-6 w-6 p-0 text-xs"
+                          onClick={() => adjustRound(1)}
+                          aria-label="Next round"
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <div className="mx-2 h-4 w-px bg-black/10" />
                       <Button
                         variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => adjustRound(-1)}
-                      >
-                        -
-                      </Button>
-                      <span className="text-sm font-semibold text-foreground">
-                        {selectedEncounter.round}
-                      </span>
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => adjustRound(1)}
-                      >
-                        +
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
+                        className="h-7 px-3 text-xs"
                         onClick={() => undoEncounterEvent(selectedEncounter.id)}
                         disabled={!selectedEncounter.eventLog.length}
                       >
                         Undo
                       </Button>
+                      {lastEvent && (
+                        <span className="truncate text-xs text-muted">
+                          ↩ {formatEventSummary(lastEvent)}
+                        </span>
+                      )}
+                      {selectedEncounter.isRunning ? (
+                        <span className="ml-auto text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                          N / ← →
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="uppercase tracking-[0.25em]">Active</span>
-                      <span className="text-sm text-foreground">
-                        {activeParticipant ? activeParticipant.name : "--"}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="uppercase tracking-[0.25em]">Last</span>
-                      <span className="text-sm text-foreground">{formatEventSummary(lastEvent)}</span>
-                    </div>
-                    {selectedEncounter.isRunning ? (
-                      <div className="text-[0.65rem] uppercase tracking-[0.2em] text-muted">
-                        Keys N / P
+                    {/* Row 2: Active participant */}
+                    {activeParticipant && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em]">Active</span>
+                        <ParticipantAvatar
+                          name={activeParticipant.name}
+                          visual={activeParticipant.visual}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface text-[0.5rem] font-semibold text-muted"
+                        />
+                        <span className="font-semibold text-foreground">{activeParticipant.name}</span>
+                        <Pill label={activeParticipant.kind.toUpperCase()} tone="neutral" />
                       </div>
-                    ) : null}
+                    )}
                     {!selectedEncounter.isRunning && !combatRequirementsMet ? (
-                      <p className="text-xs text-muted">
-                        {combatRequirementsMessage}
-                      </p>
+                      <p className="mt-2 text-xs text-muted">{combatRequirementsMessage}</p>
                     ) : null}
                   </div>
 
