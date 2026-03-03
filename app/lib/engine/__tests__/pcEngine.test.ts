@@ -58,6 +58,16 @@ const makePC = (overrides: Partial<Pc> = {}): Pc => ({
   notes: "",
   inspiration: false,
   conditions: [],
+  // v8 fields
+  deathSaves: { successes: 0, failures: 0, stable: false },
+  currency: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 },
+  features: [],
+  spellcasting: { spellcastingAbility: null, spellSlots: [] },
+  weapons: [],
+  personalityTraits: "",
+  ideals: "",
+  bonds: "",
+  flaws: "",
   ...overrides,
 });
 

@@ -1,4 +1,4 @@
-import type { EncounterParticipant } from "../models/types";
+import type { DeathSaves, EncounterParticipant } from "../models/types";
 
 export type EncounterEvent =
   | { id: string; at: string; t: "COMBAT_STARTED" }
@@ -23,7 +23,18 @@ export type EncounterEvent =
   | {
       id: string;
       at: string;
+      t: "DEATH_SAVES_SET";
+      participantId: string;
+      /** pcId links this event to the canonical Pc record for writeback. */
+      pcId: string;
+      value: DeathSaves;
+    }
+  | {
+      id: string;
+      at: string;
       t: "ROLL_RECORDED";
+      /** PC or participant id who made the roll. Omit for DM rolls. */
+      actorId?: string;
       mode: "digital" | "manual" | "dm";
       context: string;
       formula: string;

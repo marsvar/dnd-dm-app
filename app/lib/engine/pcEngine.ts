@@ -14,10 +14,15 @@
 
 import type {
   AbilityScores,
+  Currency,
+  DeathSaves,
+  Feature,
   Pc,
   SkillProficiencies,
   SkillProficiency,
   Skills,
+  SpellcastingInfo,
+  Weapon,
 } from "../models/types";
 
 // ---------------------------------------------------------------------------
@@ -183,4 +188,68 @@ export const cycleSkillProficiency = (
   if (current === "none") return "proficient";
   if (current === "proficient") return "expertise";
   return "none";
+};
+
+// ---------------------------------------------------------------------------
+// Default values for v8 fields
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_DEATH_SAVES: DeathSaves = {
+  successes: 0,
+  failures: 0,
+  stable: false,
+};
+
+export const DEFAULT_CURRENCY: Currency = {
+  pp: 0,
+  gp: 0,
+  ep: 0,
+  sp: 0,
+  cp: 0,
+};
+
+export const DEFAULT_SPELLCASTING: SpellcastingInfo = {
+  spellcastingAbility: null,
+  spellSlots: [],
+};
+
+export const DEFAULT_FEATURES: Feature[] = [];
+
+export const DEFAULT_WEAPONS: Weapon[] = [];
+
+// ---------------------------------------------------------------------------
+// Spellcasting derivations
+// ---------------------------------------------------------------------------
+
+/** Spell Save DC = 8 + proficiency bonus + spellcasting ability modifier. */
+export const getSpellSaveDc = (pc: Pc): number | null => {
+  const ability = pc.spellcasting?.spellcastingAbility;
+  if (!ability) return null;
+  return 8 + pc.proficiencyBonus + getAbilityMod(pc.abilities[ability]);
+};
+
+/** Spell Attack Bonus = proficiency bonus + spellcasting ability modifier. */
+export const getSpellAttackBonus = (pc: Pc): number | null => {
+  const ability = pc.spellcasting?.spellcastingAbility;
+  if (!ability) return null;
+  return pc.proficiencyBonus + getAbilityMod(pc.abilities[ability]);
+};
+
+// ---------------------------------------------------------------------------
+// Weapon derivations
+// ---------------------------------------------------------------------------
+
+/**
+ * Human-readable damage formula for a weapon.
+ * e.g. weapon with damageDice="1d8", damageBonus=3, damageType="slashing"
+ * → "1d8 + 3 slashing"
+ */
+export const getWeaponDiceFormula = (weapon: Weapon): string => {
+  const bonus =
+    weapon.damageBonus !== 0
+      ? weapon.damageBonus > 0
+        ? ` + ${weapon.damageBonus}`
+        : ` - ${Math.abs(weapon.damageBonus)}`
+      : "";
+  return `${weapon.damageDice}${bonus} ${weapon.damageType}`;
 };

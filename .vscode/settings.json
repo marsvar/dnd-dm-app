@@ -1,0 +1,5 @@
+{
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "github.copilot.chat.reviewSelection.useInstructionFiles": true,
+  "github.copilot.chat.testGeneration.useInstructionFiles": true
+}
