@@ -927,6 +927,11 @@ export default function EncounterPlayerPage() {
                   ) : null}
                 </div>
                 <div className="space-y-2">
+                  {combatMode && selectedEncounter.isRunning && (
+                    <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                      Initiative order — click to target
+                    </p>
+                  )}
                   {orderedParticipants.map((participant, index) => (
                     <div
                       key={participant.id}
