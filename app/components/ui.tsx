@@ -223,26 +223,49 @@ export const HpBar = ({
   current,
   max,
   className,
+  showLabel,
 }: {
   current: number;
   max: number;
   className?: string;
+  showLabel?: boolean;
 }) => {
   const pct = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
   const { fg, bg } = hpBarColors(current, max);
+  const label =
+    showLabel && max > 0
+      ? current <= 0
+        ? { text: "Down", color: "var(--hp-zero)" }
+        : pct <= 0.25
+          ? { text: "Critical", color: "var(--hp-low)" }
+          : pct <= 0.5
+            ? { text: "Bloodied", color: "var(--hp-mid)" }
+            : null
+      : null;
   return (
-    <div
-      role="progressbar"
-      aria-valuenow={current}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      className={cn("h-2 w-full overflow-hidden rounded-full", className)}
-      style={{ backgroundColor: bg }}
-    >
+    <div className={cn("w-full", showLabel && label ? "space-y-0.5" : "")}>
       <div
-        className="h-full rounded-full transition-[width] duration-300"
-        style={{ width: `${pct * 100}%`, backgroundColor: fg }}
-      />
+        role="progressbar"
+        aria-valuenow={current}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label={label ? `HP: ${label.text}` : undefined}
+        className={cn("h-2 w-full overflow-hidden rounded-full", className)}
+        style={{ backgroundColor: bg }}
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-300"
+          style={{ width: `${pct * 100}%`, backgroundColor: fg }}
+        />
+      </div>
+      {label && (
+        <span
+          className="text-[0.6rem] font-semibold uppercase tracking-[0.15em]"
+          style={{ color: label.color }}
+        >
+          {label.text}
+        </span>
+      )}
     </div>
   );
 };

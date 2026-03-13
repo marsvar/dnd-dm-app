@@ -26,7 +26,7 @@ export const Nav = () => {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [dmUserId, setDmUserId] = useState<string | null>(null);
   const [playerLinkCopied, setPlayerLinkCopied] = useState(false);
-  const { state } = useAppStore();
+  const { state, syncing } = useAppStore();
   const { activeRole, clearRole } = useRoleStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -87,6 +87,7 @@ export const Nav = () => {
     <header className="sticky top-0 z-10 border-b border-black/5 bg-surface/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
         {/* Wordmark */}
+        <div className="flex items-center gap-3">
         <Link href={activeRole === "dm" ? "/" : activeRole === "player" ? "/player" : "/select-role"} className="flex flex-col">
           <span className="text-xs uppercase tracking-[0.3em] text-muted">
             {activeRole === "dm" ? "DM Toolkit" : activeRole === "player" ? "Player View" : "D&D 5e Assistant"}
@@ -100,6 +101,13 @@ export const Nav = () => {
             </span>
           )}
         </Link>
+        {syncing && (
+          <span className="flex animate-pulse items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            Syncing
+          </span>
+        )}
+        </div>
 
         {/* Desktop nav — DM only */}
         {activeRole === "dm" && (

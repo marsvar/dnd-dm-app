@@ -1046,6 +1046,7 @@ export default function EncounterPlayerPage() {
                               current={participant.currentHp}
                               max={participant.maxHp}
                               className="mt-1.5"
+                              showLabel
                             />
                           )}
                           {participant.tempHp ? (
@@ -1401,7 +1402,18 @@ export default function EncounterPlayerPage() {
               )}
             </>
           ) : (
-            <p className="text-sm text-muted">Select an encounter to start.</p>
+            <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+              <p className="text-sm font-medium text-foreground">No encounters yet</p>
+              <p className="mt-1 text-sm text-muted">
+                Build an encounter first, then come back here to run it.
+              </p>
+              <a
+                href="/encounters/builder"
+                className="mt-4 inline-block rounded-xl border border-black/10 px-4 py-2 text-sm font-medium text-accent transition-colors hover:border-accent"
+              >
+                Go to Encounter Builder →
+              </a>
+            </div>
           )}
         </Card>
       </div>

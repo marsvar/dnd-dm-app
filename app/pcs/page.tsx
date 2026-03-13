@@ -78,9 +78,10 @@ export default function PartyPage() {
     <PageShell>
       <div className="space-y-6">
         {state.pcs.length === 0 && (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No PCs yet — add one below.
-          </p>
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">No player characters yet</p>
+            <p className="mt-1 text-sm text-muted">Add your first PC using the form below.</p>
+          </div>
         )}
         {state.pcs.map((pc) => (
           <PcCard

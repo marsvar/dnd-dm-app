@@ -62,7 +62,12 @@ export default function LogPage() {
           </Card>
         ))}
         {!visibleLog.length ? (
-          <p className="text-sm text-muted">{activeCampaignId ? "No log entries for this campaign yet." : "No log entries yet."}</p>
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {activeCampaignId ? "No log entries for this campaign yet." : "No log entries yet."}
+            </p>
+            <p className="mt-1 text-sm text-muted">Events and manual entries will appear here during play.</p>
+          </div>
         ) : null}
       </div>
     </PageShell>

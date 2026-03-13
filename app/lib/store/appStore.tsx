@@ -203,6 +203,7 @@ type AddPcInput = Omit<
 type AppStore = {
   state: AppState;
   hydrated: boolean;
+  syncing: boolean;
   /**
    * Connect to a DM's game as an unauthenticated player.
    * Stores the DM's userId in localStorage and fetches their app state from
@@ -386,6 +387,7 @@ const loadState = (): AppState => {
 
 export const AppStoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<AppState>(() => loadState());
+  const [syncing, setSyncing] = useState(false);
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -401,6 +403,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       const supabase = createSupabaseClient();
 
       const fetchRemoteState = async (userId: string) => {
+        setSyncing(true);
         try {
           // Step 1: fetch the blob (full state for encounters, notes, monsters, etc.)
           const { data: blobData } = await supabase
@@ -446,6 +449,8 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           }
         } catch {
           // Remote fetch failure is non-fatal — continue with localStorage state.
+        } finally {
+          if (!cancelled) setSyncing(false);
         }
       };
 
@@ -1127,6 +1132,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     () => ({
       state,
       hydrated,
+      syncing,
       connectToGame,
       addMonster,
       updateMonster,
@@ -1161,6 +1167,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     [
       state,
       hydrated,
+      syncing,
       connectToGame,
       addMonster,
       updateMonster,
