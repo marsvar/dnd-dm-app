@@ -29,6 +29,7 @@ export default function EncounterPlayerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [damageTargetId, setDamageTargetId] = useState<string | null>(null);
   const [damageAmount, setDamageAmount] = useState("");
+  const [localNotes, setLocalNotes] = useState("");
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
   const [addParticipantMode, setAddParticipantMode] = useState<"premade" | "custom">(
     "premade"
@@ -217,6 +218,15 @@ export default function EncounterPlayerPage() {
     }
   }, [selectedEncounter?.activeParticipantId]);
 
+  // Sync local notes textarea when the targeted participant changes.
+  // Fires on blur to avoid spamming the event log with one event per keystroke.
+  useEffect(() => {
+    const notes =
+      selectedEncounter?.participants.find((p) => p.id === effectiveTargetId)?.notes ?? "";
+    setLocalNotes(notes);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTargetId]);
+
   const setInitiative = (participantId: string, value: number | null) => {
     if (!selectedEncounter) {
       return;
@@ -337,6 +347,10 @@ export default function EncounterPlayerPage() {
         return `Roll ${event.context}: ${event.total}`;
       case "DEATH_SAVES_SET":
         return `Death saves: ${name || "Participant"} (${event.value.successes}S/${event.value.failures}F)`;
+      case "COMBAT_MODE_SET":
+        return `Switched to ${event.mode} mode`;
+      case "ENCOUNTER_COMPLETED":
+        return "Encounter completed";
       default:
         return "Action recorded";
     }
@@ -634,11 +648,11 @@ export default function EncounterPlayerPage() {
 
               {combatMode ? (
                 <>
-                  <div className="rounded-2xl border border-black/5 bg-surface-strong px-4 py-3 text-xs text-muted">
-                    {/* Row 1: Round controls + Undo + last event */}
+                  <div className="rounded-2xl border border-black/5 bg-surface-strong px-4 py-3">
+                    {/* Row 1: Round controls + active participant + keyboard hint */}
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em]">Round</span>
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">Round</span>
                         <Button
                           variant="outline"
                           className="h-6 w-6 p-0 text-xs"
@@ -647,7 +661,7 @@ export default function EncounterPlayerPage() {
                         >
                           −
                         </Button>
-                        <span className="min-w-[1.5rem] text-center font-mono text-sm font-bold text-foreground">
+                        <span className="min-w-[2rem] text-center font-mono text-xl font-bold text-foreground">
                           {selectedEncounter.round}
                         </span>
                         <Button
@@ -659,19 +673,20 @@ export default function EncounterPlayerPage() {
                           +
                         </Button>
                       </div>
-                      <div className="mx-2 h-4 w-px bg-black/10" />
-                      <Button
-                        variant="outline"
-                        className="h-7 px-3 text-xs"
-                        onClick={() => undoEncounterEvent(selectedEncounter.id)}
-                        disabled={!selectedEncounter.eventLog.length}
-                      >
-                        Undo
-                      </Button>
-                      {lastEvent && (
-                        <span className="truncate text-xs text-muted">
-                          ↩ {formatEventSummary(lastEvent)}
-                        </span>
+                      {activeParticipant && (
+                        <>
+                          <div className="h-5 w-px bg-black/10" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">Active</span>
+                            <ParticipantAvatar
+                              name={activeParticipant.name}
+                              visual={activeParticipant.visual}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface text-[0.5rem] font-semibold text-muted"
+                            />
+                            <span className="text-sm font-semibold text-foreground">{activeParticipant.name}</span>
+                            <Pill label={activeParticipant.kind.toUpperCase()} tone="neutral" />
+                          </div>
+                        </>
                       )}
                       {selectedEncounter.isRunning ? (
                         <span className="ml-auto text-[0.6rem] uppercase tracking-[0.2em] text-muted">
@@ -679,19 +694,33 @@ export default function EncounterPlayerPage() {
                         </span>
                       ) : null}
                     </div>
-                    {/* Row 2: Active participant */}
-                    {activeParticipant && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em]">Active</span>
-                        <ParticipantAvatar
-                          name={activeParticipant.name}
-                          visual={activeParticipant.visual}
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface text-[0.5rem] font-semibold text-muted"
-                        />
-                        <span className="font-semibold text-foreground">{activeParticipant.name}</span>
-                        <Pill label={activeParticipant.kind.toUpperCase()} tone="neutral" />
+                    {/* Row 2: Last action (color-coded) + Undo */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "flex min-w-0 flex-1 items-center rounded-xl px-3 py-2 text-sm",
+                          lastEvent?.t === "DAMAGE_APPLIED"
+                            ? "bg-[var(--hp-low-bg)] text-[var(--hp-low-fg)]"
+                            : lastEvent?.t === "HEAL_APPLIED"
+                              ? "bg-[var(--hp-full-bg)] text-[var(--hp-full-fg)]"
+                              : lastEvent?.t === "TURN_ADVANCED"
+                                ? "bg-accent/10 text-accent"
+                                : "bg-surface text-muted"
+                        )}
+                      >
+                        <span className="truncate">
+                          {lastEvent ? formatEventSummary(lastEvent) : "No actions yet"}
+                        </span>
                       </div>
-                    )}
+                      <Button
+                        variant="outline"
+                        className="shrink-0 px-4 py-2 text-sm font-semibold"
+                        onClick={() => undoEncounterEvent(selectedEncounter.id)}
+                        disabled={!selectedEncounter.eventLog.length}
+                      >
+                        ↩ Undo
+                      </Button>
+                    </div>
                     {!selectedEncounter.isRunning && !combatRequirementsMet ? (
                       <p className="mt-2 text-xs text-muted">{combatRequirementsMessage}</p>
                     ) : null}
@@ -840,14 +869,9 @@ export default function EncounterPlayerPage() {
                           <Textarea
                             className="mt-1 min-h-[3rem] resize-none text-xs"
                             placeholder="Add a note for this participant…"
-                            value={
-                              selectedEncounter.participants.find(
-                                (p) => p.id === effectiveTargetId
-                              )?.notes ?? ""
-                            }
-                            onChange={(e) => {
-                              setNotes(effectiveTargetId, e.target.value);
-                            }}
+                            value={localNotes}
+                            onChange={(e) => setLocalNotes(e.target.value)}
+                            onBlur={() => setNotes(effectiveTargetId, localNotes)}
                           />
                         </div>
                       )}
@@ -968,7 +992,14 @@ export default function EncounterPlayerPage() {
                             />
                             <div>
                               <p className="text-sm font-semibold">{participant.name}</p>
-                              <Pill label={participant.kind.toUpperCase()} tone="neutral" />
+                              <div className="flex flex-wrap items-center gap-1">
+                                <Pill label={participant.kind.toUpperCase()} tone="neutral" />
+                                {participant.kind === "pc" &&
+                                  participant.refId &&
+                                  pcsById.get(participant.refId)?.inspiration && (
+                                    <Pill label="Inspiration" tone="accent" />
+                                  )}
+                              </div>
                             </div>
                           </div>
                           {index === activeIndex ? (

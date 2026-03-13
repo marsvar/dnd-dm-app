@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Menu, X, Swords, LogOut, Shield, Link2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "./ui";
 import { useAppStore } from "../lib/store/appStore";
 import { useRoleStore } from "../lib/store/roleStore";
@@ -29,6 +29,12 @@ export const Nav = () => {
   const { state } = useAppStore();
   const { activeRole, clearRole } = useRoleStore();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isActivePath = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
+  };
 
   const activeCampaign =
     state.activeCampaignId
@@ -102,7 +108,13 @@ export const Nav = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className="transition-colors hover:text-accent"
+                className={cn(
+                  "transition-colors hover:text-accent",
+                  isActivePath(link.href)
+                    ? "text-accent underline underline-offset-4 decoration-accent/50"
+                    : "text-muted"
+                )}
+                aria-current={isActivePath(link.href) ? "page" : undefined}
               >
                 {link.label}
               </Link>
@@ -201,7 +213,13 @@ export const Nav = () => {
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-strong hover:text-foreground",
+                    isActivePath(link.href)
+                      ? "bg-surface-strong text-accent font-semibold"
+                      : "text-muted"
+                  )}
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
                 >
                   {link.label}
                 </Link>

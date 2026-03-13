@@ -118,8 +118,13 @@ body::after {
 }
 
 @media (prefers-color-scheme: dark) {
+  body::before {
+    mix-blend-mode: screen;
+    opacity: 0.35;
+  }
+
   body::after {
-    opacity: 0.055;
+    opacity: 0.10;
     mix-blend-mode: screen;
   }
 }

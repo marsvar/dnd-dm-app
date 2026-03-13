@@ -66,11 +66,13 @@ function CampaignPartySection({ campaignId }: { campaignId: string }) {
               </p>
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
+              className="px-2 py-1 text-xs"
               onClick={() => removeCampaignMember(campaignId, pc.id)}
               aria-label={`Remove ${pc.name} from party`}
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
+              <span className="ml-1">Remove</span>
             </Button>
           </li>
         ))}
@@ -246,7 +248,8 @@ export default function CampaignsPage() {
                         <span className="ml-1">Party</span>
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
+                        className="px-2 py-1 text-xs"
                         onClick={() => {
                           if (
                             confirm(
@@ -258,7 +261,8 @@ export default function CampaignsPage() {
                         }}
                         aria-label={`Delete campaign ${campaign.name}`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={12} />
+                        <span className="ml-1">Delete</span>
                       </Button>
                     </div>
                   </div>

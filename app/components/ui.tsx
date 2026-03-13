@@ -408,7 +408,7 @@ export const DialogContent = ({
   fullHeight?: boolean;
 }) => (
   <RadixDialog.Portal>
-    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
+    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
     <RadixDialog.Content
       {...props}
       className={cn(

@@ -1009,7 +1009,7 @@ export default function EncounterBuilderPage() {
                     return (
                       <div
                         key={participant.id}
-                        className="rounded-xl border border-black/10 bg-surface-strong px-3 py-3"
+                        className="cursor-pointer rounded-xl border border-black/10 bg-surface-strong px-3 py-3 transition-colors hover:border-accent/40"
                         onClick={() =>
                           setActiveParticipantActionId((prev) =>
                             prev === participant.id ? null : participant.id
