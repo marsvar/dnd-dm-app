@@ -2,6 +2,7 @@
 
 # Claude Code worktrees and local AI tooling
 .claude/
+.superpowers/
 
 # dependencies
 /node_modules
