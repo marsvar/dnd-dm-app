@@ -1,10 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { Button, Card, LinkButton, PageShell, Pill, SectionTitle } from "./components/ui";
 import { useAppStore } from "./lib/store/appStore";
 
 export default function Home() {
   const { state, resetState } = useAppStore();
+
+  const activeEncounter = useMemo(
+    () => state.encounters.find((e) => e.status !== "completed") ?? null,
+    [state.encounters]
+  );
 
   return (
     <PageShell className="space-y-12">
@@ -70,6 +76,36 @@ export default function Home() {
           subtitle="Jump to the tools you use at the table."
         />
         <div className="grid gap-4 md:grid-cols-2">
+          {activeEncounter && (
+            <div
+              className="md:col-span-2 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+              style={{
+                backgroundColor: "var(--combat-active-bg)",
+                color: "var(--combat-active-fg)",
+              }}
+            >
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.2em] opacity-70 mb-1">
+                  {activeEncounter.isRunning ? "Combat in progress" : "Encounter paused"}
+                </p>
+                <p className="text-lg font-semibold truncate">{activeEncounter.name}</p>
+                <p className="text-sm opacity-75 mt-0.5">
+                  Round {activeEncounter.round}
+                  {activeEncounter.participants.length > 0
+                    ? ` · ${activeEncounter.participants.length} combatants`
+                    : ""}
+                </p>
+              </div>
+              <LinkButton
+                href="/encounters/builder"
+                variant="outline"
+                className="shrink-0 border-white/30 text-white hover:border-white hover:text-white"
+              >
+                Resume →
+              </LinkButton>
+            </div>
+          )}
+          {/* Keep all existing Command Deck <Card> children below — do not remove them */}
           <Card className="space-y-3">
             <h3 className="text-lg font-semibold">Encounter Tracker</h3>
             <p className="text-sm text-muted">
