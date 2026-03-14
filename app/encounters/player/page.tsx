@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
+import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
 import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Textarea, cn } from "../../components/ui";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
@@ -45,7 +46,7 @@ export default function EncounterPlayerPage() {
   });
   const [expandedPrepIds, setExpandedPrepIds] = useState<Set<string>>(new Set());
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
-  const [endEncounterNotes, setEndEncounterNotes] = useState("");
+  const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
   const participantRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const selectedEncounter = useMemo(() => {
@@ -658,7 +659,7 @@ export default function EncounterPlayerPage() {
                     <Button
                       variant="outline"
                       className="ml-auto text-xs"
-                      onClick={() => { setEndEncounterNotes(""); setIsEndEncounterOpen(true); }}
+                      onClick={() => { setIsEndEncounterOpen(true); }}
                       disabled={selectedEncounter.isRunning}
                     >
                       End Encounter
@@ -1631,28 +1632,15 @@ export default function EncounterPlayerPage() {
                     : defeatedParticipants.map((p) => p.name).join(", ")}
                 </p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.25em] text-muted">Session notes (optional)</p>
-                <textarea
-                  className="w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  rows={3}
-                  placeholder="What happened? Any notable moments?"
-                  value={endEncounterNotes}
-                  onChange={(e) => setEndEncounterNotes(e.target.value)}
-                />
-              </div>
               <div className="flex justify-end gap-2">
                 <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button
                   onClick={() => {
-                    dispatchEncounterEvent(selectedEncounter.id, {
-                      t: "ENCOUNTER_COMPLETED",
-                      ...(endEncounterNotes.trim() ? { notes: endEncounterNotes.trim() } : {}),
-                    });
+                    setCompletedEncounterSnapshot(selectedEncounter);
+                    dispatchEncounterEvent(selectedEncounter.id, { t: "ENCOUNTER_COMPLETED" });
                     setIsEndEncounterOpen(false);
-                    setEndEncounterNotes("");
                   }}
                 >
                   Complete Encounter
@@ -1662,6 +1650,15 @@ export default function EncounterPlayerPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {completedEncounterSnapshot && (
+        <EncounterCompleteDialog
+          encounter={completedEncounterSnapshot}
+          monstersById={monstersById}
+          open={!!completedEncounterSnapshot}
+          onClose={() => setCompletedEncounterSnapshot(null)}
+        />
+      )}
     </PageShell>
   );
 }
