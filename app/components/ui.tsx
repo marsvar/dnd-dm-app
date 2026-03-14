@@ -273,32 +273,45 @@ export const HpBar = ({
 };
 
 // ---------------------------------------------------------------------------
-// ConditionChip — dismissible condition badge
+// ConditionChip — dismissible condition badge with optional tooltip description
 // ---------------------------------------------------------------------------
 export const ConditionChip = ({
   label,
+  description,
   onRemove,
 }: {
   label: string;
+  description?: string;
   onRemove?: () => void;
-}) => (
-  <span
-    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-    style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
-  >
-    {label}
-    {onRemove && (
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove condition ${label}`}
-        className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
-      >
-        <X size={10} strokeWidth={2.5} />
-      </button>
-    )}
-  </span>
-);
+}) => {
+  const chip = (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
+    >
+      {label}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove condition ${label}`}
+          className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
+        >
+          <X size={10} strokeWidth={2.5} />
+        </button>
+      )}
+    </span>
+  );
+
+  if (!description) return chip;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{chip}</TooltipTrigger>
+      <TooltipContent>{description}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 // ConditionPicker — toggleable condition selector
 // Renders a set of chips for known conditions (e.g. SRD list) plus a free-text

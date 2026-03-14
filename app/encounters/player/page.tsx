@@ -5,7 +5,7 @@ import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
 import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Textarea, cn } from "../../components/ui";
-import { SRD_CONDITIONS } from "../../lib/data/srd";
+import { SRD_CONDITIONS, SRD_CONDITION_DESCRIPTIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
 import { getPassivePerception } from "../../lib/engine/pcEngine";
 import { useAppStore } from "../../lib/store/appStore";
@@ -1038,6 +1038,7 @@ export default function EncounterPlayerPage() {
                                 <ConditionChip
                                   key={cond}
                                   label={cond}
+                                  description={SRD_CONDITION_DESCRIPTIONS[cond]}
                                   onRemove={() => {
                                     if (!selectedEncounter) return;
                                     dispatchEncounterEvent(selectedEncounter.id, {
@@ -1379,6 +1380,7 @@ export default function EncounterPlayerPage() {
                                     <ConditionChip
                                       key={cond}
                                       label={cond}
+                                      description={SRD_CONDITION_DESCRIPTIONS[cond]}
                                       onRemove={() =>
                                         setConditions(
                                           participant.id,

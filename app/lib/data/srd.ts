@@ -901,6 +901,25 @@ export const SRD_CONDITIONS = [
 
 export type SrdCondition = (typeof SRD_CONDITIONS)[number];
 
+/** One-line reminders for the 15 SRD conditions shown in combat tooltips. */
+export const SRD_CONDITION_DESCRIPTIONS: Record<string, string> = {
+  Blinded: "Can't see. Auto-fail sight checks. Attackers have advantage, attacks against have disadvantage.",
+  Charmed: "Can't attack the charmer. Charmer has advantage on social checks against you.",
+  Deafened: "Can't hear. Auto-fail hearing checks.",
+  Exhaustion: "Stacks 1–6: 1=disadv. checks, 2=halved speed, 3=disadv. attacks/saves, 4=halved HP max, 5=speed 0, 6=death.",
+  Frightened: "Disadv. on ability checks and attack rolls while source is in sight. Can't move closer to source.",
+  Grappled: "Speed becomes 0. Ends if grappler is incapacitated or target moves out of reach.",
+  Incapacitated: "Can't take actions or reactions.",
+  Invisible: "Can't be seen. Attacks have advantage; attacks against have disadvantage.",
+  Paralyzed: "Incapacitated, can't move or speak. Auto-fail Str/Dex saves. Attackers have advantage. Hits in 5 ft are critical.",
+  Petrified: "Transformed to stone. Incapacitated, resistance to all damage, immune to poison/disease.",
+  Poisoned: "Disadvantage on attack rolls and ability checks.",
+  Prone: "Only crawl unless standing up (costs half speed). Disadv. on attacks. Melee vs. has adv; ranged has disadv.",
+  Restrained: "Speed 0. Disadv. on attacks and Dex saves. Attacks against have advantage.",
+  Stunned: "Incapacitated, can't move. Auto-fail Str/Dex saves. Attackers have advantage.",
+  Unconscious: "Incapacitated, can't move/speak, drops held items, falls prone. Auto-fail Str/Dex saves. Hits in 5 ft are critical.",
+};
+
 export const seedState: AppState = {
   version: 8,
   monsters: seedMonsters,
