@@ -9,14 +9,14 @@ import { useAppStore } from "../lib/store/appStore";
 import { useRoleStore } from "../lib/store/roleStore";
 import { createSupabaseClient } from "../lib/supabase/client";
 
-const dmLinks = [
-  { href: "/", label: "Dashboard" },
-  { href: "/campaigns", label: "Campaigns" },
+const primaryLinks = [
   { href: "/encounters", label: "Encounters" },
-  { href: "/encounters/builder", label: "Builder" },
-  { href: "/encounters/player", label: "Run Combat" },
-  { href: "/bestiary", label: "Bestiary" },
   { href: "/pcs", label: "Party" },
+];
+
+const secondaryLinks = [
+  { href: "/bestiary", label: "Bestiary" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/notes", label: "Notes" },
   { href: "/log", label: "Log" },
 ];
@@ -111,27 +111,47 @@ export const Nav = () => {
 
         {/* Desktop nav — DM only */}
         {activeRole === "dm" && (
-          <nav className="hidden items-center gap-5 text-sm font-medium text-muted md:flex">
-            {dmLinks.map((link) => (
+          <nav className="hidden items-center gap-2 text-sm md:flex">
+            {/* Primary links — filled pill */}
+            {primaryLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={cn(
-                  "transition-colors hover:text-accent",
-                  isActivePath(link.href)
-                    ? "text-accent underline underline-offset-4 decoration-accent/50"
-                    : "text-muted"
-                )}
                 aria-current={isActivePath(link.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 font-semibold transition-colors",
+                  isActivePath(link.href)
+                    ? "bg-foreground text-background ring-2 ring-accent/40"
+                    : "bg-foreground/10 text-foreground hover:bg-foreground/15"
+                )}
               >
                 {link.label}
               </Link>
             ))}
+            {/* Divider */}
+            <span className="mx-1 h-5 w-px bg-black/10" aria-hidden />
+            {/* Secondary links — plain text */}
+            {secondaryLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActivePath(link.href) ? "page" : undefined}
+                className={cn(
+                  "px-2 py-1 text-xs transition-colors hover:text-accent",
+                  isActivePath(link.href)
+                    ? "text-accent underline underline-offset-4 decoration-accent/50"
+                    : "text-muted"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {/* Player link + auth buttons */}
             {dmUserId && (
               <button
                 type="button"
                 onClick={handleCopyPlayerLink}
-                className="ml-2 flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+                className="ml-1 flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
                 title="Copy player join link"
               >
                 <Link2 size={13} />
@@ -142,16 +162,14 @@ export const Nav = () => {
               type="button"
               onClick={handleSwitchRole}
               className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
-              title="Switch role"
             >
-              <LogOut size={13} />
+              <Swords size={13} />
               Switch Role
             </button>
             <button
               type="button"
               onClick={handleSignOut}
               className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
-              title="Sign out"
             >
               <LogOut size={13} />
               {displayName ?? "Sign out"}
@@ -216,18 +234,39 @@ export const Nav = () => {
       {open && activeRole === "dm" && (
         <nav className="border-t border-black/5 bg-surface px-6 pb-4 pt-3 md:hidden">
           <ul className="flex flex-col gap-1">
-            {dmLinks.map((link) => (
+            {/* Primary links */}
+            {primaryLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-surface-strong hover:text-foreground",
+                    isActivePath(link.href)
+                      ? "bg-surface-strong text-accent"
+                      : "text-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+            {/* Visual separator */}
+            <li className="my-1 border-t border-black/5" aria-hidden />
+            {/* Secondary links */}
+            {secondaryLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-strong hover:text-foreground",
                     isActivePath(link.href)
                       ? "bg-surface-strong text-accent font-semibold"
                       : "text-muted"
                   )}
-                  aria-current={isActivePath(link.href) ? "page" : undefined}
                 >
                   {link.label}
                 </Link>
@@ -238,10 +277,7 @@ export const Nav = () => {
                 <button
                   type="button"
                   onClick={() => { setOpen(false); handleCopyPlayerLink(); }}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted",
-                    "transition-colors hover:bg-surface-strong hover:text-foreground"
-                  )}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
                 >
                   <Link2 size={15} />
                   {playerLinkCopied ? "Copied!" : "Copy Player Link"}
@@ -250,10 +286,7 @@ export const Nav = () => {
               <button
                 type="button"
                 onClick={() => { setOpen(false); handleSwitchRole(); }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted",
-                  "transition-colors hover:bg-surface-strong hover:text-foreground"
-                )}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
               >
                 <Swords size={15} />
                 Switch Role
