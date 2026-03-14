@@ -23,6 +23,16 @@
   /* Condition chip */
   --condition-bg: #ede0cf;
   --condition-fg: #5a3a1a;
+
+  /* Combat active state */
+  --combat-active-bg: #7b1d1d;
+  --combat-active-fg: #ffffff;
+
+  /* Quick action buttons */
+  --btn-damage-bg: #fcd8d8;
+  --btn-damage-fg: #7b1d1d;
+  --btn-heal-bg: #d4f0da;
+  --btn-heal-fg: #2d7a3a;
 }
 
 @theme inline {
@@ -77,6 +87,16 @@
     /* Condition chip (dark) */
     --condition-bg: #2e2218;
     --condition-fg: #e3b36f;
+
+    /* Combat active state (dark) */
+    --combat-active-bg: #991b1b;
+    --combat-active-fg: #fef2f2;
+
+    /* Quick action buttons (dark) */
+    --btn-damage-bg: #3a1515;
+    --btn-damage-fg: #e87070;
+    --btn-heal-bg: #1a3d23;
+    --btn-heal-fg: #6fcf8a;
   }
 }
 
