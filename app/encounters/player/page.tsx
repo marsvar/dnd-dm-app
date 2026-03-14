@@ -477,6 +477,22 @@ export default function EncounterPlayerPage() {
     setIsAddParticipantOpen(false);
   };
 
+  const handleRollMonsterInitiative = () => {
+    if (!selectedEncounter) return;
+    selectedEncounter.participants.forEach((participant) => {
+      if (participant.kind === "pc") return;
+      const monster = participant.refId ? monstersById.get(participant.refId) : undefined;
+      const dex = monster?.abilities?.dex ?? 10;
+      const dexMod = Math.floor((dex - 10) / 2);
+      const roll = Math.floor(Math.random() * 20) + 1 + dexMod;
+      dispatchEncounterEvent(selectedEncounter.id, {
+        t: "INITIATIVE_SET",
+        participantId: participant.id,
+        value: roll,
+      });
+    });
+  };
+
   const togglePrepDetails = (participantId: string) => {
     setExpandedPrepIds((prev) => {
       const next = new Set(prev);
@@ -608,6 +624,14 @@ export default function EncounterPlayerPage() {
                     </div>
                   ) : (
                     <>
+                    {selectedEncounter.participants.length > 0 && !selectedEncounter.isRunning && (
+                      <Button
+                        variant="outline"
+                        onClick={handleRollMonsterInitiative}
+                      >
+                        Roll Monster Initiative
+                      </Button>
+                    )}
                     <Button
                       onClick={() => dispatchEncounterEvent(selectedEncounter.id, { t: "COMBAT_MODE_SET", mode: "live" })}
                       disabled={!selectedEncounter.isRunning && !combatRequirementsMet}
