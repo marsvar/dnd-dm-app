@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
+import * as RadixPopover from "@radix-ui/react-popover";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -446,4 +448,51 @@ export const DialogContent = ({
       {children}
     </RadixDialog.Content>
   </RadixDialog.Portal>
+);
+
+// ---------------------------------------------------------------------------
+// Tooltip
+// ---------------------------------------------------------------------------
+export const TooltipProvider = RadixTooltip.Provider;
+export const Tooltip = RadixTooltip.Root;
+export const TooltipTrigger = RadixTooltip.Trigger;
+export const TooltipContent = ({
+  className,
+  sideOffset = 4,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTooltip.Content>) => (
+  <RadixTooltip.Portal>
+    <RadixTooltip.Content
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 max-w-xs rounded-lg border border-black/10 bg-surface px-2.5 py-1.5 text-xs text-foreground shadow-md",
+        className
+      )}
+      {...props}
+    />
+  </RadixTooltip.Portal>
+);
+
+// ---------------------------------------------------------------------------
+// Popover
+// ---------------------------------------------------------------------------
+export const Popover = RadixPopover.Root;
+export const PopoverTrigger = RadixPopover.Trigger;
+export const PopoverContent = ({
+  className,
+  sideOffset = 6,
+  align = "center",
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixPopover.Content>) => (
+  <RadixPopover.Portal>
+    <RadixPopover.Content
+      sideOffset={sideOffset}
+      align={align}
+      className={cn(
+        "z-50 w-64 rounded-2xl border border-black/10 bg-surface p-4 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08)]",
+        className
+      )}
+      {...props}
+    />
+  </RadixPopover.Portal>
 );

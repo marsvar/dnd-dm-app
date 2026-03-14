@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { TooltipProvider } from "../../components/ui";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AppState,
@@ -1201,7 +1202,11 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     ]
   );
 
-  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+  return (
+    <AppStoreContext.Provider value={value}>
+      <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+    </AppStoreContext.Provider>
+  );
 };
 
 export const useAppStore = () => {
