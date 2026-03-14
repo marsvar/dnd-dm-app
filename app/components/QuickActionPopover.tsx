@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button, Input, Popover, PopoverContent, PopoverTrigger } from "./ui";
 
 interface Props {
@@ -21,7 +21,6 @@ export const QuickActionPopover = ({
   onOpenChange,
 }: Props) => {
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const amount = parseInt(value, 10);
   const valid = !isNaN(amount) && amount > 0;
@@ -52,14 +51,15 @@ export const QuickActionPopover = ({
         className="w-56"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
-          inputRef.current?.focus();
+          const input = document.getElementById(`quick-action-input-${participantName}`);
+          if (input) (input as HTMLInputElement).focus();
         }}
       >
         <p className="mb-2 text-xs uppercase tracking-[0.15em] text-muted">
           {participantName}
         </p>
         <Input
-          ref={inputRef}
+          id={`quick-action-input-${participantName}`}
           type="number"
           min={1}
           placeholder="Amount…"

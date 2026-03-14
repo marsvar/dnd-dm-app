@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
+import { MonsterStatBlockDialog } from "../../components/MonsterStatBlockDialog";
+import { QuickActionPopover } from "../../components/QuickActionPopover";
 import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Textarea, cn } from "../../components/ui";
 import { SRD_CONDITIONS, SRD_CONDITION_DESCRIPTIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
@@ -47,6 +50,8 @@ export default function EncounterPlayerPage() {
   const [expandedPrepIds, setExpandedPrepIds] = useState<Set<string>>(new Set());
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
   const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
+  const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [statBlockMonsterId, setStatBlockMonsterId] = useState<string | null>(null);
   const participantRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const selectedEncounter = useMemo(() => {
@@ -188,28 +193,34 @@ export default function EncounterPlayerPage() {
       .forEach((p) => rollInitiative(selectedEncounter.id, p.id, p.name));
   };
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!selectedEncounter?.isRunning) {
-        return;
+  const showStatBlock = useCallback(
+    (participant: import("../../lib/models/types").EncounterParticipant) => {
+      if (participant.kind === "monster" && participant.refId) {
+        setStatBlockMonsterId(participant.refId);
       }
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") {
-        return;
-      }
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "n") {
-        event.preventDefault();
-        advanceEncounterTurn(selectedEncounter.id, 1);
-      }
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "p") {
-        event.preventDefault();
-        advanceEncounterTurn(selectedEncounter.id, -1);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [advanceEncounterTurn, selectedEncounter]);
+    },
+    []
+  );
+
+  const isRunning = !!selectedEncounter?.isRunning;
+
+  useHotkeys(
+    ["n", "right"],
+    () => {
+      if (selectedEncounter) advanceEncounterTurn(selectedEncounter.id, 1);
+    },
+    { enabled: isRunning, preventDefault: true },
+    [selectedEncounter, advanceEncounterTurn]
+  );
+
+  useHotkeys(
+    ["p", "left"],
+    () => {
+      if (selectedEncounter) advanceEncounterTurn(selectedEncounter.id, -1);
+    },
+    { enabled: isRunning, preventDefault: true },
+    [selectedEncounter, advanceEncounterTurn]
+  );
 
   useEffect(() => {
     if (!selectedEncounter?.activeParticipantId) return;
@@ -614,7 +625,6 @@ export default function EncounterPlayerPage() {
                           variant="ghost"
                           className="ml-auto px-3 py-1 text-xs"
                           onClick={() => {
-                            setEndEncounterNotes("");
                             setIsEndEncounterOpen(true);
                           }}
                           disabled={selectedEncounter.isRunning}
@@ -1102,6 +1112,53 @@ export default function EncounterPlayerPage() {
                             }}
                           />
                         )}
+                      {/* Quick actions row */}
+                      <div
+                        className="mt-2 flex flex-wrap gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <QuickActionPopover
+                          participantName={participant.name}
+                          open={openPopoverId === participant.id}
+                          onOpenChange={(o) =>
+                            setOpenPopoverId(o ? participant.id : null)
+                          }
+                          onDamage={(amount) => {
+                            if (!selectedEncounter) return;
+                            dispatchEncounterEvent(selectedEncounter.id, {
+                              t: "DAMAGE_APPLIED",
+                              participantId: participant.id,
+                              amount,
+                            });
+                          }}
+                          onHeal={(amount) => {
+                            if (!selectedEncounter) return;
+                            dispatchEncounterEvent(selectedEncounter.id, {
+                              t: "HEAL_APPLIED",
+                              participantId: participant.id,
+                              amount,
+                            });
+                          }}
+                        >
+                          <Button
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs"
+                            aria-label={`Damage or heal ${participant.name}`}
+                          >
+                            ± HP
+                          </Button>
+                        </QuickActionPopover>
+                        {participant.kind === "monster" && participant.refId && (
+                          <Button
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => showStatBlock(participant)}
+                            aria-label={`View stat block for ${participant.name}`}
+                          >
+                            Stat Block
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {!orderedParticipants.length ? (
@@ -1661,6 +1718,12 @@ export default function EncounterPlayerPage() {
           onClose={() => setCompletedEncounterSnapshot(null)}
         />
       )}
+
+      <MonsterStatBlockDialog
+        monster={statBlockMonsterId ? monstersById.get(statBlockMonsterId) ?? null : null}
+        open={!!statBlockMonsterId}
+        onClose={() => setStatBlockMonsterId(null)}
+      />
     </PageShell>
   );
 }

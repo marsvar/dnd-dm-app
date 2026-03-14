@@ -18,14 +18,7 @@ interface Props {
 }
 
 const ABILITY_LABELS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"] as const;
-const ABILITY_KEYS = [
-  "strength",
-  "dexterity",
-  "constitution",
-  "intelligence",
-  "wisdom",
-  "charisma",
-] as const;
+const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
 
 export const MonsterStatBlockDialog = ({ monster, open, onClose }: Props) => {
   if (!monster) return null;

@@ -138,7 +138,7 @@ export const EncounterCompleteDialog = ({
                   key={p.id}
                   className="flex items-center gap-3 rounded-xl bg-surface-strong px-3 py-2"
                 >
-                  <ParticipantAvatar participant={p} size="sm" />
+                  <ParticipantAvatar name={p.name} visual={p.visual} size="sm" />
                   <span className="flex-1 min-w-0 text-sm font-medium truncate">
                     {p.name}
                   </span>
