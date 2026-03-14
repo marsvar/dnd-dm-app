@@ -97,7 +97,7 @@ export default function Home() {
                 </p>
               </div>
               <LinkButton
-                href="/encounters/builder"
+                href="/encounters/player"
                 variant="outline"
                 className="shrink-0 border-white/30 text-white hover:border-white hover:text-white"
               >

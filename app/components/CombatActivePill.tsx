@@ -15,7 +15,7 @@ export const CombatActivePill = () => {
 
   return (
     <Link
-      href="/encounters/builder"
+      href="/encounters/player"
       className="fixed bottom-20 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-lg transition-opacity hover:opacity-90 sm:bottom-6"
       style={{
         backgroundColor: "var(--combat-active-bg)",
