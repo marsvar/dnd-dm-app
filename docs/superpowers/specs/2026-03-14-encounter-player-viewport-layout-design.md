@@ -168,7 +168,8 @@ Existing `react-hotkeys-hook` shortcuts (`n`/`→`, `p`/`←`) preserved. No foc
 |---|---|
 | `app/encounters/player/page.tsx` | Major restructure: fixed overlay; Nav campaign name inlined; `damageTargetId`/`effectiveTargetId`/`defaultTargetId`/`selectedTargetId` removed; `localNotes` sync updated; compact rows; `referencePinnedId` state; `useEffect` clear-on-advance; scroll-lock `useEffect`; `DmDeathSaveTracker` render in rows removed; per-row Stat Block replaced; null active participant state handled |
 | `app/globals.css` | `--nav-height: 64px` added; `.targeted-outline` deleted |
-| `app/components/Nav.tsx` | `<header>` gets `h-16`; `py-4` removed from inner div; campaign name moved inline |
+| `app/components/Nav.tsx` | `<header>` changed from `sticky` to `fixed`; gets `h-16`; `py-4` removed from inner div; campaign name moved inline |
+| `app/layout.tsx` | `<main>` gets `pt-16` (was `pt-10`) to prevent content hiding under the now-fixed Nav |
 
 ---
 
