@@ -23,6 +23,16 @@
   /* Condition chip */
   --condition-bg: #ede0cf;
   --condition-fg: #5a3a1a;
+
+  /* Combat active state */
+  --combat-active-bg: #7b1d1d;
+  --combat-active-fg: #ffffff;
+
+  /* Quick action buttons */
+  --btn-damage-bg: #fcd8d8;
+  --btn-damage-fg: #7b1d1d;
+  --btn-heal-bg: #d4f0da;
+  --btn-heal-fg: #2d7a3a;
 }
 
 @theme inline {
@@ -77,12 +87,23 @@
     /* Condition chip (dark) */
     --condition-bg: #2e2218;
     --condition-fg: #e3b36f;
+
+    /* Combat active state (dark) */
+    --combat-active-bg: #991b1b;
+    --combat-active-fg: #fef2f2;
+
+    /* Quick action buttons (dark) */
+    --btn-damage-bg: #3a1515;
+    --btn-damage-fg: #e87070;
+    --btn-heal-bg: #1a3d23;
+    --btn-heal-fg: #6fcf8a;
   }
 }
 
 body {
-  background: radial-gradient(circle at top, rgba(122, 75, 30, 0.12), transparent 55%),
-    linear-gradient(135deg, rgba(122, 75, 30, 0.08), transparent 60%),
+  background: radial-gradient(ellipse at 30% 0%, rgba(122, 75, 30, 0.16), transparent 60%),
+    radial-gradient(ellipse at 80% 5%, rgba(180, 120, 50, 0.07), transparent 45%),
+    linear-gradient(165deg, rgba(122, 75, 30, 0.06), transparent 55%),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-body), serif;
@@ -100,6 +121,32 @@ body::before {
   mix-blend-mode: multiply;
   opacity: 0.6;
   z-index: -1;
+}
+
+/* Parchment grain overlay — sits above all content but never blocks interactions */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 300px 300px;
+  opacity: 0.038;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@media (prefers-color-scheme: dark) {
+  body::before {
+    mix-blend-mode: screen;
+    opacity: 0.35;
+  }
+
+  body::after {
+    opacity: 0.10;
+    mix-blend-mode: screen;
+  }
 }
 
 h1,
@@ -179,6 +226,6 @@ select option {
 }
 
 .targeted-outline {
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }

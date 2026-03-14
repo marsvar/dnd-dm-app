@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
+import * as RadixPopover from "@radix-ui/react-popover";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -25,9 +27,9 @@ export const SectionTitle = ({
   title: string;
   subtitle?: string;
 }) => (
-  <div className="mb-6 flex flex-col gap-1">
-    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{title}</h2>
-    {subtitle ? <p className="text-sm text-muted">{subtitle}</p> : null}
+  <div className="mb-6 flex flex-col gap-1.5">
+    <h2 className="text-2xl font-semibold tracking-wide text-foreground sm:text-3xl">{title}</h2>
+    {subtitle ? <p className="text-sm leading-relaxed text-muted">{subtitle}</p> : null}
   </div>
 );
 
@@ -38,7 +40,7 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.08)]",
+      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)]",
       className
     )}
     {...props}
@@ -46,13 +48,14 @@ export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) =>
 );
 
 const buttonBase =
-  "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-all";
+  "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.96]";
 
 const buttonVariants = {
-  primary: "bg-accent text-white shadow-sm hover:bg-accent-strong",
+  primary:
+    "bg-accent text-white shadow-[0_1px_3px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-accent-strong active:shadow-none",
   outline:
-    "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent",
-  ghost: "bg-transparent text-muted hover:text-accent",
+    "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent active:bg-surface-strong",
+  ghost: "bg-transparent text-muted hover:text-accent active:opacity-70",
 };
 
 export const Button = ({
@@ -222,57 +225,93 @@ export const HpBar = ({
   current,
   max,
   className,
+  showLabel,
 }: {
   current: number;
   max: number;
   className?: string;
+  showLabel?: boolean;
 }) => {
   const pct = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
   const { fg, bg } = hpBarColors(current, max);
+  const label =
+    showLabel && max > 0
+      ? current <= 0
+        ? { text: "Down", color: "var(--hp-zero)" }
+        : pct <= 0.25
+          ? { text: "Critical", color: "var(--hp-low)" }
+          : pct <= 0.5
+            ? { text: "Bloodied", color: "var(--hp-mid)" }
+            : null
+      : null;
   return (
-    <div
-      role="progressbar"
-      aria-valuenow={current}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      className={cn("h-1.5 w-full overflow-hidden rounded-full", className)}
-      style={{ backgroundColor: bg }}
-    >
+    <div className={cn("w-full", showLabel && label ? "space-y-0.5" : "")}>
       <div
-        className="h-full rounded-full transition-[width]"
-        style={{ width: `${pct * 100}%`, backgroundColor: fg }}
-      />
+        role="progressbar"
+        aria-valuenow={current}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label={label ? `HP: ${label.text}` : undefined}
+        className={cn("h-2 w-full overflow-hidden rounded-full", className)}
+        style={{ backgroundColor: bg }}
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-300"
+          style={{ width: `${pct * 100}%`, backgroundColor: fg }}
+        />
+      </div>
+      {label && (
+        <span
+          className="text-[0.6rem] font-semibold uppercase tracking-[0.15em]"
+          style={{ color: label.color }}
+        >
+          {label.text}
+        </span>
+      )}
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// ConditionChip — dismissible condition badge
+// ConditionChip — dismissible condition badge with optional tooltip description
 // ---------------------------------------------------------------------------
 export const ConditionChip = ({
   label,
+  description,
   onRemove,
 }: {
   label: string;
+  description?: string;
   onRemove?: () => void;
-}) => (
-  <span
-    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-    style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
-  >
-    {label}
-    {onRemove && (
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove condition ${label}`}
-        className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
-      >
-        <X size={10} strokeWidth={2.5} />
-      </button>
-    )}
-  </span>
-);
+}) => {
+  const chip = (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
+    >
+      {label}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove condition ${label}`}
+          className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
+        >
+          <X size={10} strokeWidth={2.5} />
+        </button>
+      )}
+    </span>
+  );
+
+  if (!description) return chip;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{chip}</TooltipTrigger>
+      <TooltipContent>{description}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 // ConditionPicker — toggleable condition selector
 // Renders a set of chips for known conditions (e.g. SRD list) plus a free-text
@@ -407,11 +446,11 @@ export const DialogContent = ({
   fullHeight?: boolean;
 }) => (
   <RadixDialog.Portal>
-    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
+    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
     <RadixDialog.Content
       {...props}
       className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-2xl outline-none",
+        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] outline-none",
         fullHeight
           ? "bottom-8 flex flex-col overflow-hidden"
           : "max-h-[calc(100vh-4rem)] overflow-y-auto",
@@ -422,4 +461,51 @@ export const DialogContent = ({
       {children}
     </RadixDialog.Content>
   </RadixDialog.Portal>
+);
+
+// ---------------------------------------------------------------------------
+// Tooltip
+// ---------------------------------------------------------------------------
+export const TooltipProvider = RadixTooltip.Provider;
+export const Tooltip = RadixTooltip.Root;
+export const TooltipTrigger = RadixTooltip.Trigger;
+export const TooltipContent = ({
+  className,
+  sideOffset = 4,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTooltip.Content>) => (
+  <RadixTooltip.Portal>
+    <RadixTooltip.Content
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 max-w-xs rounded-lg border border-black/10 bg-surface px-2.5 py-1.5 text-xs text-foreground shadow-md",
+        className
+      )}
+      {...props}
+    />
+  </RadixTooltip.Portal>
+);
+
+// ---------------------------------------------------------------------------
+// Popover
+// ---------------------------------------------------------------------------
+export const Popover = RadixPopover.Root;
+export const PopoverTrigger = RadixPopover.Trigger;
+export const PopoverContent = ({
+  className,
+  sideOffset = 6,
+  align = "center",
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixPopover.Content>) => (
+  <RadixPopover.Portal>
+    <RadixPopover.Content
+      sideOffset={sideOffset}
+      align={align}
+      className={cn(
+        "z-50 w-64 rounded-2xl border border-black/10 bg-surface p-4 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08)]",
+        className
+      )}
+      {...props}
+    />
+  </RadixPopover.Portal>
 );

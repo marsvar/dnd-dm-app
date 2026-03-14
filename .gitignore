@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Claude Code worktrees and local AI tooling
+.claude/
+.superpowers/
+
 # dependencies
 /node_modules
 /.pnp
@@ -183,3 +187,4 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+.worktrees/

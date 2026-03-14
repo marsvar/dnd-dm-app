@@ -1,119 +1,296 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Menu, X, Swords, User } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Menu, X, Swords, LogOut, Shield, Link2 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "./ui";
 import { useAppStore } from "../lib/store/appStore";
+import { useRoleStore } from "../lib/store/roleStore";
+import { createSupabaseClient } from "../lib/supabase/client";
 
-const dmLinks = [
-  { href: "/", label: "Dashboard" },
-  { href: "/campaigns", label: "Campaigns" },
+const primaryLinks = [
   { href: "/encounters", label: "Encounters" },
-  { href: "/encounters/builder", label: "Builder" },
-  { href: "/encounters/player", label: "Run Combat" },
-  { href: "/bestiary", label: "Bestiary" },
   { href: "/pcs", label: "Party" },
+];
+
+const secondaryLinks = [
+  { href: "/bestiary", label: "Bestiary" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/notes", label: "Notes" },
   { href: "/log", label: "Log" },
 ];
 
 export const Nav = () => {
   const [open, setOpen] = useState(false);
-  const { state } = useAppStore();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [dmUserId, setDmUserId] = useState<string | null>(null);
+  const [playerLinkCopied, setPlayerLinkCopied] = useState(false);
+  const { state, syncing } = useAppStore();
+  const { activeRole, clearRole } = useRoleStore();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const isActivePath = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
+  };
 
   const activeCampaign =
     state.activeCampaignId
       ? state.campaigns.find((c) => c.id === state.activeCampaignId) ?? null
       : null;
 
+  // Keep display name in sync with auth state changes.
+  useEffect(() => {
+    const supabase = createSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setDisplayName(
+          session.user.user_metadata?.display_name ?? session.user.email ?? null
+        );
+        setDmUserId(session.user.id);
+      } else {
+        setDisplayName(null);
+        setDmUserId(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSwitchRole = () => {
+    clearRole();
+    router.push("/select-role");
+  };
+
+  // Copy the player join link to the clipboard. The link embeds the DM's userId
+  // so players on any device can connect to this game without their own account.
+  const handleCopyPlayerLink = useCallback(() => {
+    if (!dmUserId || typeof window === "undefined") return;
+    const url = `${window.location.origin}/player?u=${dmUserId}`;
+    navigator.clipboard.writeText(url).catch(() => {
+      // Clipboard API not available — silent fail (link can be shared another way)
+    });
+    setPlayerLinkCopied(true);
+    setTimeout(() => setPlayerLinkCopied(false), 2500);
+  }, [dmUserId]);
+
+  const handleSignOut = async () => {
+    await createSupabaseClient().auth.signOut();
+    clearRole();
+    router.push("/login");
+  };
+
   return (
     <header className="sticky top-0 z-10 border-b border-black/5 bg-surface/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
         {/* Wordmark */}
-        <div className="flex flex-col">
+        <div className="flex items-center gap-3">
+        <Link href={activeRole === "dm" ? "/" : activeRole === "player" ? "/player" : "/select-role"} className="flex flex-col">
           <span className="text-xs uppercase tracking-[0.3em] text-muted">
-            DM Toolkit
+            {activeRole === "dm" ? "DM Toolkit" : activeRole === "player" ? "Player View" : "D&D 5e Assistant"}
           </span>
-          <span className="text-lg font-semibold text-foreground">
+          <span className="text-xl font-semibold text-foreground" style={{ fontFamily: "var(--font-display), serif", letterSpacing: "0.01em" }}>
             Vault of Encounters
           </span>
-          {activeCampaign && (
+          {activeCampaign && activeRole === "dm" && (
             <span className="text-xs text-accent truncate max-w-[14rem]">
               {activeCampaign.name}
             </span>
           )}
+        </Link>
+        {syncing && (
+          <span className="flex animate-pulse items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            Syncing
+          </span>
+        )}
         </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-5 text-sm font-medium text-muted md:flex">
-          {dmLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="transition-colors hover:text-accent"
+        {/* Desktop nav — DM only */}
+        {activeRole === "dm" && (
+          <nav className="hidden items-center gap-2 text-sm md:flex">
+            {/* Primary links — filled pill */}
+            {primaryLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActivePath(link.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 font-semibold transition-colors",
+                  isActivePath(link.href)
+                    ? "bg-foreground text-background ring-2 ring-accent/40"
+                    : "bg-foreground/10 text-foreground hover:bg-foreground/15"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {/* Divider */}
+            <span className="mx-1 h-5 w-px bg-black/10" aria-hidden />
+            {/* Secondary links — plain text */}
+            {secondaryLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActivePath(link.href) ? "page" : undefined}
+                className={cn(
+                  "px-2 py-1 text-xs transition-colors hover:text-accent",
+                  isActivePath(link.href)
+                    ? "text-accent underline underline-offset-4 decoration-accent/50"
+                    : "text-muted"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {/* Player link + auth buttons */}
+            {dmUserId && (
+              <button
+                type="button"
+                onClick={handleCopyPlayerLink}
+                className="ml-1 flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+                title="Copy player join link"
+              >
+                <Link2 size={13} />
+                {playerLinkCopied ? "Copied!" : "Player Link"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSwitchRole}
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              {link.label}
-            </Link>
-          ))}
-          <Link
-            href="/player"
-            className="ml-2 flex items-center gap-1.5 rounded-full border border-accent/30 px-3 py-1 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-white"
-          >
-            <User size={13} />
-            Player View
-          </Link>
-        </nav>
+              <Swords size={13} />
+              Switch Role
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              <LogOut size={13} />
+              {displayName ?? "Sign out"}
+            </button>
+          </nav>
+        )}
+
+        {/* Desktop nav — Player or no role */}
+        {activeRole !== "dm" && (
+          <nav className="hidden items-center gap-3 md:flex">
+            {activeRole === "player" && (
+              <span className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                Player Mode
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleSwitchRole}
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              <Shield size={13} />
+              {activeRole === "player" ? "Switch Role" : "Choose Role"}
+            </button>
+            {displayName && (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                <LogOut size={13} />
+                Sign out
+              </button>
+            )}
+          </nav>
+        )}
 
         {/* Mobile controls */}
         <div className="flex items-center gap-3 md:hidden">
-          <Link
-            href="/player"
-            aria-label="Player view"
-            className="flex items-center gap-1 rounded-full border border-accent/30 px-3 py-1.5 text-xs font-semibold text-accent"
-          >
-            <User size={13} />
-            Player
-          </Link>
           <button
             type="button"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-colors hover:border-accent hover:text-accent"
+            onClick={handleSwitchRole}
+            className="flex items-center gap-1 rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium text-muted"
           >
-            {open ? <X size={18} /> : <Menu size={18} />}
+            <LogOut size={12} />
+            {activeRole === "dm" ? "Switch Role" : "Roles"}
           </button>
+          {activeRole === "dm" && (
+            <button
+              type="button"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-colors hover:border-accent hover:text-accent"
+            >
+              {open ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile dropdown */}
-      {open && (
+      {/* Mobile dropdown — DM only */}
+      {open && activeRole === "dm" && (
         <nav className="border-t border-black/5 bg-surface px-6 pb-4 pt-3 md:hidden">
           <ul className="flex flex-col gap-1">
-            {dmLinks.map((link) => (
+            {/* Primary links */}
+            {primaryLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-surface-strong hover:text-foreground",
+                    isActivePath(link.href)
+                      ? "bg-surface-strong text-accent"
+                      : "text-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+            {/* Visual separator */}
+            <li className="my-1 border-t border-black/5" aria-hidden />
+            {/* Secondary links */}
+            {secondaryLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-strong hover:text-foreground",
+                    isActivePath(link.href)
+                      ? "bg-surface-strong text-accent font-semibold"
+                      : "text-muted"
+                  )}
                 >
                   {link.label}
                 </Link>
               </li>
             ))}
             <li className="mt-2 border-t border-black/5 pt-2">
-              <Link
-                href="/player"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-accent",
-                  "transition-colors hover:bg-accent/10"
-                )}
+              {dmUserId && (
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); handleCopyPlayerLink(); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
+                >
+                  <Link2 size={15} />
+                  {playerLinkCopied ? "Copied!" : "Copy Player Link"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setOpen(false); handleSwitchRole(); }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-surface-strong hover:text-foreground"
               >
                 <Swords size={15} />
-                Player View
-              </Link>
+                Switch Role
+              </button>
             </li>
           </ul>
         </nav>

@@ -61,7 +61,12 @@ export default function NotesPage() {
           </Card>
         ))}
         {!visibleNotes.length ? (
-          <p className="text-sm text-muted">{activeCampaignId ? "No notes for this campaign yet." : "Capture your first session note."}</p>
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {activeCampaignId ? "No notes for this campaign yet." : "No notes yet."}
+            </p>
+            <p className="mt-1 text-sm text-muted">Capture a moment, ruling, or plot thread below.</p>
+          </div>
         ) : null}
       </div>
 

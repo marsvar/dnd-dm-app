@@ -1,5 +1,12 @@
 import type { AppState, Monster, Pc } from "../models/types";
-import { DEFAULT_SKILL_PROFICIENCIES } from "../engine/pcEngine";
+import {
+  DEFAULT_CURRENCY,
+  DEFAULT_DEATH_SAVES,
+  DEFAULT_FEATURES,
+  DEFAULT_SKILL_PROFICIENCIES,
+  DEFAULT_SPELLCASTING,
+  DEFAULT_WEAPONS,
+} from "../engine/pcEngine";
 
 export const seedMonsters: Monster[] = [
   {
@@ -698,11 +705,69 @@ export const seedPcs: Pc[] = [
     speed: "30 ft.",
     senses: "Passive Perception 11",
     proficiencies: "All armor, shields, simple weapons, martial weapons",
-    equipment: "Chain mail, longsword, shield",
+    equipment: "Chain mail, longsword, shield, hand crossbow (20 bolts)",
     resources: ["Second Wind", "Action Surge"],
     notes: "Front-line defender.",
     inspiration: false,
     conditions: [],
+    // --- v8 ---
+    deathSaves: { ...DEFAULT_DEATH_SAVES },
+    currency: { pp: 0, gp: 15, ep: 0, sp: 20, cp: 50 },
+    features: [
+      {
+        id: "feature-riven-fighting-style",
+        name: "Fighting Style: Defense",
+        description: "+1 bonus to AC while wearing armor.",
+      },
+      {
+        id: "feature-riven-second-wind",
+        name: "Second Wind",
+        description: "Bonus action: regain 1d10 + fighter level HP.",
+        uses: 1,
+        maxUses: 1,
+        recharge: "Short Rest",
+      },
+      {
+        id: "feature-riven-action-surge",
+        name: "Action Surge",
+        description: "Take one additional action on your turn.",
+        uses: 1,
+        maxUses: 1,
+        recharge: "Short Rest",
+      },
+      {
+        id: "feature-riven-martial-archetype",
+        name: "Martial Archetype: Champion",
+        description: "Improved Critical: score a critical hit on 19–20.",
+      },
+    ],
+    spellcasting: { ...DEFAULT_SPELLCASTING },
+    weapons: [
+      {
+        id: "weapon-riven-longsword",
+        name: "Longsword",
+        attackBonus: 5,
+        damageDice: "1d8",
+        damageBonus: 3,
+        damageType: "slashing",
+        range: "5 ft.",
+        notes: "Versatile (1d10)",
+      },
+      {
+        id: "weapon-riven-crossbow",
+        name: "Hand Crossbow",
+        attackBonus: 3,
+        damageDice: "1d6",
+        damageBonus: 1,
+        damageType: "piercing",
+        range: "30/120 ft.",
+        notes: "Light, loading",
+      },
+    ],
+    personalityTraits: "I face problems head-on. A simple, direct solution is best.",
+    ideals: "Strength. The strongest survive — and I protect those who cannot.",
+    bonds: "I would lay down my life for the people I fight alongside.",
+    flaws: "I have little patience for those who show weakness, including myself.",
   },
   {
     id: "pc-luma",
@@ -755,12 +820,63 @@ export const seedPcs: Pc[] = [
     skillProficiencies: { ...DEFAULT_SKILL_PROFICIENCIES },
     speed: "30 ft.",
     senses: "Passive Perception 13",
-    proficiencies: "Light armor, medium armor, shields",
-    equipment: "Mace, shield, holy symbol",
+    proficiencies: "Light armor, medium armor, shields, simple weapons",
+    equipment: "Mace, chain shirt, shield, holy symbol, healer's kit",
     resources: ["Channel Divinity", "Spell Slots"],
     notes: "Primary healer.",
     inspiration: true,
     conditions: [],
+    // --- v8 ---
+    deathSaves: { ...DEFAULT_DEATH_SAVES },
+    currency: { pp: 0, gp: 10, ep: 0, sp: 30, cp: 25 },
+    features: [
+      {
+        id: "feature-luma-spellcasting",
+        name: "Spellcasting",
+        description: "Cast cleric spells using Wisdom as spellcasting ability.",
+      },
+      {
+        id: "feature-luma-channel-divinity",
+        name: "Channel Divinity",
+        description: "Turn Undead or use Divine Domain feature.",
+        uses: 1,
+        maxUses: 1,
+        recharge: "Short Rest",
+      },
+      {
+        id: "feature-luma-divine-domain",
+        name: "Divine Domain: Life",
+        description: "Disciple of Life: healing spells restore 2 + spell level extra HP.",
+      },
+      {
+        id: "feature-luma-divine-strike",
+        name: "Preserve Life",
+        description: "Channel Divinity: restore HP equal to 5× your cleric level among any creatures within 30 ft.",
+      },
+    ],
+    spellcasting: {
+      spellcastingAbility: "wis",
+      spellSlots: [
+        { level: 1, total: 4, used: 0 },
+        { level: 2, total: 2, used: 0 },
+      ],
+    },
+    weapons: [
+      {
+        id: "weapon-luma-mace",
+        name: "Mace",
+        attackBonus: 2,
+        damageDice: "1d6",
+        damageBonus: 0,
+        damageType: "bludgeoning",
+        range: "5 ft.",
+        notes: "",
+      },
+    ],
+    personalityTraits: "I see omens in every event and action. The gods try to speak to us, we just need to listen.",
+    ideals: "Charity. I always try to help those in need, no matter what the personal cost.",
+    bonds: "Everything I do is for the common people. My faith sustains me.",
+    flaws: "I put too much trust in those in power in my temple.",
   },
 ];
 
@@ -785,8 +901,27 @@ export const SRD_CONDITIONS = [
 
 export type SrdCondition = (typeof SRD_CONDITIONS)[number];
 
+/** One-line reminders for the 15 SRD conditions shown in combat tooltips. */
+export const SRD_CONDITION_DESCRIPTIONS: Record<string, string> = {
+  Blinded: "Can't see. Auto-fail sight checks. Attackers have advantage, attacks against have disadvantage.",
+  Charmed: "Can't attack the charmer. Charmer has advantage on social checks against you.",
+  Deafened: "Can't hear. Auto-fail hearing checks.",
+  Exhaustion: "Stacks 1–6: 1=disadv. checks, 2=halved speed, 3=disadv. attacks/saves, 4=halved HP max, 5=speed 0, 6=death.",
+  Frightened: "Disadv. on ability checks and attack rolls while source is in sight. Can't move closer to source.",
+  Grappled: "Speed becomes 0. Ends if grappler is incapacitated or target moves out of reach.",
+  Incapacitated: "Can't take actions or reactions.",
+  Invisible: "Can't be seen. Attacks have advantage; attacks against have disadvantage.",
+  Paralyzed: "Incapacitated, can't move or speak. Auto-fail Str/Dex saves. Attackers have advantage. Hits in 5 ft are critical.",
+  Petrified: "Transformed to stone. Incapacitated, resistance to all damage, immune to poison/disease.",
+  Poisoned: "Disadvantage on attack rolls and ability checks.",
+  Prone: "Only crawl unless standing up (costs half speed). Disadv. on attacks. Melee vs. has adv; ranged has disadv.",
+  Restrained: "Speed 0. Disadv. on attacks and Dex saves. Attacks against have advantage.",
+  Stunned: "Incapacitated, can't move. Auto-fail Str/Dex saves. Attackers have advantage.",
+  Unconscious: "Incapacitated, can't move/speak, drops held items, falls prone. Auto-fail Str/Dex saves. Hits in 5 ft are critical.",
+};
+
 export const seedState: AppState = {
-  version: 7,
+  version: 8,
   monsters: seedMonsters,
   pcs: seedPcs,
   encounters: [],
