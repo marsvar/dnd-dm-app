@@ -44,7 +44,7 @@ export function PlayerShell({
   if (!selectedPcId) return null;
 
   return (
-    <div className="flex min-h-[calc(100dvh-65px)] flex-col">
+    <div className="flex min-h-[calc(100dvh-64px)] flex-col">
       {/* Scrollable content area — padded so it clears the tab bar */}
       <main className={cn("mx-auto w-full flex-1 px-4 pb-24 pt-6", wide ? "max-w-5xl" : "max-w-2xl")}>
         {children}
