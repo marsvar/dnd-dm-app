@@ -423,21 +423,58 @@ export default function EncounterPlayerPage() {
           <div className="flex w-[280px] shrink-0 flex-col gap-3 overflow-hidden border-r border-black/10 p-4">
 
             {activeParticipant === null ? (
-              /* Null state */
-              <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 text-center">
-                <p className="text-sm text-muted">End of round — advance turn or stop combat.</p>
-                <Button
-                  onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
-                  disabled={!isRunning}
-                >
-                  Next Turn →
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => stopEncounter(selectedEncounter.id)}
-                >
-                  Stop combat
-                </Button>
+              /* Null state — shown when activeParticipantId is null (between rounds or after Stop) */
+              <div className="flex flex-1 flex-col gap-3 p-4">
+                <p className="text-sm text-muted">
+                  {isRunning ? "End of round — advance turn to continue." : "Combat paused."}
+                </p>
+                {isRunning && (
+                  <Button
+                    onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
+                  >
+                    Next Turn →
+                  </Button>
+                )}
+                <div className="mt-auto border-t border-black/10 pt-3 flex flex-wrap gap-2">
+                  {isRunning ? (
+                    <Button
+                      variant="outline"
+                      className="text-xs px-3 py-1.5"
+                      onClick={() => stopEncounter(selectedEncounter.id)}
+                    >
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="text-xs px-3 py-1.5"
+                      onClick={() => startEncounter(selectedEncounter.id)}
+                      disabled={!combatRequirementsMet}
+                    >
+                      Start
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="text-xs px-3 py-1.5"
+                    onClick={() =>
+                      dispatchEncounterEvent(selectedEncounter.id, {
+                        t: "COMBAT_MODE_SET",
+                        mode: "prep",
+                      })
+                    }
+                  >
+                    ← Prep
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="ml-auto text-xs px-3 py-1.5"
+                    onClick={() => setIsEndEncounterOpen(true)}
+                    disabled={isRunning}
+                  >
+                    End
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -670,12 +707,10 @@ export default function EncounterPlayerPage() {
                       ? "border-accent bg-surface-strong ring-2 ring-[var(--ring)]"
                       : "border-black/10 bg-surface",
                     isDefeatedRow ? "opacity-60" : "",
-                    participant.kind === "monster" && !isDefeatedRow
-                      ? "cursor-pointer lg:hover:border-accent/50"
-                      : ""
+                    !isDefeatedRow ? "cursor-pointer lg:hover:border-accent/50" : ""
                   )}
                   onClick={() => {
-                    if (participant.kind === "monster" && !isDefeatedRow) {
+                    if (!isDefeatedRow) {
                       setReferencePinnedId(participant.id);
                     }
                   }}
@@ -707,7 +742,7 @@ export default function EncounterPlayerPage() {
                   </div>
                   <div className="shrink-0 text-right font-mono text-xs text-muted space-y-0.5">
                     <div>
-                      {participant.initiative ?? "—"} · {participant.ac ?? "—"} ·{" "}
+                      Init {participant.initiative ?? "—"} · AC {participant.ac ?? "—"} · HP{" "}
                       {participant.maxHp !== null && participant.currentHp !== null
                         ? `${participant.currentHp}/${participant.maxHp}`
                         : "—"}
@@ -740,6 +775,14 @@ export default function EncounterPlayerPage() {
                           t: "HEAL_APPLIED",
                           participantId: participant.id,
                           amount,
+                        });
+                      }}
+                      currentConditions={participant.conditions}
+                      onConditionsChange={(next) => {
+                        dispatchEncounterEvent(selectedEncounter.id, {
+                          t: "CONDITIONS_SET",
+                          participantId: participant.id,
+                          value: next,
                         });
                       }}
                     >
@@ -789,12 +832,16 @@ export default function EncounterPlayerPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-1 font-mono text-xs">
-                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => (
-                    <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
-                      <p className="text-muted uppercase">{k}</p>
-                      <p className="font-semibold">{refPc.abilities[k]}</p>
-                    </div>
-                  ))}
+                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => {
+                    const mod = getAbilityMod(refPc.abilities[k]);
+                    return (
+                      <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
+                        <p className="text-muted uppercase">{k}</p>
+                        <p className="font-semibold">{refPc.abilities[k]}</p>
+                        <p className="text-muted">{mod >= 0 ? "+" : ""}{mod}</p>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div>
                   <p className="text-xs text-muted uppercase tracking-[0.2em]">Saves</p>
@@ -832,12 +879,16 @@ export default function EncounterPlayerPage() {
                   <p className="text-xs text-muted">Speed {refMonster.speed}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-1 font-mono text-xs">
-                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => (
-                    <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
-                      <p className="text-muted uppercase">{k}</p>
-                      <p className="font-semibold">{refMonster.abilities[k]}</p>
-                    </div>
-                  ))}
+                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => {
+                    const mod = getAbilityMod(refMonster.abilities[k]);
+                    return (
+                      <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
+                        <p className="text-muted uppercase">{k}</p>
+                        <p className="font-semibold">{refMonster.abilities[k]}</p>
+                        <p className="text-muted">{mod >= 0 ? "+" : ""}{mod}</p>
+                      </div>
+                    );
+                  })}
                 </div>
                 {refMonster.senses && (
                   <p className="text-xs text-muted">Senses {refMonster.senses}</p>

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Popover, PopoverContent, PopoverTrigger } from "./ui";
+import { Button, ConditionPicker, Input, Popover, PopoverContent, PopoverTrigger } from "./ui";
+import { SRD_CONDITIONS } from "../lib/data/srd";
 
 interface Props {
   participantName: string;
   onDamage: (amount: number) => void;
   onHeal: (amount: number) => void;
+  currentConditions?: string[];
+  onConditionsChange?: (next: string[]) => void;
   children: React.ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -16,6 +19,8 @@ export const QuickActionPopover = ({
   participantName,
   onDamage,
   onHeal,
+  currentConditions,
+  onConditionsChange,
   children,
   open,
   onOpenChange,
@@ -100,6 +105,16 @@ export const QuickActionPopover = ({
             + Heal
           </Button>
         </div>
+        {onConditionsChange && (
+          <div className="mt-3 border-t border-black/10 pt-3">
+            <p className="mb-1.5 text-xs uppercase tracking-[0.15em] text-muted">Conditions</p>
+            <ConditionPicker
+              conditions={SRD_CONDITIONS}
+              active={currentConditions ?? []}
+              onChange={onConditionsChange}
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
