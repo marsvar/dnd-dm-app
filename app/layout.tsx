@@ -46,7 +46,7 @@ export default function RootLayout({
           <RoleStoreProvider>
             <div className="min-h-screen">
               <Nav />
-              <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-10 sm:px-8">
+              <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-16 sm:px-8">
                 <DmLayoutGuard>{children}</DmLayoutGuard>
               </main>
             </div>

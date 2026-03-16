@@ -84,22 +84,24 @@ export const Nav = () => {
   };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-black/5 bg-surface/80 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
+    <header className="fixed top-0 z-10 w-full h-16 border-b border-black/5 bg-surface/80 backdrop-blur">
+      <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6 sm:px-8">
         {/* Wordmark */}
         <div className="flex items-center gap-3">
         <Link href={activeRole === "dm" ? "/" : activeRole === "player" ? "/player" : "/select-role"} className="flex flex-col">
           <span className="text-xs uppercase tracking-[0.3em] text-muted">
             {activeRole === "dm" ? "DM Toolkit" : activeRole === "player" ? "Player View" : "D&D 5e Assistant"}
           </span>
-          <span className="text-xl font-semibold text-foreground" style={{ fontFamily: "var(--font-display), serif", letterSpacing: "0.01em" }}>
-            Vault of Encounters
-          </span>
-          {activeCampaign && activeRole === "dm" && (
-            <span className="text-xs text-accent truncate max-w-[14rem]">
-              {activeCampaign.name}
+          <span className="flex items-center gap-2">
+            <span className="text-xl font-semibold text-foreground" style={{ fontFamily: "var(--font-display), serif", letterSpacing: "0.01em" }}>
+              Vault of Encounters
             </span>
-          )}
+            {activeCampaign && activeRole === "dm" && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] font-medium text-accent truncate max-w-[10rem]">
+                {activeCampaign.name}
+              </span>
+            )}
+          </span>
         </Link>
         {syncing && (
           <span className="flex animate-pulse items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] text-accent">

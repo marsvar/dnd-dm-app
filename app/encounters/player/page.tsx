@@ -1007,7 +1007,7 @@ export default function EncounterPlayerPage() {
                           : "border-black/10 bg-surface text-foreground"
                       } ${
                         effectiveTargetId === participant.id
-                          ? "targeted-outline"
+                          ? "outline outline-2 outline-accent -outline-offset-2"
                           : ""
                       } ${combatMode ? "cursor-pointer" : ""}`}
                       onClick={() => {
