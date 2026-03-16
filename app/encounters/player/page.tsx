@@ -31,7 +31,6 @@ export default function EncounterPlayerPage() {
     undoEncounterEvent,
   } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [damageTargetId, setDamageTargetId] = useState<string | null>(null);
   const [damageAmount, setDamageAmount] = useState("");
   const [localNotes, setLocalNotes] = useState("");
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
@@ -52,6 +51,7 @@ export default function EncounterPlayerPage() {
   const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [statBlockMonsterId, setStatBlockMonsterId] = useState<string | null>(null);
+  const [referencePinnedId, setReferencePinnedId] = useState<string | null>(null);
   const participantRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const selectedEncounter = useMemo(() => {
@@ -93,6 +93,13 @@ export default function EncounterPlayerPage() {
       .filter((participant) => isDefeated(participant.currentHp))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [selectedEncounter]);
+
+  // For the combat initiative list: living participants first, defeated at the bottom.
+  // orderedParticipants (living only) is preserved for activeIndex/nextParticipant/activeParticipant.
+  const combatListParticipants = useMemo(
+    () => [...orderedParticipants, ...defeatedParticipants],
+    [orderedParticipants, defeatedParticipants]
+  );
 
   const activeIndex = selectedEncounter
     ? orderedParticipants.findIndex(
@@ -138,12 +145,6 @@ export default function EncounterPlayerPage() {
     ? selectedEncounter.eventLog[selectedEncounter.eventLog.length - 1]
     : null;
 
-  const defaultTargetId = activeParticipant?.id ?? selectedEncounter?.participants[0]?.id ?? "";
-  const selectedTargetId = damageTargetId === null ? defaultTargetId : damageTargetId;
-  const effectiveTargetId =
-    selectedEncounter?.participants.some((participant) => participant.id === selectedTargetId)
-      ? selectedTargetId
-      : "";
   const encounterNames = selectedEncounter?.participants.map((participant) => participant.name) ?? [];
 
   // combatMode is derived from the encounter event log (COMBAT_MODE_SET), not local state.
@@ -230,14 +231,27 @@ export default function EncounterPlayerPage() {
     }
   }, [selectedEncounter?.activeParticipantId]);
 
-  // Sync local notes textarea when the targeted participant changes.
-  // Fires on blur to avoid spamming the event log with one event per keystroke.
+  // Sync local notes textarea when the active participant changes.
   useEffect(() => {
-    const notes =
-      selectedEncounter?.participants.find((p) => p.id === effectiveTargetId)?.notes ?? "";
-    setLocalNotes(notes);
+    setLocalNotes(activeParticipant?.notes ?? "");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTargetId]);
+  }, [activeParticipant?.id]);
+
+  // Lock page scroll in combat mode — prevents the document from scrolling behind the fixed overlay.
+  // Uses "clip" (not "hidden") to avoid scrollbar-width layout shifts.
+  useEffect(() => {
+    if (!combatMode) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "clip";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [combatMode]);
+
+  // Clear the pinned reference panel target whenever the active participant changes.
+  useEffect(() => {
+    setReferencePinnedId(null);
+  }, [selectedEncounter?.activeParticipantId]);
 
   const setInitiative = (participantId: string, value: number | null) => {
     if (!selectedEncounter) {
@@ -368,30 +382,6 @@ export default function EncounterPlayerPage() {
     }
   };
 
-  const applyDamageToTarget = (direction: 1 | -1) => {
-    if (!selectedEncounter || !effectiveTargetId) {
-      return;
-    }
-    const amount = Number(damageAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: direction > 0 ? "HEAL_APPLIED" : "DAMAGE_APPLIED",
-      participantId: effectiveTargetId,
-      amount,
-    });
-    setDamageAmount("");
-  };
-
-  const removeTargetFromCombat = () => {
-    if (!selectedEncounter || !effectiveTargetId) {
-      return;
-    }
-    removeEncounterParticipant(selectedEncounter.id, effectiveTargetId);
-    setDamageTargetId(null);
-  };
-
   const dispatchParticipantAdded = (participant: {
     name: string;
     kind: "pc" | "monster" | "npc";
@@ -517,6 +507,563 @@ export default function EncounterPlayerPage() {
     });
   };
 
+  // -------------------------------------------------------------------------
+  // COMBAT MODE — fixed viewport overlay, no PageShell, no document scroll
+  // -------------------------------------------------------------------------
+  if (combatMode && selectedEncounter) {
+    const applyDamage = (amount: number) => {
+      if (!activeParticipant || !selectedEncounter) return;
+      dispatchEncounterEvent(selectedEncounter.id, {
+        t: "DAMAGE_APPLIED",
+        participantId: activeParticipant.id,
+        amount,
+      });
+      setDamageAmount("");
+    };
+
+    const applyHeal = (amount: number) => {
+      if (!activeParticipant || !selectedEncounter) return;
+      dispatchEncounterEvent(selectedEncounter.id, {
+        t: "HEAL_APPLIED",
+        participantId: activeParticipant.id,
+        amount,
+      });
+      setDamageAmount("");
+    };
+
+    // Reference panel resolution
+    const refPanelParticipantId = referencePinnedId ?? selectedEncounter.activeParticipantId;
+    const refParticipant = refPanelParticipantId
+      ? selectedEncounter.participants.find((p) => p.id === refPanelParticipantId) ?? null
+      : null;
+    const refPc =
+      refParticipant?.kind === "pc" && refParticipant.refId
+        ? pcsById.get(refParticipant.refId) ?? null
+        : null;
+    const refMonster =
+      refParticipant?.kind === "monster" && refParticipant.refId
+        ? monstersById.get(refParticipant.refId) ?? null
+        : null;
+
+    const hpInputDisabled = !activeParticipant || activeParticipant.maxHp === null;
+    const hpAmount = Number(damageAmount);
+    const hpActionDisabled = hpInputDisabled || !damageAmount || !Number.isFinite(hpAmount) || hpAmount <= 0;
+
+    return (
+      <>
+        {/* ------------------------------------------------------------------ */}
+        {/* Three-column fixed overlay                                          */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="fixed inset-x-0 bottom-0 top-[var(--nav-height)] flex overflow-hidden bg-background">
+
+          {/* ================================================================ */}
+          {/* LEFT PANEL — 280px, no scroll, targets activeParticipant.id      */}
+          {/* ================================================================ */}
+          <div className="flex w-[280px] shrink-0 flex-col gap-3 overflow-hidden border-r border-black/10 p-4">
+
+            {activeParticipant === null ? (
+              /* Null state */
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 text-center">
+                <p className="text-sm text-muted">End of round — advance turn or stop combat.</p>
+                <Button
+                  onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
+                  disabled={!isRunning}
+                >
+                  Next Turn →
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => stopEncounter(selectedEncounter.id)}
+                >
+                  Stop combat
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* 1. Encounter name */}
+                <p className="truncate text-xs text-muted">{selectedEncounter.name}</p>
+
+                {/* 2. Round N + Prev / Next Turn */}
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => advanceEncounterTurn(selectedEncounter.id, -1)}
+                    disabled={!isRunning || !orderedParticipants.length}
+                    aria-label="Previous turn"
+                  >
+                    ← Prev
+                  </Button>
+                  <span className="min-w-[2rem] text-center font-mono text-2xl font-bold text-foreground">
+                    {selectedEncounter.round}
+                  </span>
+                  <Button
+                    className="flex-1 py-2 text-sm font-bold"
+                    onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
+                    disabled={!isRunning || !orderedParticipants.length}
+                    aria-label="Next turn (N)"
+                  >
+                    Next Turn →
+                  </Button>
+                </div>
+
+                {/* 3. Current participant card */}
+                <div className="rounded-xl bg-surface-strong p-3 space-y-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ParticipantAvatar
+                      name={activeParticipant.name}
+                      visual={activeParticipant.visual}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-surface object-cover text-[0.7rem] font-semibold text-muted"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold">{activeParticipant.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Pill label={activeParticipant.kind.toUpperCase()} tone="neutral" />
+                        <span className="font-mono text-xs text-muted">
+                          Init {activeParticipant.initiative ?? "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {activeParticipant.maxHp !== null && activeParticipant.currentHp !== null ? (
+                    <>
+                      <p className="font-mono text-sm">
+                        {activeParticipant.currentHp} / {activeParticipant.maxHp}
+                      </p>
+                      <HpBar
+                        current={activeParticipant.currentHp}
+                        max={activeParticipant.maxHp}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted">HP not tracked</p>
+                  )}
+                </div>
+
+                {/* 4. Next up preview */}
+                {nextParticipant && (
+                  <p className="text-xs text-muted truncate">
+                    Next: <span className="font-semibold text-foreground">{nextParticipant.name}</span>
+                  </p>
+                )}
+
+                {/* 5. Damage / Heal */}
+                <div className="space-y-1.5">
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-full"
+                    placeholder="Amount"
+                    value={damageAmount}
+                    onChange={(e) => setDamageAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                    disabled={hpInputDisabled}
+                  />
+                  <div className="flex gap-1.5">
+                    <Button
+                      className="flex-1 text-xs py-1.5"
+                      style={{
+                        backgroundColor: "var(--btn-damage-bg)",
+                        color: "var(--btn-damage-fg)",
+                      }}
+                      onClick={() => applyDamage(hpAmount)}
+                      disabled={hpActionDisabled}
+                    >
+                      − Damage
+                    </Button>
+                    <Button
+                      className="flex-1 text-xs py-1.5"
+                      style={{
+                        backgroundColor: "var(--btn-heal-bg)",
+                        color: "var(--btn-heal-fg)",
+                      }}
+                      onClick={() => applyHeal(hpAmount)}
+                      disabled={hpActionDisabled}
+                    >
+                      + Heal
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 6. Condition picker */}
+                <ConditionPicker
+                  conditions={SRD_CONDITIONS}
+                  active={activeParticipant.conditions}
+                  onChange={(next) => {
+                    dispatchEncounterEvent(selectedEncounter.id, {
+                      t: "CONDITIONS_SET",
+                      participantId: activeParticipant.id,
+                      value: next,
+                    });
+                  }}
+                />
+
+                {/* 7. Tablet stat row (lg:hidden) */}
+                <div className="lg:hidden font-mono text-xs text-muted">
+                  {(activePc || activeMonster) ? (
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                      {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => (
+                        <span key={k}>
+                          {k.toUpperCase()} {(activePc ?? activeMonster)!.abilities[k]}
+                        </span>
+                      ))}
+                      <span>AC {activeParticipant.ac ?? "—"}</span>
+                    </div>
+                  ) : (
+                    <span>AC {activeParticipant.ac ?? "—"}</span>
+                  )}
+                </div>
+
+                {/* 8. Last action + Undo */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center rounded-xl px-2.5 py-1.5 text-xs",
+                      lastEvent?.t === "DAMAGE_APPLIED"
+                        ? "bg-[var(--hp-low-bg)] text-[var(--hp-low)]"
+                        : lastEvent?.t === "HEAL_APPLIED"
+                          ? "bg-[var(--hp-full-bg)] text-[var(--hp-full)]"
+                          : lastEvent?.t === "TURN_ADVANCED"
+                            ? "bg-accent/10 text-accent"
+                            : "bg-surface text-muted"
+                    )}
+                  >
+                    <span className="truncate">
+                      {lastEvent ? formatEventSummary(lastEvent) : "No actions yet"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="shrink-0 px-3 py-1.5 text-xs font-semibold"
+                    onClick={() => undoEncounterEvent(selectedEncounter.id)}
+                    disabled={!selectedEncounter.eventLog.length}
+                  >
+                    ↩ Undo
+                  </Button>
+                </div>
+
+                {/* 9. Stop / End — mt-auto pushes to bottom */}
+                <div className="mt-auto border-t border-black/10 pt-3 flex flex-wrap gap-2">
+                  {isRunning ? (
+                    <Button
+                      variant="outline"
+                      className="text-xs px-3 py-1.5"
+                      onClick={() => stopEncounter(selectedEncounter.id)}
+                    >
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="text-xs px-3 py-1.5"
+                      onClick={() => startEncounter(selectedEncounter.id)}
+                      disabled={!combatRequirementsMet}
+                    >
+                      Start
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="text-xs px-3 py-1.5"
+                    onClick={() =>
+                      dispatchEncounterEvent(selectedEncounter.id, {
+                        t: "COMBAT_MODE_SET",
+                        mode: "prep",
+                      })
+                    }
+                  >
+                    ← Prep
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="ml-auto text-xs px-3 py-1.5"
+                    onClick={() => setIsEndEncounterOpen(true)}
+                    disabled={isRunning}
+                  >
+                    End
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ================================================================ */}
+          {/* INITIATIVE LIST — flex-1, scrolls internally                     */}
+          {/* ================================================================ */}
+          <div className="flex flex-1 flex-col overflow-y-auto p-3 gap-1.5">
+            {combatListParticipants.map((participant) => {
+              const isActive = participant.id === selectedEncounter.activeParticipantId;
+              const isDefeatedRow = isDefeated(participant.currentHp);
+              const visibleConds = participant.conditions.slice(0, 2);
+              const overflowCount = participant.conditions.length - 2;
+
+              return (
+                <div
+                  key={participant.id}
+                  ref={(el) => {
+                    if (el) participantRowRefs.current.set(participant.id, el);
+                    else participantRowRefs.current.delete(participant.id);
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+                    isActive
+                      ? "border-accent bg-surface-strong ring-2 ring-[var(--ring)]"
+                      : "border-black/10 bg-surface",
+                    isDefeatedRow ? "opacity-60" : "",
+                    participant.kind === "monster" && !isDefeatedRow
+                      ? "cursor-pointer lg:hover:border-accent/50"
+                      : ""
+                  )}
+                  onClick={() => {
+                    if (participant.kind === "monster" && !isDefeatedRow) {
+                      setReferencePinnedId(participant.id);
+                    }
+                  }}
+                >
+                  <ParticipantAvatar
+                    name={participant.name}
+                    visual={participant.visual}
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.6rem] font-semibold text-muted"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="truncate text-sm font-semibold">{participant.name}</p>
+                      <Pill label={participant.kind.toUpperCase()} tone="neutral" />
+                    </div>
+                    {participant.conditions.length > 0 && (
+                      <div className="flex items-center gap-1 mt-0.5 flex-nowrap overflow-hidden">
+                        {visibleConds.map((cond) => (
+                          <ConditionChip
+                            key={cond}
+                            label={cond}
+                            description={SRD_CONDITION_DESCRIPTIONS[cond]}
+                          />
+                        ))}
+                        {overflowCount > 0 && (
+                          <span className="text-xs text-muted shrink-0">+{overflowCount}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right font-mono text-xs text-muted space-y-0.5">
+                    <div>
+                      {participant.initiative ?? "—"} · {participant.ac ?? "—"} ·{" "}
+                      {participant.maxHp !== null && participant.currentHp !== null
+                        ? `${participant.currentHp}/${participant.maxHp}`
+                        : "—"}
+                    </div>
+                    {participant.maxHp !== null && participant.currentHp !== null && (
+                      <HpBar
+                        current={participant.currentHp}
+                        max={participant.maxHp}
+                        className="w-16"
+                      />
+                    )}
+                  </div>
+                  <div
+                    className="shrink-0 flex gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <QuickActionPopover
+                      participantName={participant.name}
+                      open={openPopoverId === participant.id}
+                      onOpenChange={(o) => setOpenPopoverId(o ? participant.id : null)}
+                      onDamage={(amount) => {
+                        dispatchEncounterEvent(selectedEncounter.id, {
+                          t: "DAMAGE_APPLIED",
+                          participantId: participant.id,
+                          amount,
+                        });
+                      }}
+                      onHeal={(amount) => {
+                        dispatchEncounterEvent(selectedEncounter.id, {
+                          t: "HEAL_APPLIED",
+                          participantId: participant.id,
+                          amount,
+                        });
+                      }}
+                    >
+                      <Button variant="outline" className="h-7 px-2.5 text-xs">
+                        ± HP
+                      </Button>
+                    </QuickActionPopover>
+                    {/* Tablet stat block button — hidden on desktop (reference panel handles it) */}
+                    {participant.kind === "monster" && participant.refId && (
+                      <Button
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs lg:hidden"
+                        onClick={() => showStatBlock(participant)}
+                        aria-label={`View stat block for ${participant.name}`}
+                      >
+                        Stat Block
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {combatListParticipants.length === 0 && (
+              <p className="text-sm text-muted p-3">No participants in this encounter.</p>
+            )}
+          </div>
+
+          {/* ================================================================ */}
+          {/* REFERENCE PANEL — 300px, desktop only (hidden lg:flex)           */}
+          {/* ================================================================ */}
+          <div className="hidden lg:flex w-[300px] shrink-0 flex-col overflow-y-auto border-l border-black/10 p-4 gap-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-muted">Reference</p>
+
+            {!refParticipant ? (
+              <p className="text-sm text-muted">Click a monster row to pin its stat block here.</p>
+            ) : refPc ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <ParticipantAvatar
+                    name={refPc.name}
+                    visual={refPc.visual}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.65rem] font-semibold text-muted"
+                  />
+                  <div>
+                    <p className="font-semibold">{refPc.name}</p>
+                    <p className="text-xs text-muted">{refPc.className} {refPc.level} · AC {refPc.ac}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-1 font-mono text-xs">
+                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => (
+                    <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
+                      <p className="text-muted uppercase">{k}</p>
+                      <p className="font-semibold">{refPc.abilities[k]}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-[0.2em]">Saves</p>
+                  <p className="font-mono text-xs">
+                    {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => {
+                      const mod = getAbilityMod(refPc.abilities[k]);
+                      const prof = refPc.saveProficiencies[k] ? refPc.proficiencyBonus : 0;
+                      const bonus = refPc.saveBonuses[k] ?? 0;
+                      const total = mod + prof + bonus;
+                      return `${k.toUpperCase()} ${total >= 0 ? "+" : ""}${total}`;
+                    }).join(" · ")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-[0.2em]">Passive Perception</p>
+                  <p className="font-mono text-xs">{getPassivePerception(refPc)}</p>
+                </div>
+                {(refPc.spellcasting?.spellSlots?.length ?? 0) > 0 && (
+                  <SpellSlotsReadout pc={refPc} />
+                )}
+                {refPc.notes && (
+                  <div>
+                    <p className="text-xs text-muted uppercase tracking-[0.2em]">Notes</p>
+                    <p className="text-xs">{refPc.notes}</p>
+                  </div>
+                )}
+              </div>
+            ) : refMonster ? (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-semibold">{refMonster.name}</p>
+                  <p className="text-xs text-muted">
+                    {refMonster.size} {refMonster.type} · CR {refMonster.challenge} · AC {refMonster.ac} · HP {refMonster.hp}
+                  </p>
+                  <p className="text-xs text-muted">Speed {refMonster.speed}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-1 font-mono text-xs">
+                  {(["str", "dex", "con", "int", "wis", "cha"] as const).map((k) => (
+                    <div key={k} className="rounded bg-surface-strong p-1.5 text-center">
+                      <p className="text-muted uppercase">{k}</p>
+                      <p className="font-semibold">{refMonster.abilities[k]}</p>
+                    </div>
+                  ))}
+                </div>
+                {refMonster.senses && (
+                  <p className="text-xs text-muted">Senses {refMonster.senses}</p>
+                )}
+                {(refMonster.traits?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-muted uppercase tracking-[0.2em]">Traits</p>
+                    <p className="text-xs">{refMonster.traits?.join(" ")}</p>
+                  </div>
+                )}
+                {(refMonster.actions?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-muted uppercase tracking-[0.2em]">Actions</p>
+                    <p className="text-xs">{refMonster.actions?.join(" ")}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Custom NPC — no refId */
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold">{refParticipant.name}</p>
+                <p className="text-xs text-muted">{refParticipant.kind.toUpperCase()} · AC {refParticipant.ac ?? "—"} · Init {refParticipant.initiative ?? "—"}</p>
+                {refParticipant.conditions.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {refParticipant.conditions.map((c) => (
+                      <ConditionChip key={c} label={c} description={SRD_CONDITION_DESCRIPTIONS[c]} />
+                    ))}
+                  </div>
+                )}
+                {refParticipant.notes && (
+                  <p className="text-xs text-muted">{refParticipant.notes}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Dialogs (rendered outside the fixed overlay so they stack above it) */}
+        {/* ------------------------------------------------------------------ */}
+        {completedEncounterSnapshot && (
+          <EncounterCompleteDialog
+            encounter={completedEncounterSnapshot}
+            monstersById={monstersById}
+            open={!!completedEncounterSnapshot}
+            onClose={() => setCompletedEncounterSnapshot(null)}
+          />
+        )}
+
+        <MonsterStatBlockDialog
+          monster={statBlockMonsterId ? monstersById.get(statBlockMonsterId) ?? null : null}
+          open={!!statBlockMonsterId}
+          onClose={() => setStatBlockMonsterId(null)}
+        />
+
+        {/* End encounter dialog */}
+        <Dialog
+          open={isEndEncounterOpen}
+          onOpenChange={(open) => {
+            if (!open) setIsEndEncounterOpen(false);
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogTitle>End encounter?</DialogTitle>
+            <p className="text-sm text-muted">
+              This will complete the encounter and move it out of the active list.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button
+                onClick={() => {
+                  setCompletedEncounterSnapshot(selectedEncounter);
+                  dispatchEncounterEvent(selectedEncounter.id, { t: "ENCOUNTER_COMPLETED" });
+                  setIsEndEncounterOpen(false);
+                }}
+              >
+                Complete Encounter
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
   return (
     <PageShell>
       <SectionTitle
@@ -567,74 +1114,6 @@ export default function EncounterPlayerPage() {
                     </div>
                   ) : (
                     <>
-                  {combatMode ? (
-                    <div className="flex w-full flex-col gap-2">
-                      {/* Primary row: Prev | [NEXT TURN] | Stop/Start */}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          className="px-4 py-2 text-sm"
-                          onClick={() => advanceEncounterTurn(selectedEncounter.id, -1)}
-                          disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
-                          aria-label="Previous turn"
-                        >
-                          ← Prev
-                        </Button>
-                        <Button
-                          className="flex-1 py-3 text-base font-bold tracking-wide"
-                          onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
-                          disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
-                          aria-label="Next turn (N)"
-                        >
-                          Next Turn ↵
-                        </Button>
-                        {selectedEncounter.isRunning ? (
-                          <Button
-                            variant="outline"
-                            className="px-4 py-2 text-sm"
-                            onClick={() => stopEncounter(selectedEncounter.id)}
-                          >
-                            Stop
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            className="px-4 py-2 text-sm"
-                            onClick={() => startEncounter(selectedEncounter.id)}
-                            disabled={!combatRequirementsMet}
-                          >
-                            Start
-                          </Button>
-                        )}
-                      </div>
-                      {/* Secondary row: Back to prep | End Encounter */}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          className="px-3 py-1 text-xs"
-                          onClick={() =>
-                            dispatchEncounterEvent(selectedEncounter.id, {
-                              t: "COMBAT_MODE_SET",
-                              mode: "prep",
-                            })
-                          }
-                        >
-                          ← Back to prep
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="ml-auto px-3 py-1 text-xs"
-                          onClick={() => {
-                            setIsEndEncounterOpen(true);
-                          }}
-                          disabled={selectedEncounter.isRunning}
-                        >
-                          End Encounter
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
                     {selectedEncounter.participants.length > 0 && !selectedEncounter.isRunning && (
                       <Button
                         variant="outline"
@@ -676,620 +1155,9 @@ export default function EncounterPlayerPage() {
                     </Button>
                     </>
                   )}
-                    </>
-                  )}
                 </div>
               </div>
 
-              {combatMode ? (
-                <>
-                  <div className="rounded-2xl border border-black/5 bg-surface-strong px-4 py-3">
-                    {/* Row 1: Round controls + active participant + keyboard hint */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">Round</span>
-                        <Button
-                          variant="outline"
-                          className="h-6 w-6 p-0 text-xs"
-                          onClick={() => adjustRound(-1)}
-                          aria-label="Previous round"
-                        >
-                          −
-                        </Button>
-                        <span className="min-w-[2rem] text-center font-mono text-xl font-bold text-foreground">
-                          {selectedEncounter.round}
-                        </span>
-                        <Button
-                          variant="outline"
-                          className="h-6 w-6 p-0 text-xs"
-                          onClick={() => adjustRound(1)}
-                          aria-label="Next round"
-                        >
-                          +
-                        </Button>
-                      </div>
-                      {activeParticipant && (
-                        <>
-                          <div className="h-5 w-px bg-black/10" />
-                          <div className="flex items-center gap-2">
-                            <span className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">Active</span>
-                            <ParticipantAvatar
-                              name={activeParticipant.name}
-                              visual={activeParticipant.visual}
-                              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface text-[0.5rem] font-semibold text-muted"
-                            />
-                            <span className="text-sm font-semibold text-foreground">{activeParticipant.name}</span>
-                            <Pill label={activeParticipant.kind.toUpperCase()} tone="neutral" />
-                          </div>
-                        </>
-                      )}
-                      {selectedEncounter.isRunning ? (
-                        <span className="ml-auto text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                          N / ← →
-                        </span>
-                      ) : null}
-                    </div>
-                    {/* Row 2: Last action (color-coded) + Undo */}
-                    <div className="mt-2 flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "flex min-w-0 flex-1 items-center rounded-xl px-3 py-2 text-sm",
-                          lastEvent?.t === "DAMAGE_APPLIED"
-                            ? "bg-[var(--hp-low-bg)] text-[var(--hp-low-fg)]"
-                            : lastEvent?.t === "HEAL_APPLIED"
-                              ? "bg-[var(--hp-full-bg)] text-[var(--hp-full-fg)]"
-                              : lastEvent?.t === "TURN_ADVANCED"
-                                ? "bg-accent/10 text-accent"
-                                : "bg-surface text-muted"
-                        )}
-                      >
-                        <span className="truncate">
-                          {lastEvent ? formatEventSummary(lastEvent) : "No actions yet"}
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        className="shrink-0 px-4 py-2 text-sm font-semibold"
-                        onClick={() => undoEncounterEvent(selectedEncounter.id)}
-                        disabled={!selectedEncounter.eventLog.length}
-                      >
-                        ↩ Undo
-                      </Button>
-                    </div>
-                    {!selectedEncounter.isRunning && !combatRequirementsMet ? (
-                      <p className="mt-2 text-xs text-muted">{combatRequirementsMessage}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="grid gap-4 xl:grid-cols-[0.65fr_1.1fr_0.9fr]">
-                <div className="rounded-2xl border border-black/10 bg-surface-strong p-4 xl:sticky xl:top-24 xl:self-start">
-                  <p className="text-xs uppercase tracking-[0.3em] text-muted">Current</p>
-                  {activeIndex >= 0 ? (
-                    <div className="mt-1 flex items-center gap-2">
-                      <ParticipantAvatar
-                        name={orderedParticipants[activeIndex].name}
-                        visual={orderedParticipants[activeIndex].visual}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-surface object-cover text-[0.7rem] font-semibold text-muted"
-                      />
-                      <p className="text-xl font-semibold text-foreground">
-                        {orderedParticipants[activeIndex].name}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xl font-semibold text-foreground">Not started</p>
-                  )}
-                  <p className="text-sm text-muted">Round {selectedEncounter.round}</p>
-                  {activeIndex >= 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Pill label={orderedParticipants[activeIndex].kind.toUpperCase()} />
-                      <Pill
-                        label={`Init ${orderedParticipants[activeIndex].initiative ?? "--"}`}
-                        tone="accent"
-                      />
-                      <Pill label="Active" tone="accent" />
-                    </div>
-                  ) : null}
-                  {nextParticipant ? (
-                    <div className="mt-3 rounded-xl border border-black/10 bg-surface px-3 py-2 text-xs text-muted">
-                      <span className="uppercase tracking-[0.25em]">Up next</span>
-                      <div className="mt-1 flex items-center gap-2">
-                        <ParticipantAvatar
-                          name={nextParticipant.name}
-                          visual={nextParticipant.visual}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.6rem] font-semibold text-muted"
-                        />
-                        <p className="text-sm font-semibold text-foreground">
-                          {nextParticipant.name}
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted">{nextParticipant.kind.toUpperCase()}</p>
-                    </div>
-                  ) : null}
-                  {selectedEncounter ? (
-                    <div className="mt-4 rounded-xl border border-black/10 bg-surface px-3 py-3">
-                      <p className="text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-                        Quick actions
-                      </p>
-                      <p className="mt-1 text-xs text-muted">
-                        Targeted actions (click a creature to target)
-                      </p>
-                      <div className="mt-2 grid gap-2">
-                        <div>
-                          <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                            Target
-                          </p>
-                          <div className="mt-1 flex items-center gap-2">
-                            {effectiveTargetId ? (
-                              <Pill
-                                label={participantNameById.get(effectiveTargetId) ?? "Unknown"}
-                                tone="accent"
-                              />
-                            ) : (
-                              <span className="text-xs text-muted">Click a row to target</span>
-                            )}
-                            {effectiveTargetId ? (
-                              <Button
-                                variant="ghost"
-                                className="px-2 py-0.5 text-xs"
-                                onClick={() => setDamageTargetId(null)}
-                              >
-                                Clear
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="w-24"
-                            placeholder="Dmg"
-                            value={damageAmount}
-                            onChange={(event) =>
-                              setDamageAmount(event.target.value.replace(/[^0-9]/g, ""))
-                            }
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              className="px-3 py-1 text-xs"
-                              onClick={() => applyDamageToTarget(-1)}
-                              disabled={!effectiveTargetId || damageAmount === ""}
-                            >
-                              Damage
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="px-3 py-1 text-xs"
-                              onClick={() => applyDamageToTarget(1)}
-                              disabled={!effectiveTargetId || damageAmount === ""}
-                            >
-                              Heal
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="px-3 py-1 text-xs"
-                              onClick={removeTargetFromCombat}
-                              disabled={!effectiveTargetId}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <ConditionPicker
-                          conditions={SRD_CONDITIONS}
-                          active={
-                            selectedEncounter.participants.find(
-                              (p) => p.id === effectiveTargetId
-                            )?.conditions ?? []
-                          }
-                          onChange={(next) => {
-                            if (!effectiveTargetId) return;
-                            dispatchEncounterEvent(selectedEncounter.id, {
-                              t: "CONDITIONS_SET",
-                              participantId: effectiveTargetId,
-                              value: next,
-                            });
-                          }}
-                        />
-                      </div>
-                      {effectiveTargetId && (
-                        <div className="mt-3 border-t border-black/10 pt-3">
-                          <p className="text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-                            Notes
-                          </p>
-                          <Textarea
-                            className="mt-1 min-h-[3rem] resize-none text-xs"
-                            placeholder="Add a note for this participant…"
-                            value={localNotes}
-                            onChange={(e) => setLocalNotes(e.target.value)}
-                            onBlur={() => setNotes(effectiveTargetId, localNotes)}
-                          />
-                        </div>
-                      )}
-                      <div className="mt-4 border-t border-black/10 pt-3">
-                        <p className="text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-                          Add participant
-                        </p>
-                        <Button
-                          variant="outline"
-                          className="mt-2 px-3 py-1 text-xs"
-                          onClick={() => {
-                            setAddParticipantMode("premade");
-                            setPremadeType("monster");
-                            setPremadePcSelectionId("");
-                            setIsAddParticipantOpen(true);
-                          }}
-                        >
-                          Add participant
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {activePc ? (
-                    <div className="mt-4 space-y-2 text-sm text-muted">
-                      <p>
-                        <span className="font-semibold text-foreground">AC</span> {activePc.ac} ·
-                        <span className="font-semibold text-foreground"> HP</span>{" "}
-                        {activePc.currentHp}/{activePc.maxHp}
-                      </p>
-                      {activeParticipant?.tempHp !== null && activeParticipant?.tempHp !== undefined ? (
-                        <p>
-                          <span className="font-semibold text-foreground">Temp HP</span>{" "}
-                          {activeParticipant.tempHp}
-                        </p>
-                      ) : null}
-                      <p>
-                        <span className="font-semibold text-foreground">Speed</span>{" "}
-                        {activePc.speed || "--"}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-foreground">Senses</span>{" "}
-                        {activePc.senses || "--"}
-                      </p>
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <Pill label={`Passive ${getPassivePerception(activePc)}`} />
-                        <Pill label={`WIS ${activePc.abilities.wis}`} />
-                        <Pill label={`DEX ${activePc.abilities.dex}`} />
-                      </div>
-                    </div>
-                  ) : null}
-                  {activeMonster ? (
-                    <div className="mt-4 space-y-2 text-sm text-muted">
-                      <p>
-                        <span className="font-semibold text-foreground">AC</span>{" "}
-                        {activeMonster.ac} · <span className="font-semibold text-foreground">HP</span>{" "}
-                        {activeMonster.hp}
-                      </p>
-                      {activeParticipant?.tempHp !== null && activeParticipant?.tempHp !== undefined ? (
-                        <p>
-                          <span className="font-semibold text-foreground">Temp HP</span>{" "}
-                          {activeParticipant.tempHp}
-                        </p>
-                      ) : null}
-                      <p>
-                        <span className="font-semibold text-foreground">Type</span>{" "}
-                        {activeMonster.size} {activeMonster.type}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-foreground">Speed</span>{" "}
-                        {activeMonster.speed}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-foreground">Senses</span>{" "}
-                        {activeMonster.senses || "--"}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  {combatMode && selectedEncounter.isRunning && (
-                    <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                      Initiative order — click to target
-                    </p>
-                  )}
-                  {orderedParticipants.map((participant, index) => (
-                    <div
-                      key={participant.id}
-                      ref={(el) => {
-                        if (el) {
-                          participantRowRefs.current.set(participant.id, el);
-                        } else {
-                          participantRowRefs.current.delete(participant.id);
-                        }
-                      }}
-                      className={`rounded-xl border px-3 py-3 text-sm transition hover:border-accent/50 ${
-                        index === activeIndex
-                          ? "border-l-4 border-accent bg-surface-strong text-foreground ring-2 ring-[var(--ring)]"
-                          : "border-black/10 bg-surface text-foreground"
-                      } ${
-                        effectiveTargetId === participant.id
-                          ? "outline outline-2 outline-accent -outline-offset-2"
-                          : ""
-                      } ${combatMode ? "cursor-pointer" : ""}`}
-                      onClick={() => {
-                        if (!combatMode) {
-                          return;
-                        }
-                        setDamageTargetId(participant.id);
-                      }}
-                    >
-                      <div className="grid gap-3 md:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] md:items-center">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <ParticipantAvatar
-                              name={participant.name}
-                              visual={participant.visual}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.65rem] font-semibold text-muted"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold">{participant.name}</p>
-                              <div className="flex flex-wrap items-center gap-1">
-                                <Pill label={participant.kind.toUpperCase()} tone="neutral" />
-                                {participant.kind === "pc" &&
-                                  participant.refId &&
-                                  pcsById.get(participant.refId)?.inspiration && (
-                                    <Pill label="Inspiration" tone="accent" />
-                                  )}
-                              </div>
-                            </div>
-                          </div>
-                          {index === activeIndex ? (
-                            <div className="mt-2">
-                              <Pill label="Active" tone="accent" />
-                            </div>
-                          ) : null}
-                          {participant.conditions.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {participant.conditions.map((cond) => (
-                                <ConditionChip
-                                  key={cond}
-                                  label={cond}
-                                  description={SRD_CONDITION_DESCRIPTIONS[cond]}
-                                  onRemove={() => {
-                                    if (!selectedEncounter) return;
-                                    dispatchEncounterEvent(selectedEncounter.id, {
-                                      t: "CONDITIONS_SET",
-                                      participantId: participant.id,
-                                      value: participant.conditions.filter((c) => c !== cond),
-                                    });
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <FieldLabel>Init</FieldLabel>
-                          <p className="font-mono text-sm font-semibold">
-                            {participant.initiative ?? "—"}
-                          </p>
-                        </div>
-                        <div>
-                          <FieldLabel>AC</FieldLabel>
-                          <p className="font-mono text-sm font-semibold">{participant.ac ?? "—"}</p>
-                        </div>
-                        <div>
-                          <FieldLabel>HP</FieldLabel>
-                          <p className="font-mono text-sm font-semibold">
-                            {participant.currentHp ?? "—"}{participant.maxHp != null ? ` / ${participant.maxHp}` : ""}
-                          </p>
-                          {participant.maxHp != null && participant.currentHp != null && (
-                            <HpBar
-                              current={participant.currentHp}
-                              max={participant.maxHp}
-                              className="mt-1.5"
-                              showLabel
-                            />
-                          )}
-                          {participant.tempHp ? (
-                            <p className="mt-1 font-mono text-xs text-muted">
-                              +{participant.tempHp} temp
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                      {/* Death save tracker — shown for PC participants at 0 HP */}
-                      {participant.kind === "pc" &&
-                        participant.currentHp !== null &&
-                        participant.currentHp <= 0 &&
-                        participant.refId && (
-                          <DmDeathSaveTracker
-                            deathSaves={
-                              participant.deathSaves ?? { successes: 0, failures: 0, stable: false }
-                            }
-                            onSave={(ds) => {
-                              if (!selectedEncounter) return;
-                              dispatchEncounterEvent(selectedEncounter.id, {
-                                t: "DEATH_SAVES_SET",
-                                participantId: participant.id,
-                                pcId: participant.refId!,
-                                value: ds,
-                              });
-                            }}
-                          />
-                        )}
-                      {/* Quick actions row */}
-                      <div
-                        className="mt-2 flex flex-wrap gap-1.5"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <QuickActionPopover
-                          participantName={participant.name}
-                          open={openPopoverId === participant.id}
-                          onOpenChange={(o) =>
-                            setOpenPopoverId(o ? participant.id : null)
-                          }
-                          onDamage={(amount) => {
-                            if (!selectedEncounter) return;
-                            dispatchEncounterEvent(selectedEncounter.id, {
-                              t: "DAMAGE_APPLIED",
-                              participantId: participant.id,
-                              amount,
-                            });
-                          }}
-                          onHeal={(amount) => {
-                            if (!selectedEncounter) return;
-                            dispatchEncounterEvent(selectedEncounter.id, {
-                              t: "HEAL_APPLIED",
-                              participantId: participant.id,
-                              amount,
-                            });
-                          }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="h-7 px-2.5 text-xs"
-                            aria-label={`Damage or heal ${participant.name}`}
-                          >
-                            ± HP
-                          </Button>
-                        </QuickActionPopover>
-                        {participant.kind === "monster" && participant.refId && (
-                          <Button
-                            variant="outline"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => showStatBlock(participant)}
-                            aria-label={`View stat block for ${participant.name}`}
-                          >
-                            Stat Block
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {!orderedParticipants.length ? (
-                    <p className="text-sm text-muted">No active participants to run.</p>
-                  ) : null}
-                  {defeatedParticipants.length ? (
-                    <div className="pt-3">
-                      <p className="text-xs uppercase tracking-[0.3em] text-muted">Defeated</p>
-                      <div className="mt-2 space-y-2">
-                        {defeatedParticipants.map((participant) => (
-                          <div
-                            key={participant.id}
-                            className="grid gap-2 rounded-xl border border-black/10 bg-surface px-3 py-2 text-xs text-muted md:grid-cols-[1.2fr_repeat(2,minmax(0,1fr))] md:items-center"
-                          >
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <ParticipantAvatar
-                                  name={participant.name}
-                                  visual={participant.visual}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-surface object-cover text-[0.6rem] font-semibold text-muted"
-                                />
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {participant.name}
-                                  </p>
-                                  <p className="text-xs text-muted">
-                                    {participant.kind.toUpperCase()}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-[0.6rem] uppercase tracking-[0.25em] text-muted">
-                                Init
-                              </p>
-                              <p className="text-sm font-semibold">
-                                {participant.initiative ?? "--"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[0.6rem] uppercase tracking-[0.25em] text-muted">
-                                HP
-                              </p>
-                              <Input
-                                type="number"
-                                className="w-24"
-                                value={participant.currentHp ?? ""}
-                                onChange={(event) =>
-                                  setParticipantHp(
-                                    participant.id,
-                                    event.target.value === "" ? null : Number(event.target.value)
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="rounded-2xl border border-black/5 bg-surface p-4 text-sm text-muted">
-                  <p className="text-xs uppercase tracking-[0.3em] text-muted">Reference</p>
-                  {activePc ? (
-                    <div className="mt-3 space-y-3">
-                      <p className="text-base font-semibold text-foreground">{activePc.name}</p>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted">Ability</p>
-                          <p>
-                            STR {activePc.abilities.str} · DEX {activePc.abilities.dex} · CON{" "}
-                            {activePc.abilities.con}
-                          </p>
-                          <p>
-                            INT {activePc.abilities.int} · WIS {activePc.abilities.wis} · CHA{" "}
-                            {activePc.abilities.cha}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted">Saves</p>
-                          <p>
-                            STR {getSaveValue("str")} · DEX {getSaveValue("dex")} · CON{" "}
-                            {getSaveValue("con")}
-                          </p>
-                          <p>
-                            INT {getSaveValue("int")} · WIS {getSaveValue("wis")} · CHA{" "}
-                            {getSaveValue("cha")}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted">Skills</p>
-                          <p>Perception {activePc.skills.perception}</p>
-                          <p>Stealth {activePc.skills.stealth}</p>
-                          <p>Insight {activePc.skills.insight}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted">Resources</p>
-                        <p>{activePc.resources.length ? activePc.resources.join(", ") : "--"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted">Notes</p>
-                        <p>{activePc.notes || "--"}</p>
-                      </div>
-                      {(activePc.spellcasting?.spellSlots?.length ?? 0) > 0 && (
-                        <SpellSlotsReadout pc={activePc} />
-                      )}
-                    </div>
-                  ) : activeMonster ? (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-base font-semibold text-foreground">
-                        {activeMonster.name}
-                      </p>
-                      <p>{activeMonster.alignment}</p>
-                      <p>
-                        <span className="font-semibold text-foreground">Traits:</span>{" "}
-                        {activeMonster.traits?.join(" ") || "--"}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-foreground">Actions:</span>{" "}
-                        {activeMonster.actions?.join(" ") || "--"}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-3">Select a participant to see details.</p>
-                  )}
-                </div>
-                  </div>
-                </>
-              ) : (
-                <>
                   {!selectedEncounter.isRunning && !combatRequirementsMet ? (
                     <div className="rounded-2xl border border-black/10 bg-surface-strong px-4 py-3 text-xs text-muted">
                       {combatRequirementsMessage}
@@ -1482,8 +1350,6 @@ export default function EncounterPlayerPage() {
                       <p className="text-sm text-muted">No participants in this encounter.</p>
                     ) : null}
                   </div>
-                </>
-              )}
             </>
           ) : (
             <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
@@ -1502,176 +1368,6 @@ export default function EncounterPlayerPage() {
         </Card>
       </div>
 
-      <Dialog
-        open={isAddParticipantOpen && combatMode && !!selectedEncounter}
-        onOpenChange={setIsAddParticipantOpen}
-      >
-        <DialogContent maxWidth="2xl">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <DialogTitle>Add participant</DialogTitle>
-              <p className="text-sm text-muted">Choose premade or custom.</p>
-            </div>
-            <DialogClose asChild>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </div>
-
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant={addParticipantMode === "premade" ? "primary" : "outline"}
-                className="px-3 py-1 text-xs"
-                onClick={() => setAddParticipantMode("premade")}
-              >
-                Premade
-              </Button>
-              <Button
-                variant={addParticipantMode === "custom" ? "primary" : "outline"}
-                className="px-3 py-1 text-xs"
-                onClick={() => setAddParticipantMode("custom")}
-              >
-                Custom
-              </Button>
-            </div>
-
-            {addParticipantMode === "premade" ? (
-              <div className="mt-4 space-y-3">
-                <div className="grid gap-2 md:grid-cols-2">
-                  <Select
-                    className=""
-                    value={premadeType}
-                    onChange={(event) => {
-                      const nextType = event.target.value as "pc" | "monster";
-                      setPremadeType(nextType);
-                      setPremadePcSelectionId("");
-                    }}
-                  >
-                    <option value="monster">Monster</option>
-                    <option value="pc">PC</option>
-                  </Select>
-                </div>
-                {premadeType === "monster" ? (
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.25em] text-muted">Monster picker</p>
-                    <p className="mt-1 text-xs text-muted">Click to add directly to live combat.</p>
-                    <div className="mt-2">
-                      <MonsterPicker
-                        monsters={state.monsters}
-                        onPickMonster={(monster) => addMonsterMidCombat(monster.id)}
-                        listClassName="max-h-[16rem]"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Select
-                      className=""
-                      value={premadePcSelectionId}
-                      onChange={(event) => setPremadePcSelectionId(event.target.value)}
-                    >
-                      <option value="" disabled>
-                        Select PC
-                      </option>
-                      {state.pcs.map((pc) => (
-                        <option key={pc.id} value={pc.id}>
-                          {pc.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <div className="flex justify-end">
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={addPremadeParticipantMidCombat}
-                        disabled={!premadePcSelectionId}
-                      >
-                        Add selected
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                <div className="grid gap-2 md:grid-cols-2">
-                  <Input
-                    placeholder="Name"
-                    value={customParticipantForm.name}
-                    onChange={(event) =>
-                      setCustomParticipantForm((prev) => ({ ...prev, name: event.target.value }))
-                    }
-                  />
-                  <Select
-                    className=""
-                    value={customParticipantForm.kind}
-                    onChange={(event) =>
-                      setCustomParticipantForm((prev) => ({
-                        ...prev,
-                        kind: event.target.value as "pc" | "monster" | "npc",
-                      }))
-                    }
-                  >
-                    <option value="npc">NPC</option>
-                    <option value="monster">Monster</option>
-                    <option value="pc">PC</option>
-                  </Select>
-                </div>
-                <div className="grid gap-2 md:grid-cols-3">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="AC"
-                    value={customParticipantForm.ac}
-                    onChange={(event) =>
-                      setCustomParticipantForm((prev) => ({
-                        ...prev,
-                        ac: event.target.value.replace(/[^0-9]/g, ""),
-                      }))
-                    }
-                  />
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="HP"
-                    value={customParticipantForm.hp}
-                    onChange={(event) =>
-                      setCustomParticipantForm((prev) => ({
-                        ...prev,
-                        hp: event.target.value.replace(/[^0-9]/g, ""),
-                      }))
-                    }
-                  />
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="-?[0-9]*"
-                    placeholder="Init"
-                    value={customParticipantForm.initiative}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      if (!/^-?\d*$/.test(nextValue)) {
-                        return;
-                      }
-                      setCustomParticipantForm((prev) => ({ ...prev, initiative: nextValue }));
-                    }}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    className="px-3 py-1 text-xs"
-                    onClick={addCustomParticipantMidCombat}
-                    disabled={!customParticipantForm.name.trim()}
-                  >
-                    Add custom
-                  </Button>
-                </div>
-              </div>
-            )}
-        </DialogContent>
-      </Dialog>
 
       {/* End Encounter Dialog */}
       <Dialog open={isEndEncounterOpen} onOpenChange={setIsEndEncounterOpen}>
@@ -1719,11 +1415,6 @@ export default function EncounterPlayerPage() {
         />
       )}
 
-      <MonsterStatBlockDialog
-        monster={statBlockMonsterId ? monstersById.get(statBlockMonsterId) ?? null : null}
-        open={!!statBlockMonsterId}
-        onClose={() => setStatBlockMonsterId(null)}
-      />
     </PageShell>
   );
 }
