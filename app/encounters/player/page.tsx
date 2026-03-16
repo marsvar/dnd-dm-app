@@ -2,14 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
 import { MonsterStatBlockDialog } from "../../components/MonsterStatBlockDialog";
 import { QuickActionPopover } from "../../components/QuickActionPopover";
-import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Textarea, cn } from "../../components/ui";
+import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
 import { SRD_CONDITIONS, SRD_CONDITION_DESCRIPTIONS } from "../../lib/data/srd";
-import { suggestUniqueName } from "../../lib/engine/selectors";
 import { getPassivePerception } from "../../lib/engine/pcEngine";
 import { useAppStore } from "../../lib/store/appStore";
 import type { DeathSaves, Pc } from "../../lib/models/types";
@@ -32,20 +30,6 @@ export default function EncounterPlayerPage() {
   } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [damageAmount, setDamageAmount] = useState("");
-  const [localNotes, setLocalNotes] = useState("");
-  const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
-  const [addParticipantMode, setAddParticipantMode] = useState<"premade" | "custom">(
-    "premade"
-  );
-  const [premadeType, setPremadeType] = useState<"pc" | "monster">("monster");
-  const [premadePcSelectionId, setPremadePcSelectionId] = useState("");
-  const [customParticipantForm, setCustomParticipantForm] = useState({
-    name: "",
-    kind: "npc" as "pc" | "monster" | "npc",
-    ac: "",
-    hp: "",
-    initiative: "",
-  });
   const [expandedPrepIds, setExpandedPrepIds] = useState<Set<string>>(new Set());
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
   const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
@@ -145,22 +129,9 @@ export default function EncounterPlayerPage() {
     ? selectedEncounter.eventLog[selectedEncounter.eventLog.length - 1]
     : null;
 
-  const encounterNames = selectedEncounter?.participants.map((participant) => participant.name) ?? [];
-
   // combatMode is derived from the encounter event log (COMBAT_MODE_SET), not local state.
   // This means it survives page reloads and is part of the undoable event history.
   const combatMode = selectedEncounter?.combatMode === "live";
-
-  const getSaveValue = (key: "str" | "dex" | "con" | "int" | "wis" | "cha") => {
-    if (!activePc) {
-      return "--";
-    }
-    const mod = getAbilityMod(activePc.abilities[key]);
-    const prof = activePc.saveProficiencies[key] ? activePc.proficiencyBonus : 0;
-    const bonus = activePc.saveBonuses[key] ?? 0;
-    const total = mod + prof + bonus;
-    return total >= 0 ? `+${total}` : `${total}`;
-  };
 
   const rollInitiative = (
     encounterId: string,
@@ -231,12 +202,6 @@ export default function EncounterPlayerPage() {
     }
   }, [selectedEncounter?.activeParticipantId]);
 
-  // Sync local notes textarea when the active participant changes.
-  useEffect(() => {
-    setLocalNotes(activeParticipant?.notes ?? "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeParticipant?.id]);
-
   // Lock page scroll in combat mode — prevents the document from scrolling behind the fixed overlay.
   // Uses "clip" (not "hidden") to avoid scrollbar-width layout shifts.
   useEffect(() => {
@@ -250,6 +215,7 @@ export default function EncounterPlayerPage() {
 
   // Clear the pinned reference panel target whenever the active participant changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReferencePinnedId(null);
   }, [selectedEncounter?.activeParticipantId]);
 
@@ -330,14 +296,6 @@ export default function EncounterPlayerPage() {
     });
   };
 
-  const adjustRound = (delta: number) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    const nextRound = Math.max(1, selectedEncounter.round + delta);
-    dispatchEncounterEvent(selectedEncounter.id, { t: "ROUND_SET", value: nextRound });
-  };
-
   const formatEventSummary = (event: typeof lastEvent) => {
     if (!event) {
       return "No actions yet";
@@ -380,103 +338,6 @@ export default function EncounterPlayerPage() {
       default:
         return "Action recorded";
     }
-  };
-
-  const dispatchParticipantAdded = (participant: {
-    name: string;
-    kind: "pc" | "monster" | "npc";
-    refId?: string;
-    initiative: number | null;
-    ac: number | null;
-    maxHp: number | null;
-    currentHp: number | null;
-    tempHp: number | null;
-    conditions: string[];
-    notes?: string;
-    visual?: { imageUrl?: string; fallback: "initials" };
-    deathSaves: DeathSaves | null;
-  }) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "PARTICIPANT_ADDED",
-      participant,
-    });
-  };
-
-  const addCustomParticipantMidCombat = () => {
-    const name = customParticipantForm.name.trim();
-    if (!name) {
-      return;
-    }
-    const nextHp = customParticipantForm.hp === "" ? null : Number(customParticipantForm.hp);
-    dispatchParticipantAdded({
-      name,
-      kind: customParticipantForm.kind,
-      initiative:
-        customParticipantForm.initiative === ""
-          ? null
-          : Number(customParticipantForm.initiative),
-      ac: customParticipantForm.ac === "" ? null : Number(customParticipantForm.ac),
-      maxHp: nextHp,
-      currentHp: nextHp,
-      tempHp: 0,
-      conditions: [],
-      notes: "",
-      visual: { fallback: "initials" },
-      deathSaves: null,
-    });
-    setCustomParticipantForm({ name: "", kind: "npc", ac: "", hp: "", initiative: "" });
-    setIsAddParticipantOpen(false);
-  };
-
-  const addPremadeParticipantMidCombat = () => {
-    if (!premadePcSelectionId) {
-      return;
-    }
-    const pc = state.pcs.find((entry) => entry.id === premadePcSelectionId);
-    if (!pc) {
-      return;
-    }
-    dispatchParticipantAdded({
-      name: pc.name,
-      kind: "pc",
-      refId: pc.id,
-      initiative: null,
-      ac: pc.ac,
-      maxHp: pc.maxHp,
-      currentHp: pc.currentHp,
-      tempHp: pc.tempHp,
-      conditions: [...pc.conditions],
-      notes: pc.notes,
-      visual: pc.visual,
-      deathSaves: pc.deathSaves ?? null,
-    });
-    setPremadePcSelectionId("");
-    setIsAddParticipantOpen(false);
-  };
-
-  const addMonsterMidCombat = (monsterId: string) => {
-    const monster = state.monsters.find((entry) => entry.id === monsterId);
-    if (!monster) {
-      return;
-    }
-    dispatchParticipantAdded({
-      name: suggestUniqueName(monster.name, encounterNames),
-      kind: "monster",
-      refId: monster.id,
-      initiative: null,
-      ac: monster.ac,
-      maxHp: monster.hp,
-      currentHp: monster.hp,
-      tempHp: 0,
-      conditions: [],
-      notes: "",
-      visual: monster.visual,
-      deathSaves: null,
-    });
-    setIsAddParticipantOpen(false);
   };
 
   const handleRollMonsterInitiative = () => {
