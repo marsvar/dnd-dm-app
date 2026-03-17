@@ -28,6 +28,14 @@ export function diffPlayerView(prev: PlayerViewSnapshot, next: PlayerViewSnapsho
   const partyPcIds: string[] = [];
 
   const isPc = (participant: PlayerViewSnapshot["participants"][number]) => participant.kind === "pc";
+  const normalizeConditions = (conditions: string[] | undefined | null) =>
+    (conditions ?? []).slice().sort();
+  const conditionsEqual = (prevConditions: string[] | undefined | null, nextConditions: string[] | undefined | null) => {
+    const prevNormalized = normalizeConditions(prevConditions);
+    const nextNormalized = normalizeConditions(nextConditions);
+    if (prevNormalized.length !== nextNormalized.length) return false;
+    return prevNormalized.every((condition, index) => condition === nextNormalized[index]);
+  };
 
   const activeChanged =
     prev.active_encounter?.active_participant_id !== next.active_encounter?.active_participant_id;
@@ -46,7 +54,7 @@ export function diffPlayerView(prev: PlayerViewSnapshot, next: PlayerViewSnapsho
         (prevP.current_hp !== nextP.current_hp ||
           prevP.max_hp !== nextP.max_hp ||
           prevP.temp_hp !== nextP.temp_hp ||
-          JSON.stringify(prevP.conditions ?? []) !== JSON.stringify(nextP.conditions ?? []))) ||
+          !conditionsEqual(prevP.conditions, nextP.conditions))) ||
       (!isPc(prevP) && !isPc(nextP) && prevP.hp_tier !== nextP.hp_tier);
     if (changed) participantIds.push(nextP.id);
   }
@@ -68,9 +76,9 @@ export function diffPlayerView(prev: PlayerViewSnapshot, next: PlayerViewSnapsho
       prevPc.current_hp !== nextPc.current_hp ||
       prevPc.max_hp !== nextPc.max_hp ||
       prevPc.temp_hp !== nextPc.temp_hp ||
-      JSON.stringify(prevPc.conditions ?? []) !== JSON.stringify(nextPc.conditions ?? []);
+      !conditionsEqual(prevPc.conditions, nextPc.conditions);
     if (changed) partyPcIds.push(nextPc.pc_id);
   }
 
-  return { participantIds, partyPcIds };
+  return { participantIds: Array.from(new Set(participantIds)), partyPcIds: Array.from(new Set(partyPcIds)) };
 }

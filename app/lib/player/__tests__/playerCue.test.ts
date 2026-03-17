@@ -134,6 +134,168 @@ test("diffPlayerView flags newly added rows", () => {
   assert.deepEqual(diff.partyPcIds, ["pc-1"]);
 });
 
+test("diffPlayerView ignores condition order changes", () => {
+  const prev: PlayerViewSnapshot = {
+    participants: [
+      {
+        id: "p1",
+        name: "Sera",
+        kind: "pc",
+        initiative: 12,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: ["Poisoned", "Prone"],
+      },
+    ],
+    party: [
+      {
+        pc_id: "pc-1",
+        name: "Sera",
+        class_name: "Bard",
+        level: 5,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: ["Poisoned", "Prone"],
+      },
+    ],
+    active_encounter: null,
+  };
+  const next: PlayerViewSnapshot = {
+    participants: [
+      {
+        id: "p1",
+        name: "Sera",
+        kind: "pc",
+        initiative: 12,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: ["Prone", "Poisoned"],
+      },
+    ],
+    party: [
+      {
+        pc_id: "pc-1",
+        name: "Sera",
+        class_name: "Bard",
+        level: 5,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: ["Prone", "Poisoned"],
+      },
+    ],
+    active_encounter: null,
+  };
+
+  const diff = diffPlayerView(prev, next);
+  assert.deepEqual(diff.participantIds, []);
+  assert.deepEqual(diff.partyPcIds, []);
+});
+
+test("diffPlayerView de-duplicates participant and party ids", () => {
+  const prev: PlayerViewSnapshot = {
+    participants: [
+      {
+        id: "p1",
+        name: "Sera",
+        kind: "pc",
+        initiative: 12,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+      {
+        id: "p2",
+        name: "Tess",
+        kind: "pc",
+        initiative: 11,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+    ],
+    party: [
+      {
+        pc_id: "pc-1",
+        name: "Sera",
+        class_name: "Bard",
+        level: 5,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+    ],
+    active_encounter: {
+      id: "enc-1",
+      name: "Ambush",
+      round: 1,
+      active_participant_id: "p1",
+    },
+  };
+  const next: PlayerViewSnapshot = {
+    participants: [
+      {
+        id: "p1",
+        name: "Sera",
+        kind: "pc",
+        initiative: 12,
+        current_hp: 5,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+      {
+        id: "p2",
+        name: "Tess",
+        kind: "pc",
+        initiative: 11,
+        current_hp: 10,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: ["Prone"],
+      },
+    ],
+    party: [
+      {
+        pc_id: "pc-1",
+        name: "Sera",
+        class_name: "Bard",
+        level: 5,
+        current_hp: 9,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+      {
+        pc_id: "pc-1",
+        name: "Sera",
+        class_name: "Bard",
+        level: 5,
+        current_hp: 9,
+        max_hp: 20,
+        temp_hp: 0,
+        conditions: [],
+      },
+    ],
+    active_encounter: {
+      id: "enc-1",
+      name: "Ambush",
+      round: 1,
+      active_participant_id: "p2",
+    },
+  };
+
+  const diff = diffPlayerView(prev, next);
+  assert.deepEqual(diff.participantIds, ["p1", "p2"]);
+  assert.deepEqual(diff.partyPcIds, ["pc-1"]);
+});
+
 test("buildCueState sets expiry and clears when no diff", () => {
   const now = 1000;
   const diff = { participantIds: ["p1"], partyPcIds: [] };
