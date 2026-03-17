@@ -36,6 +36,28 @@
   --btn-heal-fg: #2d7a3a;
 }
 
+/* Combat phase surfaces — always dark regardless of OS color scheme */
+:root {
+  --combat-bg: #1a1814;
+  --combat-surface: #13110e;
+  --combat-surface-raised: #1e1c17;
+  --combat-border: #2e2a22;
+  --combat-border-raised: #3a3528;
+  --combat-fg: #e8dfc8;
+  --combat-fg-muted: #7a6a50;
+
+  --combat-active-row-bg: #1e1a0e;
+  --combat-active-border: #c8a020;
+  --combat-active-name: #f0e090;
+  --combat-active-avatar-ring: #c8a020;
+
+  --combat-live-bg: #7f1d1d;
+  --combat-live-fg: #fca5a5;
+  --combat-live-dot: #f87171;
+
+  --combat-round-number: #e8d080;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -62,6 +84,23 @@
   /* Condition */
   --color-condition-bg: var(--condition-bg);
   --color-condition-fg: var(--condition-fg);
+
+  /* Combat phase */
+  --color-combat-bg: var(--combat-bg);
+  --color-combat-surface: var(--combat-surface);
+  --color-combat-surface-raised: var(--combat-surface-raised);
+  --color-combat-border: var(--combat-border);
+  --color-combat-border-raised: var(--combat-border-raised);
+  --color-combat-fg: var(--combat-fg);
+  --color-combat-fg-muted: var(--combat-fg-muted);
+  --color-combat-active-row-bg: var(--combat-active-row-bg);
+  --color-combat-active-border: var(--combat-active-border);
+  --color-combat-active-name: var(--combat-active-name);
+  --color-combat-active-avatar-ring: var(--combat-active-avatar-ring);
+  --color-combat-live-bg: var(--combat-live-bg);
+  --color-combat-live-fg: var(--combat-live-fg);
+  --color-combat-live-dot: var(--combat-live-dot);
+  --color-combat-round-number: var(--combat-round-number);
 }
 
 @media (prefers-color-scheme: dark) {
