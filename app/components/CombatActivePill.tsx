@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAppStore } from "../lib/store/appStore";
 
 export const CombatActivePill = () => {
   const { state } = useAppStore();
+  const pathname = usePathname();
 
   const runningEncounter = state.encounters.find((e) => e.isRunning) ?? null;
-  if (!runningEncounter) return null;
+  if (!runningEncounter || pathname === "/encounters/player") return null;
 
   const activeParticipant = runningEncounter.participants.find(
     (p) => p.id === runningEncounter.activeParticipantId

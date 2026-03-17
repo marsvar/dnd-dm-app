@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function PrepPhase({ encounter }: Props) {
-  const { updateEncounterParticipant, dispatchEncounterEvent, startEncounter, state } = useAppStore();
+  const { dispatchEncounterEvent, startEncounter, state } = useAppStore();
   const pcs = state.pcs;
   const monsters = state.monsters;
 
@@ -37,9 +37,9 @@ export function PrepPhase({ encounter }: Props) {
       if (!p) return;
       const mod = getInitiativeMod(p, pcs, monsters);
       const d20 = Math.ceil(Math.random() * 20);
-      updateEncounterParticipant(encounter.id, participantId, { initiative: d20 + mod });
+      dispatchEncounterEvent(encounter.id, { t: "INITIATIVE_SET", participantId, value: d20 + mod });
     },
-    [encounter, pcs, monsters, updateEncounterParticipant]
+    [encounter, pcs, monsters, dispatchEncounterEvent]
   );
 
   const rollAll = useCallback(() => {
@@ -47,10 +47,10 @@ export function PrepPhase({ encounter }: Props) {
       if (p.initiative === null) {
         const mod = getInitiativeMod(p, pcs, monsters);
         const d20 = Math.ceil(Math.random() * 20);
-        updateEncounterParticipant(encounter.id, p.id, { initiative: d20 + mod });
+        dispatchEncounterEvent(encounter.id, { t: "INITIATIVE_SET", participantId: p.id, value: d20 + mod });
       }
     }
-  }, [encounter, pcs, monsters, updateEncounterParticipant]);
+  }, [encounter, pcs, monsters, dispatchEncounterEvent]);
 
   const commitInitiative = useCallback(
     (participantId: string) => {
@@ -58,7 +58,7 @@ export function PrepPhase({ encounter }: Props) {
       if (draft === undefined) return;
       const parsed = parseInt(draft, 10);
       if (!isNaN(parsed)) {
-        updateEncounterParticipant(encounter.id, participantId, { initiative: parsed });
+        dispatchEncounterEvent(encounter.id, { t: "INITIATIVE_SET", participantId, value: parsed });
       }
       setInitDrafts((prev) => {
         const next = { ...prev };
@@ -66,7 +66,7 @@ export function PrepPhase({ encounter }: Props) {
         return next;
       });
     },
-    [initDrafts, encounter.id, updateEncounterParticipant]
+    [initDrafts, encounter.id, dispatchEncounterEvent]
   );
 
   const handleLaunch = useCallback(() => {

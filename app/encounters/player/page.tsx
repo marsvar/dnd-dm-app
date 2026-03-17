@@ -108,7 +108,7 @@ export default function EncounterPlayerPage() {
         </DialogContent>
       </Dialog>
 
-      {selectedEncounter && selectedEncounter.combatMode === "live" ? (
+      {selectedEncounter && selectedEncounter.combatMode === "live" && selectedEncounter.status !== "completed" ? (
         <div
           className="flex flex-col overflow-hidden"
           style={{

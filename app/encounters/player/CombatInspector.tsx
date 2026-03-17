@@ -99,7 +99,7 @@ function HpControls({
           value={amount}
           placeholder="0"
           onChange={(e) => setAmount(e.target.value)}
-          className="flex-1 bg-transparent border-none outline-none font-mono font-bold text-sm text-center"
+          className="flex-1 bg-transparent border-none outline-none font-mono font-bold text-sm text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           style={{ color: "var(--combat-fg)" }}
         />
       </div>

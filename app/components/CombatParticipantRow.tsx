@@ -153,7 +153,7 @@ export function CombatParticipantRow({
             min={1}
             placeholder="0"
             onKeyDown={handleKeyDown}
-            className="w-14 text-center font-mono font-bold text-sm"
+            className="w-14 text-center font-mono font-bold text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             style={{
               backgroundColor: "var(--combat-surface-raised)",
               border: "1.5px solid var(--combat-active-border)",
