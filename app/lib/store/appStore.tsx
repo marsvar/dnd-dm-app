@@ -346,6 +346,13 @@ const normalizeState = (parsed: AppState): AppState => {
       if (!visual.imageUrl && seed?.visual?.imageUrl) {
         visual.imageUrl = seed.visual.imageUrl;
       }
+      // Migrate legacy seed monster image paths to the new public/monsters assets.
+      if (
+        visual.imageUrl?.startsWith("/images/monsters/") &&
+        seed?.visual?.imageUrl
+      ) {
+        visual.imageUrl = seed.visual.imageUrl;
+      }
       return { ...monster, visual };
     }),
     pcs: parsedPcs.map((pc) => ({
