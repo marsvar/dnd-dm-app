@@ -73,7 +73,7 @@ type ParticipantView = {
 export default function PlayerEncounterPage() {
   const { selectedPcId, campaignId } = usePlayerSession();
   const { state, dispatchEncounterEvent } = useAppStore();
-  const { payload: snapshot, cues } = useCampaignPlayerView(campaignId);
+  const { payload: snapshot, status, cues } = useCampaignPlayerView(campaignId);
   const encounters = state.encounters;
 
   // Find the running encounter scoped to the player's campaign (if set),
@@ -85,11 +85,25 @@ export default function PlayerEncounterPage() {
     return encounters.find((e) => e.isRunning) ?? null;
   }, [encounters, campaignId]);
 
-  const snapshotEncounter = snapshot?.active_encounter ?? null;
+  const hasLiveSnapshot = status === "live" && snapshot;
+  const snapshotEncounter = hasLiveSnapshot ? snapshot?.active_encounter ?? null : null;
+  const statusMessage =
+    status === "loading"
+      ? "Connecting to live updates…"
+      : status === "stale"
+        ? "Live updates may be outdated."
+        : status === "paused"
+          ? "Live updates paused."
+          : null;
 
-  if (snapshot && snapshotEncounter === null) {
+  if (status === "live" && snapshot && snapshotEncounter === null) {
     return (
       <PlayerShell>
+        {statusMessage && (
+          <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
+            {statusMessage}
+          </Card>
+        )}
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Swords size={40} className="mb-4 text-muted" strokeWidth={1.2} />
           <p className="text-lg font-semibold text-foreground">No active encounter</p>
@@ -104,6 +118,11 @@ export default function PlayerEncounterPage() {
   if (!snapshot && !localEncounter) {
     return (
       <PlayerShell>
+        {statusMessage && (
+          <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
+            {statusMessage}
+          </Card>
+        )}
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Swords size={40} className="mb-4 text-muted" strokeWidth={1.2} />
           <p className="text-lg font-semibold text-foreground">No active encounter</p>
@@ -121,7 +140,7 @@ export default function PlayerEncounterPage() {
     snapshotEncounter?.active_participant_id ?? localEncounter?.activeParticipantId ?? null;
 
   const participantViews = useMemo<ParticipantView[]>(() => {
-    if (snapshot) {
+    if (hasLiveSnapshot && snapshot) {
       const localById = new Map(
         (localEncounter?.participants ?? []).map((p) => [p.id, p])
       );
@@ -172,7 +191,7 @@ export default function PlayerEncounterPage() {
       notes: p.notes,
       deathSaves: p.deathSaves ?? null,
     }));
-  }, [snapshot, localEncounter]);
+  }, [hasLiveSnapshot, snapshot, localEncounter]);
 
   // Resolve player's own participant (match by refId → selectedPcId)
   const myParticipant = useMemo(() => {
@@ -212,6 +231,11 @@ export default function PlayerEncounterPage() {
 
   return (
     <PlayerShell>
+      {statusMessage && (
+        <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
+          {statusMessage}
+        </Card>
+      )}
       {/* Round / turn banner */}
       <Card
         className={cn(

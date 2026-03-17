@@ -18,12 +18,20 @@ import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 export default function PlayerPartyPage() {
   const { state } = useAppStore();
   const { selectedPcId, campaignId } = usePlayerSession();
-  const { payload: snapshot, cues } = useCampaignPlayerView(campaignId);
+  const { payload: snapshot, status, cues } = useCampaignPlayerView(campaignId);
+  const statusMessage =
+    status === "loading"
+      ? "Connecting to live updates…"
+      : status === "stale"
+        ? "Live updates may be outdated."
+        : status === "paused"
+          ? "Live updates paused."
+          : null;
 
   const pcsById = useMemo(() => new Map(state.pcs.map((pc) => [pc.id, pc])), [state.pcs]);
 
   const partyList = useMemo(() => {
-    if (!snapshot?.party) return state.pcs;
+    if (!(status === "live" && snapshot?.party)) return state.pcs;
     return snapshot.party.map((pc) => {
       const local = pcsById.get(pc.pc_id);
       return {
@@ -42,10 +50,15 @@ export default function PlayerPartyPage() {
         inspiration: local?.inspiration ?? false,
       };
     });
-  }, [snapshot, pcsById, state.pcs]);
+  }, [snapshot, pcsById, state.pcs, status]);
 
   return (
     <PlayerShell>
+      {statusMessage && (
+        <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
+          {statusMessage}
+        </Card>
+      )}
       <h2 className="mb-4 text-xl font-bold text-foreground">The Party</h2>
 
       {partyList.length === 0 ? (
