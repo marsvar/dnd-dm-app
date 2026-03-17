@@ -34,8 +34,8 @@ The DM has no way to export session logs or notes out of the app. There is no ex
 
 | Surface | Trigger | Data exported |
 |---------|---------|---------------|
-| **Log page** (`/log`) | "Export" button in page header | All `LogEntry[]` for active campaign |
-| **Notes page** (`/notes`) | "Export" button in page header | All `Note[]` for active campaign |
+| **Log page** (`/log`) | "Export" button in page header | All `LogEntry[]` for active campaign. Button is **disabled** (with tooltip "Select a campaign first") when no campaign is active. |
+| **Notes page** (`/notes`) | "Export" button in page header | All `Note[]` for active campaign. Same disabled behaviour. |
 | **Encounter card** (builder) | "Export" button on card footer (only shown when `encounter.eventLog.length > 0`) | Encounter + participants + `eventLog[]` + matching `LogEntry[]` by `encounterId` |
 | **Encounter runner** (`CombatHeader`) | "Export" button in header | Same as encounter card |
 
@@ -157,16 +157,16 @@ Renders an `outline` Button labeled "Export" with a `ChevronDown` icon. On click
 
 | File | Change |
 |------|--------|
-| `app/log/page.tsx` | Add `<ExportMenu>` to page header; wire `onMarkdown`/`onJSON` to formatters + `downloadFile` |
+| `app/log/page.tsx` | Add `<ExportMenu>` to page header; wire `onMarkdown`/`onJSON` to formatters + `downloadFile`; disable when no `activeCampaignId` |
 | `app/notes/page.tsx` | Same |
-| Encounter card component (builder) | Add `<ExportMenu>` to card footer; show only when `eventLog.length > 0` |
+| `app/encounters/builder/page.tsx` | Encounter cards are inline in this file. Add `<ExportMenu>` to each card's footer row; show only when `encounter.eventLog.length > 0` |
 | `app/encounters/player/CombatHeader.tsx` | Add `<ExportMenu>` to header |
 
 ---
 
 ## UI Placement Detail
 
-- **Log/Notes pages:** Right side of the `SectionTitle` row, `outline` button variant.
+- **Log/Notes pages:** `SectionTitle` has no right-side slot (accepts only `title` and `subtitle`). Do **not** modify `SectionTitle`. Instead, replace the bare `<SectionTitle>` call with a flex row: `<div className="flex items-start justify-between gap-4"><SectionTitle ... /><ExportMenu ... /></div>`. This is a local layout change at the call site only.
 - **Encounter card:** Alongside existing Launch/Resume button in card footer. Only visible when the encounter has been started (has events).
 - **CombatHeader:** Alongside undo button. Always visible during combat.
 
@@ -194,19 +194,28 @@ Translate `EncounterEvent` types to human-readable strings:
 | `DAMAGE_APPLIED` | `{name} took {amount} damage` |
 | `HEAL_APPLIED` | `{name} healed {amount} HP` |
 | `TEMP_HP_SET` | `{name} received {value} temp HP` |
-| `CONDITIONS_SET` | `{name} conditions: {list}` |
+| `CONDITIONS_SET` | `{name} conditions: {list \| "—"}` |
 | `NOTES_SET` | `{name} note updated` |
 | `ROUND_SET` | `Round {value}` |
-| `TURN_ADVANCED` | `Turn advanced` |
+| `TURN_ADVANCED` | Omitted (low signal) |
 | `COMBAT_STARTED` | `Combat started` |
 | `COMBAT_STOPPED` | `Combat stopped` |
-| `PARTICIPANT_ADDED` | `{name} joined` |
-| `PARTICIPANT_REMOVED` | `{name} removed` |
-| `ROLL_RECORDED` | Rendered in Rolls table separately |
+| `PARTICIPANT_ADDED` | `{event.participant.name} joined` |
+| `PARTICIPANT_REMOVED` | `{name} removed` (see note below) |
+| `INITIATIVE_SET` | Omitted (prep-phase detail, low recap value) |
+| `COMBAT_MODE_SET` | Omitted |
+| `DEATH_SAVES_SET` | `{name} death saves: {successes} successes, {failures} failures` |
+| `CONCENTRATION_SET` | `{name} is now concentrating` / `{name} dropped concentration` |
+| `ROLL_RECORDED` | Rendered in Rolls table separately (see below) |
 | `ENCOUNTER_COMPLETED` | `Encounter completed` |
-| Others | Omitted |
 
-Timestamps come from `event.timestamp` (ISO string). Participant names resolved by looking up `event.participantId` in `encounter.participants`.
+**Timestamps:** Each event has an `at` field (ISO string) — use `event.at`, not `event.timestamp`.
+
+**Participant name resolution:** Build a name-lookup map `Map<id, name>` by iterating the full `eventLog` first, collecting names from every `PARTICIPANT_ADDED` event (`event.participant.name`). For all other events that carry a `participantId`, look up the name in this map. Fall back to the participant's current entry in `encounter.participants` if the map lacks the id, then fall back to `"Unknown"`.
+
+**`PARTICIPANT_REMOVED` edge case:** Since the participant may no longer exist in `encounter.participants` at export time, the name-lookup map (built from `PARTICIPANT_ADDED` events) is the only reliable source. If the name is not found there, render `"(removed participant)"`.
+
+**`ROLL_RECORDED` actor:** Uses `event.actorId` (optional `string`). Look up the name from the participant map. If `actorId` is absent or not found, fall back to `"DM"` (the roll was recorded by the DM without a target participant).
 
 ---
 
@@ -231,6 +240,8 @@ Timestamps come from `event.timestamp` (ISO string). Participant names resolved 
 | `encounterToMarkdown` produces correct section headers and participant table | Unit |
 | `encounterToMarkdown` renders each event type correctly | Unit |
 | `encounterToMarkdown` with empty eventLog returns valid Markdown with empty sections | Unit |
+| `encounterToMarkdown` with `PARTICIPANT_REMOVED` where participant no longer in `encounter.participants` renders `"(removed participant)"` | Unit |
+| `encounterToMarkdown` with `ROLL_RECORDED` where `actorId` is absent renders `"DM"` in Rolls table | Unit |
 | `notesToMarkdown` with empty notes array returns valid header-only Markdown | Unit |
 | `logToMarkdown` separates auto vs manual entries | Unit |
 | `encounterToJSON` output is valid JSON matching the shape | Unit |
