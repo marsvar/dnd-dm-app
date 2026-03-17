@@ -41,6 +41,17 @@
   --coin-ep: #c8b400;
   --coin-gp: #d4a017;
   --coin-pp: #aaaaaa;
+
+  /* Difficulty tokens */
+  --surface-raised: #ebe5db;
+  --diff-easy: #2d6a4f;
+  --diff-easy-bg: #d8f3dc;
+  --diff-medium: #b5860d;
+  --diff-medium-bg: #fff3cd;
+  --diff-hard: #c0441c;
+  --diff-hard-bg: #fde8e1;
+  --diff-deadly: #7b1515;
+  --diff-deadly-bg: #f8d7da;
 }
 
 /* Combat phase surfaces — always dark regardless of OS color scheme */
@@ -108,6 +119,17 @@
   --color-combat-live-fg: var(--combat-live-fg);
   --color-combat-live-dot: var(--combat-live-dot);
   --color-combat-round-number: var(--combat-round-number);
+
+  /* Difficulty */
+  --color-surface-raised: var(--surface-raised);
+  --color-diff-easy: var(--diff-easy);
+  --color-diff-easy-bg: var(--diff-easy-bg);
+  --color-diff-medium: var(--diff-medium);
+  --color-diff-medium-bg: var(--diff-medium-bg);
+  --color-diff-hard: var(--diff-hard);
+  --color-diff-hard-bg: var(--diff-hard-bg);
+  --color-diff-deadly: var(--diff-deadly);
+  --color-diff-deadly-bg: var(--diff-deadly-bg);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -144,6 +166,17 @@
     --btn-damage-fg: #e87070;
     --btn-heal-bg: #1a3d23;
     --btn-heal-fg: #6fcf8a;
+
+    /* Difficulty tokens (dark) */
+    --surface-raised: #2e2520;
+    --diff-easy: #6fcf8a;
+    --diff-easy-bg: #1a3d23;
+    --diff-medium: #e8b84d;
+    --diff-medium-bg: #3a2e0a;
+    --diff-hard: #e87070;
+    --diff-hard-bg: #3a1515;
+    --diff-deadly: #c87070;
+    --diff-deadly-bg: #2a0a0a;
   }
 }
 
