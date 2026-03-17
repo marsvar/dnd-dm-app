@@ -17,10 +17,12 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../../lib/store/appStore";
 import { usePlayerSession } from "../../lib/store/usePlayerSession";
+import { useCampaignPlayerView } from "../../lib/player/useCampaignPlayerView";
+import { cueClass } from "../../lib/player/playerCue";
 import { PlayerShell } from "../../components/PlayerShell";
 import { Button, Card, HpBar, ConditionChip, Input, Pill, cn } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import type { DeathSaves, EncounterParticipant, Weapon } from "../../lib/models/types";
+import type { DeathSaves, ParticipantVisual, Weapon } from "../../lib/models/types";
 import { formatMod, getWeaponDiceFormula } from "../../lib/engine/pcEngine";
 import { Dices, Shield, Swords } from "lucide-react";
 
@@ -52,57 +54,40 @@ function hpTier(
   return { label: "Healthy", tone: "neutral" };
 }
 
+type ParticipantView = {
+  id: string;
+  name: string;
+  kind: "pc" | "monster" | "npc";
+  initiative: number | null;
+  currentHp: number | null;
+  maxHp: number | null;
+  tempHp: number | null;
+  conditions: string[];
+  hpTier?: "Healthy" | "Bloodied" | "Critical" | "Down" | "Unknown";
+  refId?: string;
+  visual?: ParticipantVisual;
+  notes?: string;
+  deathSaves: DeathSaves | null;
+};
+
 export default function PlayerEncounterPage() {
   const { selectedPcId, campaignId } = usePlayerSession();
   const { state, dispatchEncounterEvent } = useAppStore();
+  const { payload: snapshot, cues } = useCampaignPlayerView(campaignId);
   const encounters = state.encounters;
 
   // Find the running encounter scoped to the player's campaign (if set),
   // or fall back to any running encounter for backwards-compatibility.
-  const encounter = useMemo(() => {
+  const localEncounter = useMemo(() => {
     if (campaignId) {
       return encounters.find((e) => e.campaignId === campaignId && e.isRunning) ?? null;
     }
     return encounters.find((e) => e.isRunning) ?? null;
   }, [encounters, campaignId]);
 
-  // Resolve player's own participant (match by refId → selectedPcId)
-  const myParticipant = useMemo(() => {
-    if (!encounter || !selectedPcId) return null;
-    return (
-      encounter.participants.find(
-        (p) => p.kind === "pc" && p.refId === selectedPcId
-      ) ?? null
-    );
-  }, [encounter, selectedPcId]);
+  const snapshotEncounter = snapshot?.active_encounter ?? null;
 
-  // Canonical Pc record — source of weapon and spellcasting data
-  const myPc = useMemo(
-    () => state.pcs.find((p) => p.id === selectedPcId) ?? null,
-    [state.pcs, selectedPcId]
-  );
-
-  // Sorted initiative order
-  const sorted = useMemo(() => {
-    if (!encounter) return [];
-    return [...encounter.participants].sort((a, b) => {
-      if (a.initiative === null) return 1;
-      if (b.initiative === null) return -1;
-      return b.initiative - a.initiative;
-    });
-  }, [encounter]);
-
-  // Resolve active participant name
-  const activeName = useMemo(() => {
-    if (!encounter?.activeParticipantId) return null;
-    return (
-      encounter.participants.find(
-        (p) => p.id === encounter.activeParticipantId
-      )?.name ?? null
-    );
-  }, [encounter]);
-
-  if (!encounter) {
+  if (snapshot && snapshotEncounter === null) {
     return (
       <PlayerShell>
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -116,9 +101,112 @@ export default function PlayerEncounterPage() {
     );
   }
 
+  if (!snapshot && !localEncounter) {
+    return (
+      <PlayerShell>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <Swords size={40} className="mb-4 text-muted" strokeWidth={1.2} />
+          <p className="text-lg font-semibold text-foreground">No active encounter</p>
+          <p className="mt-1 text-sm text-muted">
+            Your DM hasn&apos;t started combat yet. Stand by.
+          </p>
+        </div>
+      </PlayerShell>
+    );
+  }
+
+  const encounterId = snapshotEncounter?.id ?? localEncounter?.id ?? null;
+  const encounterRound = snapshotEncounter?.round ?? localEncounter?.round ?? 1;
+  const activeParticipantId =
+    snapshotEncounter?.active_participant_id ?? localEncounter?.activeParticipantId ?? null;
+
+  const participantViews = useMemo<ParticipantView[]>(() => {
+    if (snapshot) {
+      const localById = new Map(
+        (localEncounter?.participants ?? []).map((p) => [p.id, p])
+      );
+      return (snapshot.participants ?? []).map((p) => {
+        const local = localById.get(p.id);
+        if (p.kind === "pc") {
+          return {
+            id: p.id,
+            name: p.name,
+            kind: "pc",
+            initiative: p.initiative,
+            currentHp: p.current_hp ?? null,
+            maxHp: p.max_hp ?? null,
+            tempHp: p.temp_hp ?? null,
+            conditions: p.conditions ?? [],
+            refId: local?.refId,
+            visual: local?.visual,
+            notes: local?.notes,
+            deathSaves: local?.deathSaves ?? null,
+          };
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          kind: p.kind,
+          initiative: p.initiative,
+          currentHp: null,
+          maxHp: null,
+          tempHp: null,
+          conditions: [],
+          hpTier: p.hp_tier,
+          visual: local?.visual,
+          deathSaves: null,
+        };
+      });
+    }
+    return (localEncounter?.participants ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      kind: p.kind,
+      initiative: p.initiative,
+      currentHp: p.currentHp ?? null,
+      maxHp: p.maxHp ?? null,
+      tempHp: p.tempHp ?? null,
+      conditions: p.conditions ?? [],
+      refId: p.refId,
+      visual: p.visual,
+      notes: p.notes,
+      deathSaves: p.deathSaves ?? null,
+    }));
+  }, [snapshot, localEncounter]);
+
+  // Resolve player's own participant (match by refId → selectedPcId)
+  const myParticipant = useMemo(() => {
+    if (!selectedPcId) return null;
+    return (
+      participantViews.find((p) => p.kind === "pc" && p.refId === selectedPcId) ??
+      null
+    );
+  }, [participantViews, selectedPcId]);
+
+  // Canonical Pc record — source of weapon and spellcasting data
+  const myPc = useMemo(
+    () => state.pcs.find((p) => p.id === selectedPcId) ?? null,
+    [state.pcs, selectedPcId]
+  );
+
+  // Sorted initiative order
+  const sorted = useMemo(() => {
+    if (participantViews.length === 0) return [];
+    return [...participantViews].sort((a, b) => {
+      if (a.initiative === null) return 1;
+      if (b.initiative === null) return -1;
+      return b.initiative - a.initiative;
+    });
+  }, [participantViews]);
+
+  // Resolve active participant name
+  const activeName = useMemo(() => {
+    if (!activeParticipantId) return null;
+    return participantViews.find((p) => p.id === activeParticipantId)?.name ?? null;
+  }, [participantViews, activeParticipantId]);
+
   const isMyTurn =
-    encounter.activeParticipantId !== null &&
-    myParticipant?.id === encounter.activeParticipantId;
+    activeParticipantId !== null && myParticipant?.id === activeParticipantId;
 
   const atZeroHp = myParticipant !== null && (myParticipant.currentHp ?? 1) <= 0;
 
@@ -132,7 +220,7 @@ export default function PlayerEncounterPage() {
         )}
       >
         <p className="text-xs uppercase tracking-[0.3em] text-muted">
-          Round {encounter.round}
+          Round {encounterRound}
         </p>
         {activeName ? (
           <p
@@ -207,8 +295,8 @@ export default function PlayerEncounterPage() {
                 myParticipant.deathSaves ?? { successes: 0, failures: 0, stable: false }
               }
               onSave={(ds) => {
-                if (!selectedPcId) return;
-                dispatchEncounterEvent(encounter.id, {
+                if (!selectedPcId || !encounterId) return;
+                dispatchEncounterEvent(encounterId, {
                   t: "DEATH_SAVES_SET",
                   participantId: myParticipant.id,
                   pcId: selectedPcId,
@@ -223,8 +311,9 @@ export default function PlayerEncounterPage() {
             <WeaponRollPanel
               weapons={myPc.weapons}
               onRoll={(atkRolls, atkTotal, dmgRolls, dmgTotal, weapon) => {
+                if (!encounterId) return;
                 // Attack roll
-                dispatchEncounterEvent(encounter.id, {
+                dispatchEncounterEvent(encounterId, {
                   t: "ROLL_RECORDED",
                   mode: "digital",
                   context: `${weapon.name} attack`,
@@ -237,7 +326,7 @@ export default function PlayerEncounterPage() {
                   weapon.damageBonus !== 0
                     ? `${weapon.damageDice}${weapon.damageBonus > 0 ? "+" : ""}${weapon.damageBonus}`
                     : weapon.damageDice;
-                dispatchEncounterEvent(encounter.id, {
+                dispatchEncounterEvent(encounterId, {
                   t: "ROLL_RECORDED",
                   mode: "digital",
                   context: `${weapon.name} damage`,
@@ -258,22 +347,24 @@ export default function PlayerEncounterPage() {
       <ul className="flex flex-col gap-2">
         {sorted.map((p) => {
           const isMine = p.id === myParticipant?.id;
-          const isActive = p.id === encounter.activeParticipantId;
+          const isActive = p.id === activeParticipantId;
+          const cueActive = cues.participantIds.includes(p.id);
           return (
             <InitiativeRow
               key={p.id}
               participant={p}
               isMine={isMine}
               isActive={isActive}
+              cueActive={cueActive}
             />
           );
         })}
       </ul>
 
       {/* Player roll section */}
-      {selectedPcId && (
+      {selectedPcId && encounterId && (
         <RollSection
-          encounterId={encounter.id}
+          encounterId={encounterId}
           actorId={selectedPcId}
           onDispatch={dispatchEncounterEvent}
         />
@@ -494,13 +585,22 @@ function InitiativeRow({
   participant: p,
   isMine,
   isActive,
+  cueActive,
 }: {
-  participant: EncounterParticipant;
+  participant: ParticipantView;
   isMine: boolean;
   isActive: boolean;
+  cueActive: boolean;
 }) {
   const showHp = p.kind === "pc";
-  const tier = hpTier(p.currentHp, p.maxHp);
+  const tier = p.hpTier
+    ? {
+        label: p.hpTier,
+        tone: (p.hpTier === "Critical" || p.hpTier === "Down" ? "accent" : "neutral") as
+          | "accent"
+          | "neutral",
+      }
+    : hpTier(p.currentHp, p.maxHp);
 
   return (
     <li
@@ -509,7 +609,8 @@ function InitiativeRow({
         isActive
           ? "border-accent bg-accent/5"
           : "border-black/10 bg-surface",
-        isMine && !isActive && "border-accent/30"
+        isMine && !isActive && "border-accent/30",
+        cueClass(cueActive)
       )}
     >
       {/* Initiative bubble */}
@@ -541,7 +642,7 @@ function InitiativeRow({
         </p>
         {p.conditions.length > 0 && (
           <div className="mt-0.5 flex flex-wrap gap-1">
-            {p.conditions.map((c) => (
+            {p.conditions.map((c: string) => (
               <span
                 key={c}
                 className="rounded-full px-1.5 py-0 text-[10px] font-semibold"
