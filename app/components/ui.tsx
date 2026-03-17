@@ -6,7 +6,7 @@ import * as RadixTooltip from "@radix-ui/react-tooltip";
 import * as RadixPopover from "@radix-ui/react-popover";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import {
+import React, {
   ButtonHTMLAttributes,
   ComponentPropsWithoutRef,
   HTMLAttributes,
@@ -86,21 +86,25 @@ export const LinkButton = ({
   </Link>
 );
 
-export const Input = ({ className, style, ...props }: InputHTMLAttributes<HTMLInputElement>) => (
-  <input
-    className={cn(
-      "w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-[var(--ring)]",
-      className
-    )}
-    style={{
-      color: "var(--foreground)",
-      WebkitTextFillColor: "var(--foreground)",
-      caretColor: "var(--foreground)",
-      ...style,
-    }}
-    {...props}
-  />
+export const Input = React.forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, style, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={cn(
+        "w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-[var(--ring)]",
+        className
+      )}
+      style={{
+        color: "var(--foreground)",
+        WebkitTextFillColor: "var(--foreground)",
+        caretColor: "var(--foreground)",
+        ...style,
+      }}
+      {...props}
+    />
+  )
 );
+Input.displayName = "Input";
 
 export const Textarea = ({
   className,
