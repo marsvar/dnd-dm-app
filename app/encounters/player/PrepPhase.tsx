@@ -15,9 +15,9 @@ interface Props {
 }
 
 export function PrepPhase({ encounter }: Props) {
-  const { updateEncounterParticipant, dispatchEncounterEvent, startEncounter } = useAppStore();
-  const pcs = useAppStore((s) => s.pcs);
-  const monsters = useAppStore((s) => s.monsters);
+  const { updateEncounterParticipant, dispatchEncounterEvent, startEncounter, state } = useAppStore();
+  const pcs = state.pcs;
+  const monsters = state.monsters;
 
   // Local draft values for initiative inputs (before committing on blur/enter)
   const [initDrafts, setInitDrafts] = useState<Record<string, string>>({});
@@ -91,10 +91,10 @@ export function PrepPhase({ encounter }: Props) {
       {/* Encounter header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <SectionTitle>{encounter.name}</SectionTitle>
+          <SectionTitle title={encounter.name} />
           {encounter.location && (
             <div className="mt-1">
-              <Pill tone="neutral">{encounter.location}</Pill>
+              <Pill tone="neutral" label={encounter.location} />
             </div>
           )}
         </div>

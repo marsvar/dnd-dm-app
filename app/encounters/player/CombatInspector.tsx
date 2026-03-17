@@ -130,9 +130,9 @@ function HpControls({
 }
 
 export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
-  const { dispatchEncounterEvent } = useAppStore();
-  const pcs = useAppStore((s) => s.pcs);
-  const monsters = useAppStore((s) => s.monsters);
+  const { dispatchEncounterEvent, state } = useAppStore();
+  const pcs = state.pcs;
+  const monsters = state.monsters;
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const participantId = pinnedId ?? encounter.activeParticipantId;
