@@ -21,17 +21,35 @@ ROLLBACK;
 -- ---------------------------------------------------------------------------
 -- Member: read succeeds, write fails
 BEGIN;
-set local role authenticated;
+SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<member-user-uuid>';
-select payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
-insert into public.campaign_player_view (campaign_id, payload)
-values ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}');
+DO $$
+BEGIN
+  PERFORM payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
+EXCEPTION WHEN others THEN
+  RAISE EXCEPTION 'Expected member read to succeed: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+  INSERT into public.campaign_player_view (campaign_id, payload)
+  VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}');
+  RAISE EXCEPTION 'Expected member write to fail';
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
+END $$;
 ROLLBACK;
 
 -- ---------------------------------------------------------------------------
 -- Non-member: read fails
 BEGIN;
-set local role authenticated;
+SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<nonmember-user-uuid>';
-select payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
+DO $$
+BEGIN
+  PERFORM payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
+  RAISE EXCEPTION 'Expected non-member read to fail';
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Non-member read failed as expected: %', SQLERRM;
+END $$;
 ROLLBACK;
