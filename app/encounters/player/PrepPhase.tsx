@@ -155,7 +155,7 @@ export function PrepPhase({ encounter }: Props) {
                     type="number"
                     value={displayVal}
                     placeholder="—"
-                    className="w-12 text-center font-mono font-bold text-sm"
+                    className="w-12 text-center font-mono font-bold text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     onChange={(e) =>
                       setInitDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))
                     }
