@@ -172,7 +172,7 @@ async function upsertPlayerView(
     campaign_id: campaignId,
     payload,
     updated_at: new Date().toISOString(),
-  });
+  }, { onConflict: "campaign_id" });
 }
 
 // ── localStorage keys ───────────────────────────────────────────────────────
@@ -444,6 +444,9 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playerViewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewOwnedIdsRef = useRef<Set<string> | null>(null);
+  const playerViewOwnedIdsFetchedAtRef = useRef<number | null>(null);
+  const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
   // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
@@ -573,6 +576,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   }, [state]);
 
   useEffect(() => {
+    if (syncing) return;
     const collectCampaignIds = () => {
       const ids = new Set<string>();
       if (state.activeCampaignId) ids.add(state.activeCampaignId);
@@ -595,13 +599,24 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           } = await supabase.auth.getUser();
           if (!user) return;
 
-          const { data: ownedCampaigns } = await supabase
-            .from("campaigns")
-            .select("id")
-            .eq("dm_user_id", user.id);
-          const ownedIds = new Set(
-            (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
-          );
+          const now = Date.now();
+          let ownedIds = playerViewOwnedIdsRef.current ?? new Set<string>();
+          const ownedFresh =
+            ownedIds &&
+            playerViewOwnedIdsFetchedAtRef.current !== null &&
+            now - playerViewOwnedIdsFetchedAtRef.current < PLAYER_VIEW_OWNED_IDS_TTL;
+
+          if (!ownedFresh) {
+            const { data: ownedCampaigns } = await supabase
+              .from("campaigns")
+              .select("id")
+              .eq("dm_user_id", user.id);
+            ownedIds = new Set(
+              (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
+            );
+            playerViewOwnedIdsRef.current = ownedIds;
+            playerViewOwnedIdsFetchedAtRef.current = now;
+          }
           if (!ownedIds.size) return;
 
           const campaignIds = collectCampaignIds().filter((id) => ownedIds.has(id));
@@ -628,7 +643,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         playerViewTimerRef.current = null;
       }
     };
-  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs]);
+  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs, syncing]);
 
   // React to changes made by the DM in another tab/window.
   // The `storage` event fires in every tab EXCEPT the one that wrote the change,
