@@ -10,6 +10,7 @@ import {
   FieldLabel,
   HpBar,
   Input,
+  Pill,
   Textarea,
 } from "./ui";
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -67,14 +68,6 @@ function makeUpdate(pc: Pc, onUpdate: (u: Partial<Pc>) => void) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatBadge({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex flex-col items-center rounded-lg border border-black/10 bg-surface px-2 py-1 min-w-[2.75rem]">
-      <span className="text-[0.6rem] uppercase tracking-widest text-muted leading-none">{label}</span>
-      <span className="font-mono text-sm font-bold text-foreground leading-tight mt-0.5">{value}</span>
-    </div>
-  );
-}
 
 function AbilityBlock({
   abilityKey,
@@ -782,11 +775,11 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
           </div>
         </div>
 
-        {/* Stat badges */}
+        {/* Stat pills */}
         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-          <StatBadge label="AC" value={pc.ac} />
-          <StatBadge label="Init" value={formatMod(initBonus)} />
-          <StatBadge label="PP" value={passivePerc} />
+          <Pill label={`AC ${pc.ac}`} tone="stat" />
+          <Pill label={`Init ${formatMod(initBonus)}`} tone="stat" />
+          <Pill label={`PP ${passivePerc}`} tone="stat" />
         </div>
 
         {/* Conditions (collapsed, max 2) */}

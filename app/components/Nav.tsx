@@ -168,10 +168,11 @@ export const Nav = () => {
               <Swords size={13} />
               Switch Role
             </button>
+            <span className="mx-0.5 h-5 w-px bg-black/10" aria-hidden />
             <button
               type="button"
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-muted/70 transition-colors hover:border-accent hover:text-accent"
             >
               <LogOut size={13} />
               {displayName ?? "Sign out"}

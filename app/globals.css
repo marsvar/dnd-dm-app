@@ -344,3 +344,16 @@ select option {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* Card: subtle rise on mount */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes cardEnter {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 1; transform: none; }
+  }
+}

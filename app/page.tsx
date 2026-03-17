@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Skull, Users, Swords, ScrollText } from "lucide-react";
 import { Button, Card, Dialog, DialogClose, DialogContent, DialogTitle, LinkButton, PageShell, Pill, SectionTitle } from "./components/ui";
 import { useAppStore } from "./lib/store/appStore";
 
@@ -43,23 +44,21 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg">Campaign Pulse</h3>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted">Monsters</p>
-              <p className="font-mono text-3xl font-semibold text-foreground">{state.monsters.length}</p>
-            </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted">Party</p>
-              <p className="font-mono text-3xl font-semibold text-foreground">{state.pcs.length}</p>
-            </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted">Encounters</p>
-              <p className="font-mono text-3xl font-semibold text-foreground">{state.encounters.length}</p>
-            </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted">Notes</p>
-              <p className="font-mono text-3xl font-semibold text-foreground">{state.notes.length}</p>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { label: "Monsters", value: state.monsters.length, Icon: Skull },
+              { label: "Party", value: state.pcs.length, Icon: Users },
+              { label: "Encounters", value: state.encounters.length, Icon: Swords },
+              { label: "Notes", value: state.notes.length, Icon: ScrollText },
+            ].map(({ label, value, Icon }) => (
+              <div key={label} className="rounded-xl border border-black/10 bg-surface-strong p-4">
+                <div className="flex items-center gap-1.5 text-muted">
+                  <Icon size={11} strokeWidth={2} />
+                  <p className="text-xs uppercase tracking-[0.3em]">{label}</p>
+                </div>
+                <p className="font-mono text-3xl font-semibold text-foreground mt-1">{value}</p>
+              </div>
+            ))}
           </div>
           <p className="text-sm text-muted">
             Add encounters and notes from the pages above. Everything here syncs
@@ -104,28 +103,28 @@ export default function Home() {
             </div>
           )}
           {/* Keep all existing Command Deck <Card> children below — do not remove them */}
-          <Card className="space-y-3">
+          <Card hoverable className="space-y-3">
             <h3 className="text-lg">Encounter Tracker</h3>
             <p className="text-sm text-muted">
               Build initiatives, track rounds, and keep HP and conditions in view.
             </p>
             <LinkButton href="/encounters">Open encounters</LinkButton>
           </Card>
-          <Card className="space-y-3">
+          <Card hoverable className="space-y-3">
             <h3 className="text-lg">Bestiary</h3>
             <p className="text-sm text-muted">
               Search SRD creatures or add your own monsters and NPCs.
             </p>
             <LinkButton href="/bestiary">Open bestiary</LinkButton>
           </Card>
-          <Card className="space-y-3">
+          <Card hoverable className="space-y-3">
             <h3 className="text-lg">Party Tracker</h3>
             <p className="text-sm text-muted">
               Track AC, HP, inspiration, and passive scores across the table.
             </p>
             <LinkButton href="/pcs">Open party</LinkButton>
           </Card>
-          <Card className="space-y-3">
+          <Card hoverable className="space-y-3">
             <h3 className="text-lg">Notes + Log</h3>
             <p className="text-sm text-muted">
               Capture session notes and quick logs of memorable turns.

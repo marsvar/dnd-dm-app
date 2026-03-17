@@ -37,10 +37,16 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
   <div className={cn("space-y-10", className)} {...props} />
 );
 
-export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
+export const Card = ({
+  className,
+  hoverable,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { hoverable?: boolean }) => (
   <div
     className={cn(
       "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-card)]",
+      "animate-[cardEnter_250ms_ease-out_both]",
+      hoverable && "transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-[var(--shadow-dialog)]",
       className
     )}
     {...props}
