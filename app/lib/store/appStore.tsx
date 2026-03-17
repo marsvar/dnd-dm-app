@@ -446,6 +446,8 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const playerViewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playerViewOwnedIdsRef = useRef<Set<string> | null>(null);
   const playerViewOwnedIdsFetchedAtRef = useRef<number | null>(null);
+  const playerViewOwnedUserIdRef = useRef<string | null>(null);
+  const playerViewCampaignCountRef = useRef<number>(0);
   const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
@@ -600,13 +602,26 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           if (!user) return;
 
           const now = Date.now();
+          if (playerViewOwnedUserIdRef.current !== user.id) {
+            playerViewOwnedUserIdRef.current = user.id;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
+          if (playerViewCampaignCountRef.current !== state.campaigns.length) {
+            playerViewCampaignCountRef.current = state.campaigns.length;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
           let ownedIds = playerViewOwnedIdsRef.current ?? new Set<string>();
           const ownedFresh =
             ownedIds &&
             playerViewOwnedIdsFetchedAtRef.current !== null &&
             now - playerViewOwnedIdsFetchedAtRef.current < PLAYER_VIEW_OWNED_IDS_TTL;
+          const needsRefreshForActive =
+            Boolean(state.activeCampaignId) &&
+            !ownedIds.has(state.activeCampaignId as string);
 
-          if (!ownedFresh) {
+          if (!ownedFresh || needsRefreshForActive) {
             const { data: ownedCampaigns } = await supabase
               .from("campaigns")
               .select("id")
@@ -643,7 +658,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         playerViewTimerRef.current = null;
       }
     };
-  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs, syncing]);
+  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs, state.campaigns, syncing]);
 
   // React to changes made by the DM in another tab/window.
   // The `storage` event fires in every tab EXCEPT the one that wrote the change,
