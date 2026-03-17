@@ -61,6 +61,58 @@ You are **not** expected to:
 
 ---
 
+## Design toolchain (required for all UI/UX work)
+
+Use these MCP tools in sequence before writing any new UI component or modifying an existing one:
+
+### 1. UI/UX Pro Max — workflow & interaction modeling
+Invoke `ui-ux-pro-max` skill **before** designing any new screen, panel, or interaction pattern.
+
+- Analyze the DM user workflow: what state are they in, what do they need next, how many clicks does it take
+- Model the optimal interaction: minimize clicks, maximize information density, surface critical state without requiring navigation
+- Apply the DM stress-test lens: *noisy table, 6 players, time pressure* — would this work?
+- Output: interaction model, layout rationale, information hierarchy
+
+### 2. 21st.dev — component variation generation
+Use the `mcp__magic__21st_magic_component_builder` and `mcp__magic__21st_magic_component_refiner` tools to generate and refine component variations.
+
+- Generate multiple UI variations before committing to one
+- Use for: participant rows, stat displays, quick-action panels, overlays, inspector-style sidebars
+- Evaluate each variation against: information density, single-glance readability, one-click primary action
+
+### 3. Context7 — implementation pattern verification
+Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` to verify best practices before implementation.
+
+- Look up current Next.js App Router patterns (server vs client components, data fetching, layout nesting)
+- Verify React patterns: correct hook usage, memoization, event handling
+- Check shadcn/ui component APIs and composition patterns when adopting shadcn-style primitives
+- Confirm Tailwind utility usage against current docs
+
+### Design inspiration sources
+When designing interaction patterns, draw from these reference products:
+
+| Product | What to borrow |
+|---|---|
+| **Notion** | Inline editing, property sidebars, block-level actions appearing on hover/focus |
+| **Linear** | Dense information rows, keyboard-first shortcuts, command palette patterns, status chips |
+| **Obsidian** | Panel layouts, inspector sidebars, minimal chrome letting content breathe |
+| **D&D Beyond** | Domain-specific stat display, ability score blocks, condition iconography |
+| **Figma inspector** | Right-panel property display: compact, scannable, grouped by concern |
+
+**Core principle:** Every DM interaction should feel like Figma's inspector — precise, dense, instantly readable, zero wasted space.
+
+### Design constraints (non-negotiable)
+- **Minimize clicks** — primary DM actions must be reachable in 1 click or 1 keypress from the active screen
+- **Maximize information** — show HP, conditions, initiative, and round without scrolling or expanding
+- **No hidden state** — never put required combat info behind hover, tooltip, or secondary tab
+- **Inline > modal** — prefer inline editing (Linear-style) over opening a dialog when the edit is simple (single value)
+- **Glanceable** — a DM must be able to read participant state in under 1 second at a glance
+
+### shadcn/ui patterns
+Use Context7 to verify shadcn/ui component composition patterns. When a component from the shadcn/ui ecosystem is the right primitive (e.g. Command palette, Popover, Tooltip, Sheet), adopt its API pattern and composition model — but implement it using the project's existing Radix UI primitives and design tokens rather than adding the full shadcn/ui package unless explicitly approved. Document any new Radix primitives added.
+
+---
+
 ## Product vision
 
 **This is a DM tool with an interactive player companion.** The DM view is primary. The player view gives each player PIN-gated access to their own character: full PC sheet editing, self-recorded rolls (digital d20 or manual entry), and a live encounter view during combat. Full real-time multi-device collaboration is deferred to a future phase (requires backend sync).
@@ -224,6 +276,9 @@ ROLL_RECORDED          (mode, context, formula, rawRolls, total)
 2. **Keyboard-first, mouse-optional** — core actions keyboard-accessible; focus states obvious; tab order follows DM intent
 3. **Stability over cleverness** — stable IDs, predictable ordering, no surprise reflows; no animations that obscure state
 4. **Explicit state** — HP, initiative, conditions are explicit values; avoid deeply derived state; favour simple reducers
+5. **Information density over whitespace** — pack critical combat state (HP, init, conditions, round) into every participant row; whitespace is a luxury the DM doesn't have mid-combat
+6. **Inline editing over dialogs** — single-value edits (initiative, HP delta, conditions) must be inline; reserve modals for multi-field forms only
+7. **Progressive disclosure** — secondary info (notes, full stat block) lives in a slide-in panel or expandable row, never a full-page navigation
 
 ---
 
@@ -336,6 +391,13 @@ Do not nest `Card` inside `Card`.
 - [ ] All interactive elements use shared primitives
 - [ ] No hardcoded hex/rgb values
 - [ ] No `dark:` Tailwind variants
+
+### New UI component or significant UX change
+- [ ] UI/UX Pro Max workflow analysis done — interaction model documented before coding
+- [ ] 21st.dev variations explored — at least 2 variations considered
+- [ ] Context7 patterns verified — Next.js, React, and any shadcn/ui APIs confirmed
+- [ ] Passes DM stress-test: 1-click primary action, glanceable state, no hidden required info
+- [ ] Click count for primary action ≤ 1 from active screen
 
 ---
 

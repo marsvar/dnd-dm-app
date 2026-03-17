@@ -110,7 +110,7 @@ export default function EncounterPlayerPage() {
 
       {selectedEncounter && selectedEncounter.combatMode === "live" && selectedEncounter.status !== "completed" ? (
         <div
-          className="flex flex-col overflow-hidden"
+          className="flex flex-col overflow-hidden animate-[combatEnter_200ms_ease-out_both]"
           style={{
             backgroundColor: "var(--combat-bg)",
             height: "calc(100vh - var(--nav-height))",

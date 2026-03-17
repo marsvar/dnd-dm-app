@@ -84,7 +84,7 @@ export const Nav = () => {
   };
 
   return (
-    <header className="fixed top-0 z-10 w-full h-16 border-b border-black/5 bg-surface/80 backdrop-blur">
+    <header className="fixed top-0 z-10 w-full h-16 border-b border-black/10 bg-surface/80 backdrop-blur">
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6 sm:px-8">
         {/* Wordmark */}
         <div className="flex items-center gap-3">
@@ -234,7 +234,7 @@ export const Nav = () => {
 
       {/* Mobile dropdown — DM only */}
       {open && activeRole === "dm" && (
-        <nav className="border-t border-black/5 bg-surface px-6 pb-4 pt-3 md:hidden">
+        <nav className="border-t border-black/10 bg-surface px-6 pb-4 pt-3 md:hidden">
           <ul className="flex flex-col gap-1">
             {/* Primary links */}
             {primaryLinks.map((link) => (
@@ -255,7 +255,7 @@ export const Nav = () => {
               </li>
             ))}
             {/* Visual separator */}
-            <li className="my-1 border-t border-black/5" aria-hidden />
+            <li className="my-1 border-t border-black/10" aria-hidden />
             {/* Secondary links */}
             {secondaryLinks.map((link) => (
               <li key={link.href}>
@@ -274,7 +274,7 @@ export const Nav = () => {
                 </Link>
               </li>
             ))}
-            <li className="mt-2 border-t border-black/5 pt-2">
+            <li className="mt-2 border-t border-black/10 pt-2">
               {dmUserId && (
                 <button
                   type="button"

@@ -40,7 +40,7 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)]",
+      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.08)]",
       className
     )}
     {...props}
@@ -260,7 +260,7 @@ export const HpBar = ({
         style={{ backgroundColor: bg }}
       >
         <div
-          className="h-full rounded-full transition-[width] duration-300"
+          className="h-full rounded-full transition-[width,background-color] duration-300"
           style={{ width: `${pct * 100}%`, backgroundColor: fg }}
         />
       </div>
@@ -450,11 +450,11 @@ export const DialogContent = ({
   fullHeight?: boolean;
 }) => (
   <RadixDialog.Portal>
-    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
+    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
     <RadixDialog.Content
       {...props}
       className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] outline-none",
+        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.08)] outline-none",
         fullHeight
           ? "bottom-8 flex flex-col overflow-hidden"
           : "max-h-[calc(100vh-4rem)] overflow-y-auto",

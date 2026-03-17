@@ -238,7 +238,8 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
 
   return (
     <div
-      className="flex flex-col overflow-y-auto h-full"
+      key={participantId}
+      className="flex flex-col overflow-y-auto h-full animate-[inspectorFadeIn_150ms_ease-out_both]"
       style={{ backgroundColor: "var(--combat-surface)" }}
     >
       {/* Sticky header */}

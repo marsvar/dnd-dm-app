@@ -2,7 +2,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import {
-  Button, Input, PageShell, Card, cn,
+  Button, Input, Card, cn,
 } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { TurnOrderPreview } from "../../components/TurnOrderPreview";
@@ -87,7 +87,7 @@ export function PrepPhase({ encounter }: Props) {
   }, [handleLaunch]);
 
   return (
-    <PageShell>
+    <div className="space-y-6">
       {/* PREP status badge */}
       <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-surface px-3 py-1.5 self-start">
         <span className="size-2 rounded-full bg-muted/30" />
@@ -184,7 +184,7 @@ export function PrepPhase({ encounter }: Props) {
 
       {/* Spacer for fixed footer */}
       <div className="h-20" />
-    </PageShell>
+    </div>
   );
 }
 

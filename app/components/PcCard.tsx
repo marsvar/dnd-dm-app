@@ -118,7 +118,7 @@ function ProfDot({
       aria-label={`Proficiency: ${state}. Click to cycle.`}
       className={cn(
         "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[0.75rem] leading-none transition",
-        state === "none" && "text-black/25 hover:text-black/40",
+        state === "none" && "text-muted hover:text-foreground",
         state === "proficient" && "text-accent",
         state === "expertise" && "text-accent"
       )}

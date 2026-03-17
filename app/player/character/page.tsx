@@ -72,11 +72,11 @@ const TABS: { id: Tab; label: string }[] = [
 
 /** Coin display metadata (in display order). */
 const COIN_META: { key: keyof Pc["currency"]; label: string; color: string }[] = [
-  { key: "cp", label: "CP", color: "#b87333" },
-  { key: "sp", label: "SP", color: "#9e9e9e" },
-  { key: "ep", label: "EP", color: "#c8b400" },
-  { key: "gp", label: "GP", color: "#d4a017" },
-  { key: "pp", label: "PP", color: "#aaaaaa" },
+  { key: "cp", label: "CP", color: "var(--coin-cp)" },
+  { key: "sp", label: "SP", color: "var(--coin-sp)" },
+  { key: "ep", label: "EP", color: "var(--coin-ep)" },
+  { key: "gp", label: "GP", color: "var(--coin-gp)" },
+  { key: "pp", label: "PP", color: "var(--coin-pp)" },
 ];
 
 // ---------------------------------------------------------------------------
