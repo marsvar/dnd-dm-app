@@ -2,7 +2,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import {
-  Button, Input, PageShell, SectionTitle, Card, Pill, cn,
+  Button, Input, PageShell, Card, cn,
 } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { TurnOrderPreview } from "../../components/TurnOrderPreview";
@@ -88,22 +88,12 @@ export function PrepPhase({ encounter }: Props) {
 
   return (
     <PageShell>
-      {/* Encounter header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <SectionTitle title={encounter.name} />
-          {encounter.location && (
-            <div className="mt-1">
-              <Pill tone="neutral" label={encounter.location} />
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0 rounded-lg border border-black/10 bg-surface px-3 py-1.5">
-          <span className="size-2 rounded-full bg-muted/30" />
-          <span className="text-xs font-bold uppercase tracking-widest text-muted">
-            PREP — Roll Initiative
-          </span>
-        </div>
+      {/* PREP status badge */}
+      <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-surface px-3 py-1.5 self-start">
+        <span className="size-2 rounded-full bg-muted/30" />
+        <span className="text-xs font-bold uppercase tracking-widest text-muted">
+          PREP — Roll Initiative
+        </span>
       </div>
 
       {/* Initiative table */}
