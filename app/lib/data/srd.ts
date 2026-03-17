@@ -8,7 +8,7 @@ import {
   DEFAULT_WEAPONS,
 } from "../engine/pcEngine";
 
-export const seedMonsters: Monster[] = [
+const seedMonstersBase: Monster[] = [
   {
     id: "mon-commoner",
     name: "Commoner",
@@ -1029,6 +1029,14 @@ export const seedMonsters: Monster[] = [
     visual: { fallback: "initials", imageUrl: "/images/monsters/lich.svg" },
   },
 ];
+
+export const seedMonsters: Monster[] = seedMonstersBase.map((monster) => ({
+  ...monster,
+  visual: {
+    fallback: monster.visual?.fallback ?? "initials",
+    imageUrl: `/monsters/${monster.id}.png`,
+  },
+}));
 
 export const seedPcs: Pc[] = [
   {
