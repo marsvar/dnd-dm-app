@@ -103,6 +103,7 @@ export default function EncounterBuilderPage() {
   const [partySelection, setPartySelection] = useState<Set<string>>(new Set());
 
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [variantSourceId, setVariantSourceId] = useState<string | null>(null);
   const [variantForm, setVariantForm] = useState({ name: "", ac: "", hp: "" });
   const [isMonsterPickerModalOpen, setIsMonsterPickerModalOpen] = useState(false);
@@ -213,6 +214,7 @@ export default function EncounterBuilderPage() {
   );
 
   const openEditOverlay = (encounterId: string) => {
+    setIsPickerOpen(false);
     const encounter = state.encounters.find((entry) => entry.id === encounterId);
     if (!encounter || encounter.isRunning) {
       return;
@@ -965,13 +967,31 @@ export default function EncounterBuilderPage() {
 
             <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
               <div className="min-h-0 space-y-3 rounded-2xl border border-black/10 bg-surface p-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted">Monster picker</p>
-                  <p className="mt-1 text-xs text-muted">Use popup picker to auto-add monsters to this encounter.</p>
+                {/* Collapsible monster picker — 21st.dev Collapse pattern */}
+                <button
+                  onClick={() => setIsPickerOpen((v) => !v)}
+                  className="flex w-full items-center justify-between rounded-lg border border-black/10 bg-surface-strong px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-muted transition-colors duration-150 hover:bg-[var(--surface-raised)]"
+                  disabled={builderLocked}
+                >
+                  <span>Add Monsters</span>
+                  <span style={{ display: "inline-block", transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)", transform: isPickerOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                </button>
+
+                <div style={{
+                  overflow: "hidden",
+                  maxHeight: isPickerOpen ? "20rem" : "0",
+                  opacity: isPickerOpen ? 1 : 0,
+                  transition: "max-height 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease",
+                }}>
+                  <div className="pt-1">
+                    <MonsterPicker
+                      monsters={state.monsters}
+                      disabled={builderLocked}
+                      onPickMonster={(monster) => requestAddMonster(monster.id)}
+                      listClassName="max-h-[10rem]"
+                    />
+                  </div>
                 </div>
-                <Button variant="outline" onClick={openEditMonsterPicker} disabled={builderLocked}>
-                  Open monster picker
-                </Button>
 
                 <div className="rounded-2xl border border-black/10 bg-surface-strong p-3">
                   <p className="text-xs uppercase tracking-[0.25em] text-muted">Quick custom</p>
