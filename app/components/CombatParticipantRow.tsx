@@ -1,7 +1,7 @@
 // app/components/CombatParticipantRow.tsx
 "use client";
 import { useRef, useEffect } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Brain } from "lucide-react";
 import { cn, Input } from "./ui";
 import { ParticipantAvatar } from "./ParticipantAvatar";
 import { ConditionChip } from "./ui";
@@ -26,12 +26,16 @@ interface Props {
   onHeal: (id: string, amount: number) => void;
   inspiration?: boolean;
   onToggleInspiration?: () => void;
+  concentrating?: boolean;
+  onToggleConcentration?: () => void;
+  concentrationNudge?: boolean;
 }
 
 export function CombatParticipantRow({
   participant: p, isActive, isExpanded,
   onExpand, onCollapse, onPin, onDamage, onHeal,
   inspiration, onToggleInspiration,
+  concentrating, onToggleConcentration, concentrationNudge,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +126,23 @@ export function CombatParticipantRow({
         </div>
       </div>
 
+      {/* Concentration flag — shows when handler is provided */}
+      {onToggleConcentration && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleConcentration(); }}
+          className="-m-1.5 p-1.5 shrink-0 rounded transition-all duration-150 active:scale-95"
+          style={{ opacity: concentrating ? 1 : 0.28 }}
+          aria-label={`${concentrating ? "Remove" : "Mark"} concentration for ${p.name}`}
+          title={concentrating ? "Remove concentration" : "Mark concentrating"}
+        >
+          <Brain
+            size={13}
+            style={{ color: concentrating ? "var(--combat-active-border)" : "var(--combat-fg-muted)" }}
+          />
+        </button>
+      )}
+
       {/* Inspiration pip — PC only, shows when handler is provided */}
       {onToggleInspiration && (
         <button
@@ -199,6 +220,15 @@ export function CombatParticipantRow({
           >
             Heal
           </button>
+        </div>
+      )}
+      {/* Concentration check nudge — flashes after damage is applied to a concentrating participant */}
+      {concentrationNudge && (
+        <div
+          className="absolute inset-x-0 bottom-0 px-3 py-1 text-[0.65rem] font-bold text-center rounded-b-lg animate-[nudgePulse_300ms_ease-out_both]"
+          style={{ backgroundColor: "var(--hp-low)", color: "#fff" }}
+        >
+          Concentration check!
         </div>
       )}
     </div>

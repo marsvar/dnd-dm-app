@@ -351,9 +351,20 @@ select option {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Concentration nudge: brief pulse on damage to a concentrating participant */
+@keyframes nudgePulse {
+  0%   { opacity: 0; transform: scaleY(0.6); }
+  60%  { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   @keyframes cardEnter {
     from { opacity: 1; transform: none; }
     to   { opacity: 1; transform: none; }
+  }
+  @keyframes nudgePulse {
+    from { opacity: 1; }
+    to   { opacity: 1; }
   }
 }

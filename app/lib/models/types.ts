@@ -236,6 +236,8 @@ export type EncounterParticipant = {
   visual?: ParticipantVisual;
   /** Mirrors Pc.deathSaves for PC participants at 0 HP; null for monsters/NPCs. */
   deathSaves: DeathSaves | null;
+  /** Whether this participant is maintaining a concentration spell. */
+  concentrating?: boolean;
 };
 
 export type Campaign = {

@@ -1,6 +1,6 @@
 // app/encounters/player/CombatParticipantList.tsx
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { CombatParticipantRow } from "../../components/CombatParticipantRow";
 import { useAppStore } from "../../lib/store/appStore";
 import type { Encounter } from "../../lib/models/types";
@@ -14,6 +14,10 @@ interface Props {
 export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: Props) {
   const { dispatchEncounterEvent, updatePc, state } = useAppStore();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  // concentrationNudgeId: participant currently showing the nudge banner.
+  // Auto-dismissed after 2.5s via timeout ref.
+  const [concentrationNudgeId, setConcentrationNudgeId] = useState<string | null>(null);
+  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapse expanded row when clicking on empty list area (outside any row)
   const handleListClick = () => setExpandedRowId(null);
@@ -24,8 +28,15 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
   }, [pinnedInspectorId, onPin]);
 
   const handleDamage = useCallback((participantId: string, amount: number) => {
+    // Check concentration BEFORE dispatching — state will change after event.
+    const participant = encounter.participants.find((p) => p.id === participantId);
     dispatchEncounterEvent(encounter.id, { t: "DAMAGE_APPLIED", participantId, amount });
-  }, [encounter.id, dispatchEncounterEvent]);
+    if (participant?.concentrating) {
+      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+      setConcentrationNudgeId(participantId);
+      nudgeTimer.current = setTimeout(() => setConcentrationNudgeId(null), 2500);
+    }
+  }, [encounter.id, encounter.participants, dispatchEncounterEvent]);
 
   const handleHeal = useCallback((participantId: string, amount: number) => {
     dispatchEncounterEvent(encounter.id, { t: "HEAL_APPLIED", participantId, amount });
@@ -72,6 +83,11 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
             onHeal={handleHeal}
             inspiration={pc?.inspiration}
             onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+            concentrating={p.concentrating}
+            onToggleConcentration={() => dispatchEncounterEvent(encounter.id, {
+              t: "CONCENTRATION_SET", participantId: p.id, value: !p.concentrating,
+            })}
+            concentrationNudge={concentrationNudgeId === p.id}
           />
         );
       })}
@@ -97,6 +113,11 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
                   onPin={handlePin} onDamage={handleDamage} onHeal={handleHeal}
                   inspiration={pc?.inspiration}
                   onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+                  concentrating={p.concentrating}
+                  onToggleConcentration={() => dispatchEncounterEvent(encounter.id, {
+                    t: "CONCENTRATION_SET", participantId: p.id, value: !p.concentrating,
+                  })}
+                  concentrationNudge={concentrationNudgeId === p.id}
                 />
               </div>
             );
