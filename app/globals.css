@@ -52,28 +52,26 @@
   --diff-hard-bg: #fde8e1;
   --diff-deadly: #7b1515;
   --diff-deadly-bg: #f8d7da;
-}
 
-/* Combat phase surfaces — always dark regardless of OS color scheme */
-:root {
-  --combat-bg: #1a1814;
-  --combat-surface: #13110e;
-  --combat-surface-raised: #1e1c17;
-  --combat-border: #2e2a22;
-  --combat-border-raised: #3a3528;
-  --combat-fg: #e8dfc8;
-  --combat-fg-muted: #7a6a50;
+  /* Combat phase — follows the app theme, no forced dark flip */
+  --combat-bg: #f7f3ee;
+  --combat-surface: #fffaf2;
+  --combat-surface-raised: #f1e8dc;
+  --combat-border: rgba(0, 0, 0, 0.1);
+  --combat-border-raised: rgba(0, 0, 0, 0.12);
+  --combat-fg: #1f1b16;
+  --combat-fg-muted: #5a4f45;
 
-  --combat-active-row-bg: #1e1a0e;
-  --combat-active-border: #c8a020;
-  --combat-active-name: #f0e090;
-  --combat-active-avatar-ring: #c8a020;
+  --combat-active-row-bg: #fff3cd;
+  --combat-active-border: #7a4b1e;
+  --combat-active-name: #513010;
+  --combat-active-avatar-ring: #7a4b1e;
 
-  --combat-live-bg: #7f1d1d;
-  --combat-live-fg: #fca5a5;
-  --combat-live-dot: #f87171;
+  --combat-live-bg: #fcd8d8;
+  --combat-live-fg: #b83030;
+  --combat-live-dot: #b83030;
 
-  --combat-round-number: #e8d080;
+  --combat-round-number: #513010;
 }
 
 @theme inline {
@@ -177,6 +175,26 @@
     --diff-hard-bg: #3a1515;
     --diff-deadly: #c87070;
     --diff-deadly-bg: #2a0a0a;
+
+    /* Combat phase (dark) */
+    --combat-bg: #0f0c09;
+    --combat-surface: #1a1410;
+    --combat-surface-raised: #241c16;
+    --combat-border: rgba(0, 0, 0, 0.3);
+    --combat-border-raised: rgba(0, 0, 0, 0.4);
+    --combat-fg: #f1e8dc;
+    --combat-fg-muted: #b5a495;
+
+    --combat-active-row-bg: #3a2e0a;
+    --combat-active-border: #e3b36f;
+    --combat-active-name: #f7d39b;
+    --combat-active-avatar-ring: #e3b36f;
+
+    --combat-live-bg: #3a1515;
+    --combat-live-fg: #e87070;
+    --combat-live-dot: #e87070;
+
+    --combat-round-number: #e3b36f;
   }
 }
 
