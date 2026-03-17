@@ -212,11 +212,11 @@ export default function EncounterBuilderPage() {
   );
 
   const openEditOverlay = (encounterId: string) => {
-    setIsPickerOpen(false);
     const encounter = state.encounters.find((entry) => entry.id === encounterId);
     if (!encounter || encounter.isRunning) {
       return;
     }
+    setIsPickerOpen(false);
     setEditingEncounterId(encounter.id);
     setEncounterDraft({
       name: encounter.name,
