@@ -7,6 +7,13 @@ import { useAppStore } from "../lib/store/appStore";
 import { DEFAULT_SKILL_PROFICIENCIES, getProficiencyBonus } from "../lib/engine/pcEngine";
 import type { Pc } from "../lib/models/types";
 
+function parseDndBeyondId(input: string): string | null {
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/\/characters?\/(\d+)/);
+  return match ? match[1] : null;
+}
+
 const EMPTY_FORM = {
   name: "",
   playerName: "",
@@ -21,6 +28,34 @@ const EMPTY_FORM = {
 export default function PartyPage() {
   const { state, addPc, updatePc, removePc } = useAppStore();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [dndInput, setDndInput] = useState("");
+  const [dndLoading, setDndLoading] = useState(false);
+  const [dndStatus, setDndStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleDndImport = async () => {
+    const characterId = parseDndBeyondId(dndInput);
+    if (!characterId) {
+      setDndStatus({ ok: false, msg: "Enter a character ID (e.g. 144304045) or a dndbeyond.com/characters/… URL." });
+      return;
+    }
+    setDndLoading(true);
+    setDndStatus(null);
+    try {
+      const res = await fetch(`/api/import-dndbeyond?id=${characterId}`);
+      const json = await res.json() as { pc?: Omit<Pc, "id">; error?: string };
+      if (!res.ok || json.error) {
+        setDndStatus({ ok: false, msg: json.error ?? `HTTP ${res.status}` });
+      } else if (json.pc) {
+        addPc(json.pc);
+        setDndInput("");
+        setDndStatus({ ok: true, msg: `Imported "${json.pc.name}" (${json.pc.className} ${json.pc.level})` });
+      }
+    } catch {
+      setDndStatus({ ok: false, msg: "Network error — is the dev server running?" });
+    } finally {
+      setDndLoading(false);
+    }
+  };
 
   const handleAdd = () => {
     if (!form.name.trim()) return;
@@ -91,6 +126,31 @@ export default function PartyPage() {
             onRemove={() => removePc(pc.id)}
           />
         ))}
+      </div>
+
+      <div className="mt-10 border-t border-black/10 pt-6">
+        <SectionTitle title="Import from D&D Beyond" />
+        <p className="mt-1 text-xs text-muted">
+          Paste a character ID or full dndbeyond.com/characters/… URL. The character must have public sharing enabled.
+        </p>
+        <div className="mt-3 flex gap-2 items-center">
+          <Input
+            className="max-w-xs"
+            placeholder="144304045 or dndbeyond.com/characters/…"
+            value={dndInput}
+            onChange={(e) => { setDndInput(e.target.value); setDndStatus(null); }}
+            onKeyDown={(e) => e.key === "Enter" && !dndLoading && handleDndImport()}
+            disabled={dndLoading}
+          />
+          <Button onClick={handleDndImport} disabled={dndLoading || !dndInput.trim()}>
+            {dndLoading ? "Importing…" : "Import"}
+          </Button>
+        </div>
+        {dndStatus && (
+          <p className={`mt-2 text-xs ${dndStatus.ok ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+            {dndStatus.msg}
+          </p>
+        )}
       </div>
 
       <div className="mt-10 border-t border-black/10 pt-6">
