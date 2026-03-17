@@ -29,7 +29,6 @@ import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEve
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
 import { buildPlayerViewSnapshot } from "../engine/playerViewProjection";
-import { collectPlayerSnapshotCampaignIds } from "./playerViewPublish";
 
 // ── Phase 2a: entity-table helpers ─────────────────────────────────────────
 // campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
@@ -574,6 +573,17 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   }, [state]);
 
   useEffect(() => {
+    const collectCampaignIds = () => {
+      const ids = new Set<string>();
+      if (state.activeCampaignId) ids.add(state.activeCampaignId);
+      for (const encounter of state.encounters) {
+        if (encounter.isRunning && encounter.campaignId) {
+          ids.add(encounter.campaignId);
+        }
+      }
+      return Array.from(ids);
+    };
+
     if (playerViewTimerRef.current) clearTimeout(playerViewTimerRef.current);
     playerViewTimerRef.current = setTimeout(() => {
       void (async () => {
@@ -594,9 +604,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           );
           if (!ownedIds.size) return;
 
-          const campaignIds = collectPlayerSnapshotCampaignIds(state).filter((id) =>
-            ownedIds.has(id)
-          );
+          const campaignIds = collectCampaignIds().filter((id) => ownedIds.has(id));
           if (!campaignIds.length) return;
 
           await Promise.all(
