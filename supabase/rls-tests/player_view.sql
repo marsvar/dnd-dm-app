@@ -24,6 +24,13 @@ ON CONFLICT (campaign_id) DO UPDATE SET payload = EXCLUDED.payload;
 SET LOCAL request.jwt.claim.sub = '<member-user-uuid>';
 
 DO $$
+BEGIN
+  IF current_setting('request.jwt.claim.sub', true) IS DISTINCT FROM '<member-user-uuid>' THEN
+    RAISE EXCEPTION 'Auth context not set for member test';
+  END IF;
+END $$;
+
+DO $$
 DECLARE c integer;
 BEGIN
   SELECT count(*) INTO c FROM public.campaign_player_view WHERE campaign_id = '<campaign-uuid>';
