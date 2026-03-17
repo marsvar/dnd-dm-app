@@ -757,50 +757,101 @@ export default function EncounterBuilderPage() {
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {completedEncounters.map((encounter) => {
+              const challenges = encounter.participants
+                .map((p) => getParticipantChallenge(p, monsterChallengeById))
+                .filter((c): c is string => c !== null);
+
+              const partyLevels = encounter.participants
+                .filter((p) => p.kind === "pc" && p.refId)
+                .map((p) => pcsById.get(p.refId!)?.level ?? null)
+                .filter((l): l is number => l !== null);
+
+              const difficulty = evaluateEncounterDifficulty(challenges, partyLevels);
+              const breakdown = getEncounterDifficultyBreakdown(challenges, partyLevels);
+              const totalCr = formatTotalChallenge(getTotalChallenge(challenges));
+              const noParty = partyLevels.length === 0;
+
               const previewParticipants = encounter.participants.slice(0, 6);
               const overflowCount = Math.max(0, encounter.participants.length - previewParticipants.length);
+
               return (
-                <Card key={encounter.id} className="opacity-75">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{encounter.name}</p>
-                      <p className="text-xs text-muted">{encounter.location || "Unknown location"}</p>
+                <div key={encounter.id} className="flex flex-col overflow-hidden rounded-2xl border border-black/10 bg-surface opacity-75 shadow-sm">
+                  {/* Card body */}
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{encounter.name}</p>
+                        <p className="text-xs text-muted">{encounter.location || "—"}</p>
+                      </div>
+                      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                        <Pill label="DONE" tone="neutral" />
+                        {difficulty === "Trivial" || difficulty === "No Party" ? (
+                          <Pill label={difficulty === "No Party" ? "—" : difficulty} tone="neutral" />
+                        ) : (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] ${difficultyPillClasses(difficulty)}`}>
+                            {difficulty}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <Pill label="DONE" tone="neutral" />
+
+                    <div className="mt-2 flex flex-wrap items-center gap-1 font-mono text-xs text-muted">
+                      <span>{encounter.participants.length} combatants</span>
+                      {challenges.length > 0 && (
+                        <>
+                          <span>·</span>
+                          <span>CR {totalCr}</span>
+                        </>
+                      )}
+                      {!noParty && breakdown.adjustedXp > 0 ? (
+                        <>
+                          <span>·</span>
+                          <span>{breakdown.adjustedXp.toLocaleString()} XP</span>
+                        </>
+                      ) : noParty && challenges.length > 0 ? (
+                        <>
+                          <span>·</span>
+                          <span>no party</span>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {previewParticipants.map((participant) => (
+                        <ParticipantAvatar
+                          key={participant.id}
+                          name={participant.name}
+                          visual={participant.visual}
+                          size="sm"
+                        />
+                      ))}
+                      {overflowCount > 0 && (
+                        <span className="text-xs text-muted">+{overflowCount}</span>
+                      )}
+                      {!encounter.participants.length && (
+                        <span className="text-xs italic text-muted">No participants yet</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {previewParticipants.map((participant) => (
-                      <ParticipantAvatar
-                        key={participant.id}
-                        name={participant.name}
-                        visual={participant.visual}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.65rem] font-semibold text-muted"
-                      />
-                    ))}
-                    {overflowCount > 0 ? (
-                      <span className="text-xs text-muted">+{overflowCount} more</span>
-                    ) : null}
-                    {!encounter.participants.length ? (
-                      <span className="text-xs text-muted">No participants</span>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 flex justify-end gap-2">
+                  {/* Footer toolbar — no Launch button, Remove always enabled */}
+                  <div className="flex items-center gap-2 border-t border-black/10 bg-surface-strong px-3 py-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => removeEncounter(encounter.id)}
+                      className="text-[var(--diff-hard)] hover:text-[var(--diff-deadly)]"
+                    >
+                      Remove
+                    </Button>
+                    <div className="flex-1" />
                     <Button
                       variant="outline"
                       onClick={() => openEditOverlay(encounter.id)}
                     >
                       Review
                     </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => removeEncounter(encounter.id)}
-                    >
-                      Remove
-                    </Button>
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
