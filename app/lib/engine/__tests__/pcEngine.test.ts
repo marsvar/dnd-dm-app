@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { Pc } from "../../models/types.ts";
 import {
+  applyLongRest,
+  applyShortRest,
   cycleSkillProficiency,
   DEFAULT_SKILL_PROFICIENCIES,
   formatMod,
@@ -296,5 +298,85 @@ describe("formatMod", () => {
   });
   it("keeps minus sign for negatives", () => {
     assert.equal(formatMod(-2), "-2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyLongRest
+// ---------------------------------------------------------------------------
+describe("applyLongRest", () => {
+  it("restores HP to max", () => {
+    const pc = makePC({ currentHp: 2, maxHp: 10 });
+    const result = applyLongRest(pc);
+    assert.equal(result.currentHp, 10);
+  });
+
+  it("clears death saves", () => {
+    const pc = makePC({ deathSaves: { successes: 2, failures: 1, stable: false } });
+    const result = applyLongRest(pc);
+    assert.deepEqual(result.deathSaves, { successes: 0, failures: 0, stable: false });
+  });
+
+  it("resets all spell slots to 0 used", () => {
+    const pc = makePC({
+      spellcasting: {
+        spellcastingAbility: "int",
+        spellSlots: [
+          { level: 1, total: 4, used: 3 },
+          { level: 2, total: 2, used: 2 },
+        ],
+      },
+    });
+    const result = applyLongRest(pc);
+    assert.equal(result.spellcasting?.spellSlots[0].used, 0);
+    assert.equal(result.spellcasting?.spellSlots[1].used, 0);
+  });
+
+  it("recharges all limited-use features", () => {
+    const pc = makePC({
+      features: [
+        { id: "f1", name: "Action Surge", description: "", uses: 0, maxUses: 1, recharge: "Short Rest" },
+        { id: "f2", name: "Lay on Hands", description: "", uses: 10, maxUses: 25, recharge: "Long Rest" },
+        { id: "f3", name: "Darkvision", description: "" },
+      ],
+    });
+    const result = applyLongRest(pc);
+    assert.equal(result.features![0].uses, 1); // Short Rest feature also recharged on long rest
+    assert.equal(result.features![1].uses, 25);
+    assert.equal(result.features![2].uses, undefined); // unlimited feature unchanged
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyShortRest
+// ---------------------------------------------------------------------------
+describe("applyShortRest", () => {
+  it("does not change HP", () => {
+    const pc = makePC({ currentHp: 3, maxHp: 10 });
+    const result = applyShortRest(pc);
+    assert.equal(result.currentHp, undefined);
+  });
+
+  it("recharges only Short Rest features", () => {
+    const pc = makePC({
+      features: [
+        { id: "f1", name: "Second Wind", description: "", uses: 0, maxUses: 1, recharge: "Short Rest" },
+        { id: "f2", name: "Lay on Hands", description: "", uses: 5, maxUses: 25, recharge: "Long Rest" },
+      ],
+    });
+    const result = applyShortRest(pc);
+    assert.equal(result.features![0].uses, 1);  // recharged
+    assert.equal(result.features![1].uses, 5);  // unchanged
+  });
+
+  it("does not change spell slots", () => {
+    const pc = makePC({
+      spellcasting: {
+        spellcastingAbility: "wis",
+        spellSlots: [{ level: 1, total: 2, used: 2 }],
+      },
+    });
+    const result = applyShortRest(pc);
+    assert.equal(result.spellcasting, undefined);
   });
 });
