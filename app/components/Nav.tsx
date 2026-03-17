@@ -123,7 +123,7 @@ export const Nav = () => {
                 className={cn(
                   "rounded-full px-3.5 py-1.5 font-semibold transition-colors",
                   isActivePath(link.href)
-                    ? "bg-foreground text-background ring-2 ring-accent/40"
+                    ? "bg-accent/15 text-accent ring-1 ring-accent/25"
                     : "bg-foreground/10 text-foreground hover:bg-foreground/15"
                 )}
               >
