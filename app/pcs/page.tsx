@@ -34,6 +34,8 @@ export default function PartyPage() {
   const [dndLoading, setDndLoading] = useState(false);
   const [dndStatus, setDndStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [persistImportedPc, setPersistImportedPc] = useState(true);
+  const [dndSyncing, setDndSyncing] = useState(false);
+  const [dndSyncStatus, setDndSyncStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const handleDndImport = async () => {
     const characterId = parseDndBeyondId(dndInput);
@@ -49,18 +51,72 @@ export default function PartyPage() {
       if (!res.ok || json.error) {
         setDndStatus({ ok: false, msg: json.error ?? `HTTP ${res.status}` });
       } else if (json.pc) {
-        addPc({ ...json.pc, persistToCloud: persistImportedPc });
+        addPc({
+          ...json.pc,
+          persistToCloud: persistImportedPc,
+          importSource: "dndbeyond",
+          importId: characterId,
+        });
         setDndInput("");
         setDndStatus({
           ok: true,
           msg: `Imported "${json.pc.name}" (${json.pc.className} ${json.pc.level})${persistImportedPc ? "" : " — local only"}`,
         });
+        setDndSyncStatus(null);
       }
     } catch {
       setDndStatus({ ok: false, msg: "Network error — is the dev server running?" });
     } finally {
       setDndLoading(false);
     }
+  };
+
+  const handleDndSyncAll = async () => {
+    const importedPcs = state.pcs.filter(
+      (pc) => pc.importSource === "dndbeyond" && pc.importId
+    );
+    if (importedPcs.length === 0) {
+      setDndSyncStatus({ ok: false, msg: "No D&D Beyond imports to sync." });
+      return;
+    }
+    setDndSyncing(true);
+    setDndSyncStatus(null);
+    const results = await Promise.allSettled(
+      importedPcs.map(async (pc) => {
+        const res = await fetch(`/api/import-dndbeyond?id=${pc.importId}`);
+        const json = (await res.json()) as { pc?: Omit<Pc, "id">; error?: string };
+        if (!res.ok || json.error || !json.pc) {
+          throw new Error(json.error ?? `HTTP ${res.status}`);
+        }
+        updatePc(pc.id, {
+          ...json.pc,
+          persistToCloud: pc.persistToCloud ?? true,
+          importSource: "dndbeyond",
+          importId: pc.importId,
+          pin: pc.pin ?? null,
+        });
+      })
+    );
+
+    const failures = results.filter((r) => r.status === "rejected");
+    const successCount = results.length - failures.length;
+    if (failures.length === 0) {
+      setDndSyncStatus({
+        ok: true,
+        msg: `Synced ${successCount} D&D Beyond character${successCount === 1 ? "" : "s"}.`,
+      });
+    } else {
+      const lastFailure = failures[0];
+      const errorMsg =
+        lastFailure.status === "rejected" && lastFailure.reason instanceof Error
+          ? lastFailure.reason.message
+          : "Unknown error";
+      setDndSyncStatus({
+        ok: false,
+        msg: `Synced ${successCount}/${results.length}. Last error: ${errorMsg}`,
+      });
+    }
+    setDndSyncing(false);
   };
 
   const handleAdd = () => {
@@ -248,9 +304,25 @@ export default function PartyPage() {
           />
           <span>Persist to database (sync across devices)</span>
         </label>
+        {state.pcs.some((pc) => pc.importSource === "dndbeyond" && pc.importId) && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              onClick={handleDndSyncAll}
+              disabled={dndSyncing || dndLoading}
+            >
+              {dndSyncing ? "Syncing…" : "Sync imported PCs"}
+            </Button>
+          </div>
+        )}
         {dndStatus && (
           <p className={`mt-2 text-xs ${dndStatus.ok ? "text-[var(--hp-full)]" : "text-[var(--hp-low)]"}`}>
             {dndStatus.msg}
+          </p>
+        )}
+        {dndSyncStatus && (
+          <p className={`mt-2 text-xs ${dndSyncStatus.ok ? "text-[var(--hp-full)]" : "text-[var(--hp-low)]"}`}>
+            {dndSyncStatus.msg}
           </p>
         )}
       </div>

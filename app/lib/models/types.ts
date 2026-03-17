@@ -211,6 +211,10 @@ export type Pc = {
   pin?: string | null;
   /** If false, keep the PC local-only (skip Supabase sync). */
   persistToCloud?: boolean;
+  /** Source marker for imported PCs. */
+  importSource?: "dndbeyond";
+  /** External source ID for syncing imports. */
+  importId?: string;
   // --- v8 ---
   deathSaves: DeathSaves;
   currency: Currency;
