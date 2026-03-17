@@ -9,47 +9,60 @@
 -- Campaign id: <campaign-uuid>
 
 -- ---------------------------------------------------------------------------
--- DM: write succeeds
+-- Seed snapshot as DM (committed so reads are meaningful)
 BEGIN;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<dm-user-uuid>';
-insert into public.campaign_player_view (campaign_id, payload)
-values ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}')
-on conflict (campaign_id) do update set payload = excluded.payload;
-ROLLBACK;
+INSERT INTO public.campaign_player_view (campaign_id, payload)
+VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}')
+ON CONFLICT (campaign_id) DO UPDATE SET payload = EXCLUDED.payload;
+COMMIT;
 
 -- ---------------------------------------------------------------------------
 -- Member: read succeeds, write fails
 BEGIN;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<member-user-uuid>';
+
 DO $$
+DECLARE c integer;
 BEGIN
-  PERFORM payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
-EXCEPTION WHEN others THEN
-  RAISE EXCEPTION 'Expected member read to succeed: %', SQLERRM;
+  SELECT count(*) INTO c FROM public.campaign_player_view WHERE campaign_id = '<campaign-uuid>';
+  IF c = 0 THEN
+    RAISE EXCEPTION 'Expected member read to succeed but saw zero rows';
+  END IF;
 END $$;
 
 DO $$
 BEGIN
-  INSERT into public.campaign_player_view (campaign_id, payload)
+  INSERT INTO public.campaign_player_view (campaign_id, payload)
   VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}');
-  RAISE EXCEPTION 'Expected member write to fail';
+  RAISE EXCEPTION 'Expected member write to fail but it succeeded';
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
 END $$;
 ROLLBACK;
 
 -- ---------------------------------------------------------------------------
--- Non-member: read fails
+-- Non-member: read fails (must not see the seeded row)
 BEGIN;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<nonmember-user-uuid>';
+
 DO $$
+DECLARE c integer;
 BEGIN
-  PERFORM payload from public.campaign_player_view where campaign_id = '<campaign-uuid>';
-  RAISE EXCEPTION 'Expected non-member read to fail';
-EXCEPTION WHEN others THEN
-  RAISE NOTICE 'Non-member read failed as expected: %', SQLERRM;
+  SELECT count(*) INTO c FROM public.campaign_player_view WHERE campaign_id = '<campaign-uuid>';
+  IF c > 0 THEN
+    RAISE EXCEPTION 'Expected non-member read to fail but saw % rows', c;
+  END IF;
 END $$;
 ROLLBACK;
+
+-- ---------------------------------------------------------------------------
+-- Cleanup snapshot as DM
+BEGIN;
+SET LOCAL role authenticated;
+SET LOCAL request.jwt.claim.sub = '<dm-user-uuid>';
+DELETE FROM public.campaign_player_view WHERE campaign_id = '<campaign-uuid>';
+COMMIT;
