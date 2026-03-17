@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, PageShell, SectionTitle } from "../components/ui";
+import { Button, Checkbox, Input, PageShell, SectionTitle } from "../components/ui";
 import { PcCard } from "../components/PcCard";
 import { useAppStore } from "../lib/store/appStore";
 import { DEFAULT_SKILL_PROFICIENCIES, getProficiencyBonus } from "../lib/engine/pcEngine";
@@ -33,6 +33,7 @@ export default function PartyPage() {
   const [dndInput, setDndInput] = useState("");
   const [dndLoading, setDndLoading] = useState(false);
   const [dndStatus, setDndStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [persistImportedPc, setPersistImportedPc] = useState(true);
 
   const handleDndImport = async () => {
     const characterId = parseDndBeyondId(dndInput);
@@ -48,9 +49,12 @@ export default function PartyPage() {
       if (!res.ok || json.error) {
         setDndStatus({ ok: false, msg: json.error ?? `HTTP ${res.status}` });
       } else if (json.pc) {
-        addPc(json.pc);
+        addPc({ ...json.pc, persistToCloud: persistImportedPc });
         setDndInput("");
-        setDndStatus({ ok: true, msg: `Imported "${json.pc.name}" (${json.pc.className} ${json.pc.level})` });
+        setDndStatus({
+          ok: true,
+          msg: `Imported "${json.pc.name}" (${json.pc.className} ${json.pc.level})${persistImportedPc ? "" : " — local only"}`,
+        });
       }
     } catch {
       setDndStatus({ ok: false, msg: "Network error — is the dev server running?" });
@@ -236,6 +240,14 @@ export default function PartyPage() {
             {dndLoading ? "Importing…" : "Import"}
           </Button>
         </div>
+        <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+          <Checkbox
+            checked={persistImportedPc}
+            onChange={(e) => setPersistImportedPc(e.target.checked)}
+            disabled={dndLoading}
+          />
+          <span>Persist to database (sync across devices)</span>
+        </label>
         {dndStatus && (
           <p className={`mt-2 text-xs ${dndStatus.ok ? "text-[var(--hp-full)]" : "text-[var(--hp-low)]"}`}>
             {dndStatus.msg}

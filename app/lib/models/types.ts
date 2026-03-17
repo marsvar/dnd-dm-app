@@ -209,6 +209,8 @@ export type Pc = {
   visual?: ParticipantVisual;
   /** Player access PIN. null/undefined = no player access configured. */
   pin?: string | null;
+  /** If false, keep the PC local-only (skip Supabase sync). */
+  persistToCloud?: boolean;
   // --- v8 ---
   deathSaves: DeathSaves;
   currency: Currency;

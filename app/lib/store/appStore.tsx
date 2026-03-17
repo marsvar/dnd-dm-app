@@ -274,6 +274,36 @@ const normalizeParticipant = (
   deathSaves: participant.deathSaves ?? null,
 });
 
+const shouldPersistPc = (pc: Pc) => pc.persistToCloud !== false;
+
+const getPersistableState = (state: AppState): AppState => {
+  const pcs = state.pcs.filter(shouldPersistPc);
+  if (pcs.length === state.pcs.length) return state;
+  const persistedPcIds = new Set(pcs.map((pc) => pc.id));
+  return {
+    ...state,
+    pcs,
+    campaignMembers: state.campaignMembers.filter((m) => persistedPcIds.has(m.pcId)),
+  };
+};
+
+const mergeLocalOnlyPcs = (remote: AppState, local: AppState): AppState => {
+  const localOnlyPcs = local.pcs.filter((pc) => pc.persistToCloud === false);
+  if (localOnlyPcs.length === 0) return remote;
+  const localOnlyIds = new Set(localOnlyPcs.map((pc) => pc.id));
+  return {
+    ...remote,
+    pcs: [
+      ...remote.pcs.filter((pc) => !localOnlyIds.has(pc.id)),
+      ...localOnlyPcs,
+    ],
+    campaignMembers: [
+      ...remote.campaignMembers.filter((m) => !localOnlyIds.has(m.pcId)),
+      ...local.campaignMembers.filter((m) => localOnlyIds.has(m.pcId)),
+    ],
+  };
+};
+
 const getEncounterBaseline = (encounter: Encounter): EncounterBaseline => {
   if (encounter.eventLogBase) {
     // Patch campaignId back in for baselines saved before this field was included
@@ -362,6 +392,8 @@ const normalizeState = (parsed: AppState): AppState => {
       skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
       // Migration: backfill pin for PCs saved before this field existed
       pin: pc.pin ?? null,
+      // Migration: default persistToCloud for older PCs
+      persistToCloud: pc.persistToCloud ?? true,
       // v8: backfill new required fields
       deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
       currency: pc.currency ?? { ...DEFAULT_CURRENCY },
@@ -452,8 +484,9 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           }
 
           if (!cancelled && remote) {
-            setState(remote);
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+            const merged = mergeLocalOnlyPcs(remote, loadState());
+            setState(merged);
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
           }
         } catch {
           // Remote fetch failure is non-fatal — continue with localStorage state.
@@ -508,15 +541,17 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        const persistableState = getPersistableState(state);
+
         // Sync full blob (existing behaviour — source of truth for encounters, notes, etc.)
         await supabase.from("user_app_state").upsert({
           user_id: user.id,
-          state: state as unknown as Record<string, unknown>,
+          state: persistableState as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
 
         // Also sync entity tables (campaigns, pcs, campaign_members).
-        await syncEntityTables(supabase, state, user.id);
+        await syncEntityTables(supabase, persistableState, user.id);
       } catch {
         // Sync failure is non-fatal — state is safely in localStorage.
       }
@@ -586,6 +621,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           ...pc,
           id: createId(),
           visual: normalizeVisual(pc.visual),
+          persistToCloud: pc.persistToCloud ?? true,
           deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
           currency: pc.currency ?? { ...DEFAULT_CURRENCY },
           features: pc.features ?? [...DEFAULT_FEATURES],
