@@ -41,7 +41,7 @@ EXCEPTION WHEN others THEN
   IF SQLSTATE = 'P0001' AND SQLERRM LIKE 'Expected member write to fail%' THEN
     RAISE;
   END IF;
-  IF SQLSTATE IN ('42501', '28000') THEN
+  IF SQLSTATE = '42501' THEN
     RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
   ELSE
     RAISE;
