@@ -1,6 +1,7 @@
 // app/components/CombatParticipantRow.tsx
 "use client";
 import { useRef, useEffect } from "react";
+import { Zap } from "lucide-react";
 import { cn, Input } from "./ui";
 import { ParticipantAvatar } from "./ParticipantAvatar";
 import { ConditionChip } from "./ui";
@@ -23,11 +24,14 @@ interface Props {
   onPin: (id: string) => void;      // avatar click — stopPropagation inside
   onDamage: (id: string, amount: number) => void;
   onHeal: (id: string, amount: number) => void;
+  inspiration?: boolean;
+  onToggleInspiration?: () => void;
 }
 
 export function CombatParticipantRow({
   participant: p, isActive, isExpanded,
   onExpand, onCollapse, onPin, onDamage, onHeal,
+  inspiration, onToggleInspiration,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +121,23 @@ export function CombatParticipantRow({
           )}
         </div>
       </div>
+
+      {/* Inspiration pip — PC only, shows when handler is provided */}
+      {onToggleInspiration && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleInspiration(); }}
+          className="-m-1.5 p-1.5 shrink-0 rounded transition-all duration-150 active:scale-95"
+          style={{ opacity: inspiration ? 1 : 0.28 }}
+          aria-label={`${inspiration ? "Remove" : "Grant"} inspiration for ${p.name}`}
+          title={inspiration ? "Remove inspiration" : "Grant inspiration"}
+        >
+          <Zap
+            size={13}
+            style={{ color: inspiration ? "var(--combat-active-border)" : "var(--combat-fg-muted)" }}
+          />
+        </button>
+      )}
 
       {/* COLLAPSED: stat cluster */}
       {!isExpanded && (

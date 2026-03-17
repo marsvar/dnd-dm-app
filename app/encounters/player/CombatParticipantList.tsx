@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: Props) {
-  const { dispatchEncounterEvent } = useAppStore();
+  const { dispatchEncounterEvent, updatePc, state } = useAppStore();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   // Collapse expanded row when clicking on empty list area (outside any row)
@@ -57,19 +57,24 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
         Active Combatants
       </div>
 
-      {active.map((p) => (
-        <CombatParticipantRow
-          key={p.id}
-          participant={p}
-          isActive={p.id === encounter.activeParticipantId}
-          isExpanded={expandedRowId === p.id}
-          onExpand={(id) => setExpandedRowId(id)}
-          onCollapse={() => setExpandedRowId(null)}
-          onPin={handlePin}
-          onDamage={handleDamage}
-          onHeal={handleHeal}
-        />
-      ))}
+      {active.map((p) => {
+        const pc = p.kind === "pc" && p.refId ? state.pcs.find((x) => x.id === p.refId) : null;
+        return (
+          <CombatParticipantRow
+            key={p.id}
+            participant={p}
+            isActive={p.id === encounter.activeParticipantId}
+            isExpanded={expandedRowId === p.id}
+            onExpand={(id) => setExpandedRowId(id)}
+            onCollapse={() => setExpandedRowId(null)}
+            onPin={handlePin}
+            onDamage={handleDamage}
+            onHeal={handleHeal}
+            inspiration={pc?.inspiration}
+            onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+          />
+        );
+      })}
 
       {downed.length > 0 && (
         <>
@@ -80,17 +85,22 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
             Downed
           </div>
           {/* Downed rows remain interactive — DM can heal them or pin to inspector for death saves */}
-          {downed.map((p) => (
-            <div key={p.id} className="opacity-50">
-              <CombatParticipantRow
-                participant={p}
-                isActive={false} isExpanded={expandedRowId === p.id}
-                onExpand={(id) => setExpandedRowId(id)}
-                onCollapse={() => setExpandedRowId(null)}
-                onPin={handlePin} onDamage={handleDamage} onHeal={handleHeal}
-              />
-            </div>
-          ))}
+          {downed.map((p) => {
+            const pc = p.kind === "pc" && p.refId ? state.pcs.find((x) => x.id === p.refId) : null;
+            return (
+              <div key={p.id} className="opacity-50">
+                <CombatParticipantRow
+                  participant={p}
+                  isActive={false} isExpanded={expandedRowId === p.id}
+                  onExpand={(id) => setExpandedRowId(id)}
+                  onCollapse={() => setExpandedRowId(null)}
+                  onPin={handlePin} onDamage={handleDamage} onHeal={handleHeal}
+                  inspiration={pc?.inspiration}
+                  onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+                />
+              </div>
+            );
+          })}
         </>
       )}
     </div>

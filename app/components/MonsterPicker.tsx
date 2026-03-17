@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Dices } from "lucide-react";
 import type { Monster } from "../lib/models/types";
 import { fuzzyIncludes, parseChallenge } from "../lib/engine/selectors";
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -9,6 +10,7 @@ import { Input, Select } from "./ui";
 type MonsterPickerProps = {
   monsters: Monster[];
   onPickMonster: (monster: Monster) => void;
+  onRollAdd?: (monster: Monster, rolledHp: number) => void;
   disabled?: boolean;
   emptyMessage?: string;
   listClassName?: string;
@@ -17,6 +19,7 @@ type MonsterPickerProps = {
 export function MonsterPicker({
   monsters,
   onPickMonster,
+  onRollAdd,
   disabled = false,
   emptyMessage = "No monsters match this search.",
   listClassName = "max-h-[20rem]",
@@ -146,44 +149,56 @@ export function MonsterPicker({
             {filteredMonsters.map((monster) => {
               const isHighlighted = effectiveHighlightedMonsterId === monster.id;
               return (
-                <button
-                  key={monster.id}
-                  className={`flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
-                    isHighlighted
-                      ? "border-accent bg-surface-strong"
-                      : "border-black/5 bg-surface"
-                  }`}
-                  onMouseEnter={() => setHighlightedMonsterId(monster.id)}
-                  onClick={() => onPickMonster(monster)}
-                  disabled={disabled}
-                >
-                  <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 flex items-center gap-2">
-                      <ParticipantAvatar
-                        name={monster.name}
-                        visual={monster.visual}
-                        className="h-7 w-7 rounded-md border border-black/10 bg-surface-strong object-cover text-center text-[0.6rem] font-semibold leading-[1.7rem] text-muted"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-[0.8rem] font-semibold leading-tight text-foreground">
-                          {monster.name}
-                        </p>
-                        <p className="truncate text-[0.68rem] leading-tight text-muted">
-                          {monster.size} {monster.type}
-                        </p>
+                <div key={monster.id} className="relative">
+                  <button
+                    className={`w-full flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
+                      isHighlighted
+                        ? "border-accent bg-surface-strong"
+                        : "border-black/5 bg-surface"
+                    }`}
+                    onMouseEnter={() => setHighlightedMonsterId(monster.id)}
+                    onClick={() => onPickMonster(monster)}
+                    disabled={disabled}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <ParticipantAvatar
+                          name={monster.name}
+                          visual={monster.visual}
+                          className="h-7 w-7 rounded-md border border-black/10 bg-surface-strong object-cover text-center text-[0.6rem] font-semibold leading-[1.7rem] text-muted"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-[0.8rem] font-semibold leading-tight text-foreground">
+                            {monster.name}
+                          </p>
+                          <p className="truncate text-[0.68rem] leading-tight text-muted">
+                            {monster.size} {monster.type}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 font-mono text-[0.6rem] leading-none text-foreground">
+                        CR {monster.challenge}
+                      </span>
+                    </div>
+                    <div className="mt-auto pt-2 pr-5">
+                      <div className="flex items-center gap-1.5 text-[0.65rem] text-muted">
+                        <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">AC {monster.ac}</span>
+                        <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">HP {monster.hp}</span>
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 font-mono text-[0.6rem] leading-none text-foreground">
-                      CR {monster.challenge}
-                    </span>
-                  </div>
-                  <div className="mt-auto pt-2">
-                    <div className="flex items-center gap-1.5 text-[0.65rem] text-muted">
-                      <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">AC {monster.ac}</span>
-                      <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">HP {monster.hp}</span>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  {onRollAdd && !disabled && (
+                    <button
+                      type="button"
+                      onClick={() => onRollAdd(monster, Math.round(monster.hp * (0.8 + Math.random() * 0.4)))}
+                      className="absolute bottom-2 right-2 p-1 rounded opacity-40 hover:opacity-100 transition-opacity duration-150 active:scale-95 text-accent"
+                      title={`Add ${monster.name} with rolled HP`}
+                      aria-label={`Add ${monster.name} with rolled HP`}
+                    >
+                      <Dices size={13} />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

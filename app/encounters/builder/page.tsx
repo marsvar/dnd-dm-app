@@ -17,6 +17,7 @@ import {
   type EncounterDifficulty,
 } from "../../lib/engine/selectors";
 import { useAppStore } from "../../lib/store/appStore";
+import type { Monster } from "../../lib/models/types";
 
 type DraftMonster = {
   draftId: string;
@@ -238,7 +239,7 @@ export default function EncounterBuilderPage() {
   };
 
 
-  const addMonsterToCreateDraft = (monsterId: string) => {
+  const addMonsterToCreateDraft = (monsterId: string, hpOverride?: number) => {
     const monster = monstersById.get(monsterId);
     if (!monster) {
       return;
@@ -256,7 +257,7 @@ export default function EncounterBuilderPage() {
           name: nextName,
           refId: monster.id,
           ac: monster.ac,
-          hp: monster.hp,
+          hp: hpOverride ?? monster.hp,
           visual: monster.visual,
         },
       ];
@@ -372,6 +373,24 @@ export default function EncounterBuilderPage() {
       ac: monster.ac,
       maxHp: monster.hp,
       currentHp: monster.hp,
+      tempHp: 0,
+      conditions: [],
+      visual: monster.visual,
+      deathSaves: null,
+    });
+  };
+
+  const handleRollAddMonster = (monster: Monster, rolledHp: number) => {
+    if (!selectedEncounter || builderLocked) return;
+    const name = suggestUniqueName(monster.name, encounterNames);
+    addEncounterParticipant(selectedEncounter.id, {
+      name,
+      kind: "monster",
+      refId: monster.id,
+      initiative: null,
+      ac: monster.ac,
+      maxHp: rolledHp,
+      currentHp: rolledHp,
       tempHp: 0,
       conditions: [],
       visual: monster.visual,
@@ -816,6 +835,7 @@ export default function EncounterBuilderPage() {
               <MonsterPicker
                 monsters={state.monsters}
                 onPickMonster={(monster) => addMonsterToCreateDraft(monster.id)}
+                onRollAdd={(monster, rolledHp) => addMonsterToCreateDraft(monster.id, rolledHp)}
                 listClassName="max-h-[12rem]"
               />
 
@@ -961,6 +981,7 @@ export default function EncounterBuilderPage() {
                       monsters={state.monsters}
                       disabled={builderLocked}
                       onPickMonster={(monster) => requestAddMonster(monster.id)}
+                      onRollAdd={handleRollAddMonster}
                       listClassName="max-h-[10rem]"
                     />
                   </div>

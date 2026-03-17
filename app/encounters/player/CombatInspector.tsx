@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
+import { Pin } from "lucide-react";
 import { ConditionChip, ConditionPicker, Textarea, HpBar } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { useAppStore } from "../../lib/store/appStore";
@@ -274,7 +275,7 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
             }}
             aria-label="Unpin participant"
           >
-            📌 Pinned
+            <Pin size={10} className="inline-block mr-0.5" />Pinned
           </button>
         )}
       </div>
