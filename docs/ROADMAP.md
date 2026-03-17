@@ -31,31 +31,20 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 - `StatBadge` in PcCard replaced with shared `Pill tone="stat"`.
 - Nav: sign-out separated with hairline divider; active primary pill changed from `bg-foreground` (black/white flash) to warm accent tint.
 
+### Combat completeness — second pass (2026-03-17)
+- **Concentration tracking** — Brain icon pip on combatant rows; toggle on/off per participant; "Concentration check!" nudge banner auto-appears for 2.5s when damage is applied to a concentrating participant.
+- **Short/long rest** — Rest Party section in campaign party view; Short Rest recharges short-rest class features; Long Rest restores HP, clears death saves, resets all spell slots and features; confirm dialog before applying.
+
+### Combat completeness — first pass (2026-03-17)
+- Death save tracking — 3-success/3-failure circle UI on downed PCs in combat inspector; `DEATH_SAVES_SET` event + reducer; toggle to correct accidental taps.
+- HP roll on monster add — dice icon in MonsterPicker adds with randomised HP (~±20% of average) instead of fixed average; works in both Create dialog and Edit builder.
+- Inspiration tracking in encounters — `Zap` pip on PC combatant rows; DM can grant/remove inspiration with one tap; writes to persistent PC state.
+- Pin emoji replaced with Lucide `Pin` icon in combat inspector (icon governance).
+
 ---
 
 ## Now
-*Why this order: the core combat loop is the primary trust surface. DMs will not rely on the app at the table until combat tracking is reliable, fast, and forgiving. UI polish, quick actions, and undo visibility must come before any new features.*
-
-### Live encounter improvements
-- Improve the encounter runner UI for focus and speed.
-  - Clearer active turn highlight and round controls.
-  - Quick actions for damage/heal, conditions, and notes.
-  - Visible undo and last action summary.
-
-### Small DM quality-of-life
-- **HP roll on monster add** — optional dice roll when adding a monster to an encounter instead of using average HP. Low effort, DMs expect it.
-- **Inspiration tracking in encounters** — `Pc.inspiration` already exists; surface it on combatant rows during combat.
-
----
-
-## Next
-*Why this order: player features and character sheet are only valuable once the DM core is stable and has been used in real sessions. Tactical features (death saves, concentration) are frequent enough in actual play to block real-session use.*
-
-### Combat completeness
-- **Death save tracking** — 3-success/3-failure UI on downed PCs; low effort, high impact.
-- **Concentration tracking** — flag on combatant + visible nudge when a concentrating caster takes damage.
-- **Encounter CR/XP summary** — difficulty indicator in the encounter builder; pure calculation, no new data model.
-- **Short/long rest** — resource reset mechanics between encounters.
+*Why this order: player section and character sheet are the next gaps — the DM view is largely complete; the player-facing experience needs attention.*
 
 ### Player section
 - Dedicated player area with party overview and character access.
@@ -84,12 +73,12 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 ### Tactical DM features
 - **Legendary actions / lair actions** — reminder system for boss monsters. Notes field covers this adequately for now.
 
-### Accounts and sharing
-- User login and profile management.
-  - Multiple campaigns and saved settings.
-- Player/DM collaboration features.
-  - Read-only player view during live combat.
-  - Real-time updates and shared rolls.
+### Accounts and sharing (Phase 2)
+- Player accounts and PC ownership — players claim their own character rather than using a shared link.
+- Campaign invites — DM invites players by email/link; removes per-PC PIN from the player flow.
+- Normalized Supabase schema (`campaigns`, `pcs`, `encounters`, `encounter_events`).
+- Supabase Realtime for live encounter state sync across devices.
+- Real-time updates and shared rolls.
 - **Before building this:** define what data is stored, where, and under what terms. GDPR applies to Norwegian users.
 
 ### Campaign depth
@@ -104,5 +93,4 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 ---
 
 ## Open questions
-- Best minimal auth approach without harming local-first workflows.
-- What data should be shareable to players during combat.
+- What data should be shareable to players during live combat (read-only encounter state, DM notes?).
