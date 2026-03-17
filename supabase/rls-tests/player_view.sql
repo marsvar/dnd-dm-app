@@ -38,11 +38,10 @@ BEGIN
   VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}');
   RAISE EXCEPTION 'Expected member write to fail but it succeeded';
 EXCEPTION WHEN others THEN
-  IF SQLSTATE = '42501' THEN
-    RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
-  ELSE
+  IF SQLSTATE = 'P0001' AND SQLERRM LIKE 'Expected member write to fail%' THEN
     RAISE;
   END IF;
+  RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
 END $$;
 
 -- ---------------------------------------------------------------------------
