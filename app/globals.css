@@ -119,6 +119,17 @@
   --color-combat-live-fg: var(--combat-live-fg);
   --color-combat-live-dot: var(--combat-live-dot);
   --color-combat-round-number: var(--combat-round-number);
+
+  /* Difficulty */
+  --color-surface-raised: var(--surface-raised);
+  --color-diff-easy: var(--diff-easy);
+  --color-diff-easy-bg: var(--diff-easy-bg);
+  --color-diff-medium: var(--diff-medium);
+  --color-diff-medium-bg: var(--diff-medium-bg);
+  --color-diff-hard: var(--diff-hard);
+  --color-diff-hard-bg: var(--diff-hard-bg);
+  --color-diff-deadly: var(--diff-deadly);
+  --color-diff-deadly-bg: var(--diff-deadly-bg);
 }
 
 @media (prefers-color-scheme: dark) {
