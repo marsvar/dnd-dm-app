@@ -93,7 +93,7 @@ export default function PartyPage() {
         ))}
       </div>
 
-      <div className="mt-10 border-t border-[var(--color-border)] pt-6">
+      <div className="mt-10 border-t border-black/10 pt-6">
         <SectionTitle title="Add PC" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mt-4">
           {(
@@ -109,7 +109,7 @@ export default function PartyPage() {
             ] as { key: keyof typeof EMPTY_FORM; label: string; type?: string }[]
           ).map(({ key, label, type }) => (
             <label key={key} className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">{label}</span>
+              <span className="text-xs text-muted">{label}</span>
               <Input
                 type={type ?? "text"}
                 value={form[key]}

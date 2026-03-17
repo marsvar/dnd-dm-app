@@ -612,10 +612,7 @@ export default function EncounterBuilderPage() {
             const previewParticipants = encounter.participants.slice(0, 6);
             const overflowCount = Math.max(0, encounter.participants.length - previewParticipants.length);
             return (
-              <div
-                key={encounter.id}
-                className="rounded-2xl border border-black/10 bg-surface p-4"
-              >
+              <Card key={encounter.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{encounter.name}</p>
@@ -660,7 +657,7 @@ export default function EncounterBuilderPage() {
                     Remove
                   </Button>
                 </div>
-              </div>
+              </Card>
             );
           })}
           {!activeEncounters.length ? (
@@ -675,17 +672,14 @@ export default function EncounterBuilderPage() {
 
       {completedEncounters.length > 0 && (
         <Card className="space-y-4">
-          <h3 className="text-lg font-semibold">Completed Encounters</h3>
+          <h3 className="text-lg">Completed Encounters</h3>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {completedEncounters.map((encounter) => {
               const previewParticipants = encounter.participants.slice(0, 6);
               const overflowCount = Math.max(0, encounter.participants.length - previewParticipants.length);
               return (
-                <div
-                  key={encounter.id}
-                  className="rounded-2xl border border-black/10 bg-surface p-4 opacity-75"
-                >
+                <Card key={encounter.id} className="opacity-75">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{encounter.name}</p>
@@ -725,7 +719,7 @@ export default function EncounterBuilderPage() {
                       Remove
                     </Button>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>

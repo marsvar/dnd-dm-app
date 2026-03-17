@@ -169,7 +169,7 @@ export default function BestiaryPage() {
 
       <Card className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h3 className="text-lg font-semibold">Search</h3>
+          <h3 className="text-lg">Search</h3>
           <div className="flex flex-wrap gap-2 sm:items-end">
             <label className="flex flex-col gap-1">
               <span className="text-xs uppercase tracking-[0.25em] text-muted">Query</span>
@@ -210,7 +210,7 @@ export default function BestiaryPage() {
       </Card>
 
       {monsters.length === 0 && (
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-muted">
           No monsters match your search.
         </p>
       )}
@@ -295,7 +295,7 @@ export default function BestiaryPage() {
             ] as { key: keyof typeof EMPTY_FORM; label: string; type?: string }[]
           ).map(({ key, label, type }) => (
             <label key={key} className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">{label}</span>
+              <span className="text-xs text-muted">{label}</span>
               <Input
                 type={type ?? "text"}
                 value={form[key]}
