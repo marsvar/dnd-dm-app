@@ -1,4 +1,4 @@
-import type { AppState, Monster, Pc } from "../models/types";
+import type { AppState, Monster, Pc } from "../models/types.ts";
 import {
   DEFAULT_CURRENCY,
   DEFAULT_DEATH_SAVES,
@@ -6,7 +6,7 @@ import {
   DEFAULT_SKILL_PROFICIENCIES,
   DEFAULT_SPELLCASTING,
   DEFAULT_WEAPONS,
-} from "../engine/pcEngine";
+} from "../engine/pcEngine.ts";
 
 const seedMonstersBase: Monster[] = [
   {
