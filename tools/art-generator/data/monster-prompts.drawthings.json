@@ -1,0 +1,152 @@
+[
+  {
+    "id": "mon-goblin",
+    "name": "Goblin",
+    "size": "small",
+    "type": "humanoid",
+    "tags": [
+      "goblin",
+      "scout"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Goblin, bust portrait, lean goblin with sharp ears and wiry frame, sallow green skin, light armor, travel-worn cloak, alert posture, narrowed eyes, slight smirk, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  },
+  {
+    "id": "mon-orc",
+    "name": "Orc",
+    "size": "medium",
+    "type": "humanoid",
+    "tags": [
+      "orc",
+      "brute"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Orc, bust portrait, broad-shouldered orc with tusks and heavy brow, heavy weapon, thick leather straps, grim expression, tense jaw, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  },
+  {
+    "id": "mon-skeleton",
+    "name": "Skeleton",
+    "size": "medium",
+    "type": "undead",
+    "tags": [
+      "skeleton",
+      "undead"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Skeleton, bust portrait, animated skeleton with exposed bone structure, hollow eye sockets, battle-ready stance, weapon held at the ready, distant stare, hollow presence, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  },
+  {
+    "id": "mon-zombie",
+    "name": "Zombie",
+    "size": "medium",
+    "type": "undead",
+    "tags": [
+      "zombie",
+      "undead"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Zombie, bust portrait, shambling undead with torn flesh and sunken eyes, heavy weapon, thick leather straps, wide eyes, bared teeth, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  },
+  {
+    "id": "mon-bugbear",
+    "name": "Bugbear",
+    "size": "medium",
+    "type": "humanoid",
+    "tags": [
+      "bugbear",
+      "warrior"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Bugbear, bust portrait, burly goblinoid with shaggy fur, heavy brow, long arms, battle-ready stance, weapon held at the ready, grim expression, tense jaw, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  }
+]

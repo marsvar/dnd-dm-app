@@ -1,0 +1,41 @@
+[
+  {
+    "id": "goblin-scout",
+    "name": "Goblin Scout",
+    "size": "small",
+    "type": "humanoid",
+    "tags": ["goblin", "scout", "leather"],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "warm torchlight",
+      "palette": ["olive", "rust", "charcoal"]
+    },
+    "prompt": "A wiry goblin scout with sharp ears and a chipped grin, wearing a patched leather jerkin and a small quiver, bust portrait, warm torchlight, painted fantasy illustration, high detail, neutral background",
+    "negativePrompt": "blurry, low detail, modern clothing, text",
+    "variants": 2,
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" },
+      "token": { "size": 512, "format": "png" }
+    }
+  },
+  {
+    "id": "skeletal-warrior",
+    "name": "Skeletal Warrior",
+    "size": "medium",
+    "type": "undead",
+    "tags": ["undead", "bones", "rusted armor"],
+    "framing": "full",
+    "style": {
+      "artStyle": "moody oil paint",
+      "lighting": "cold moonlight",
+      "palette": ["bone", "steel", "blue-gray"]
+    },
+    "prompt": "A skeletal warrior in rusted mail, carrying a chipped shield and iron sword, full figure, cold moonlight, moody oil paint style, misty background",
+    "negativePrompt": "cartoon, neon, text",
+    "output": {
+      "portrait": { "width": 896, "height": 1152, "format": "png" },
+      "token": { "size": 512, "format": "png" }
+    }
+  }
+]

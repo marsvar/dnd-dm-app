@@ -25,7 +25,7 @@ export const seedMonsters: Monster[] = [
     traits: ["Nimble Escape: can Disengage or Hide as a bonus action."],
     actions: ["Scimitar: +4 to hit, 5 ft., 1d6+2 slashing."],
     source: "SRD",
-    visual: { fallback: "initials", imageUrl: "/images/monsters/goblin.svg" },
+    visual: { fallback: "initials", imageUrl: "/monsters/mon-goblin.png" },
   },
   {
     id: "mon-orc",
@@ -43,7 +43,7 @@ export const seedMonsters: Monster[] = [
     traits: ["Aggressive: as a bonus action, move up to speed."],
     actions: ["Greataxe: +5 to hit, 5 ft., 1d12+3 slashing."],
     source: "SRD",
-    visual: { fallback: "initials", imageUrl: "/images/monsters/orc.svg" },
+    visual: { fallback: "initials", imageUrl: "/monsters/mon-orc.png" },
   },
   {
     id: "mon-wolf",
@@ -130,7 +130,7 @@ export const seedMonsters: Monster[] = [
     languages: "Understands languages it knew in life",
     actions: ["Shortsword: +4 to hit, 5 ft., 1d6+2 piercing."],
     source: "SRD",
-    visual: { fallback: "initials", imageUrl: "/images/monsters/skeleton.svg" },
+    visual: { fallback: "initials", imageUrl: "/monsters/mon-skeleton.png" },
   },
   {
     id: "mon-zombie",
@@ -148,7 +148,7 @@ export const seedMonsters: Monster[] = [
     traits: ["Undead Fortitude."],
     actions: ["Slam: +3 to hit, 5 ft., 1d6+1 bludgeoning."],
     source: "SRD",
-    visual: { fallback: "initials", imageUrl: "/images/monsters/zombie.svg" },
+    visual: { fallback: "initials", imageUrl: "/monsters/mon-zombie.png" },
   },
   {
     id: "mon-giant-rat",
@@ -309,7 +309,7 @@ export const seedMonsters: Monster[] = [
     traits: ["Brute.", "Surprise Attack."],
     actions: ["Morningstar: +4 to hit, 5 ft., 2d8+2 piercing."],
     source: "SRD",
-    visual: { fallback: "initials", imageUrl: "/images/monsters/bugbear.svg" },
+    visual: { fallback: "initials", imageUrl: "/monsters/mon-bugbear.png" },
   },
   {
     id: "mon-hobgoblin",

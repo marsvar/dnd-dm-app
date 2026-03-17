@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MonsterPrompt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "size",
+    "type",
+    "framing",
+    "style",
+    "prompt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Stable slug used for filenames"
+    },
+    "name": {
+      "type": "string"
+    },
+    "size": {
+      "type": "string",
+      "enum": ["tiny", "small", "medium", "large", "huge", "gargantuan"]
+    },
+    "type": {
+      "type": "string",
+      "description": "Creature type (beast, undead, etc.)"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "framing": {
+      "type": "string",
+      "enum": ["headshot", "bust", "full"]
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artStyle", "lighting"],
+      "properties": {
+        "artStyle": { "type": "string" },
+        "lighting": { "type": "string" },
+        "palette": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Full prompt text passed to the generator"
+    },
+    "negativePrompt": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "variants": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 1
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "portrait": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "integer", "minimum": 256 },
+            "height": { "type": "integer", "minimum": 256 },
+            "format": { "type": "string", "enum": ["png", "webp"] }
+          }
+        },
+        "token": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "size": { "type": "integer", "minimum": 128 },
+            "format": { "type": "string", "enum": ["png", "webp"] }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

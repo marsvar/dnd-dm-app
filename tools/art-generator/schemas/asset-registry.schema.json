@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AssetRegistry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registryId", "createdAt", "items"],
+  "properties": {
+    "registryId": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "portraitManifest": { "type": "string" },
+        "tokenManifest": { "type": "string" }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "monsterId",
+          "portraitPath",
+          "tokenPath",
+          "generationStatus",
+          "approvalStatus"
+        ],
+        "properties": {
+          "monsterId": { "type": "string" },
+          "portraitPath": { "type": "string" },
+          "tokenPath": { "type": "string" },
+          "generationStatus": {
+            "type": "string",
+            "enum": ["pending", "generated", "failed"]
+          },
+          "approvalStatus": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"]
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

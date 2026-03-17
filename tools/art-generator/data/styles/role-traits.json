@@ -1,0 +1,8 @@
+{
+  "scout": "light armor, travel-worn cloak, alert posture",
+  "warrior": "battle-ready stance, weapon held at the ready",
+  "archer": "bow at the shoulder, quiver visible",
+  "shaman": "ritual trinkets, faint glow from charms",
+  "brute": "heavy weapon, thick leather straps",
+  "spellcaster": "arcane focus in hand, subtle magical haze"
+}

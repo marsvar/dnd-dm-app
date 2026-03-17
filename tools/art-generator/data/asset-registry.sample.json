@@ -1,0 +1,25 @@
+{
+  "registryId": "registry-sample",
+  "createdAt": "2026-03-17T00:00:00.000Z",
+  "source": {
+    "portraitManifest": "tools/art-generator/output/manifests/portrait-manifest.json",
+    "tokenManifest": "tools/art-generator/output/manifests/token-manifest.json"
+  },
+  "items": [
+    {
+      "monsterId": "goblin-scout",
+      "portraitPath": "tools/art-generator/output/portraits/goblin-scout.png",
+      "tokenPath": "tools/art-generator/output/tokens/goblin-scout-token.png",
+      "generationStatus": "generated",
+      "approvalStatus": "pending",
+      "notes": "Looks good, needs final review"
+    },
+    {
+      "monsterId": "skeletal-warrior",
+      "portraitPath": "tools/art-generator/output/portraits/skeletal-warrior.png",
+      "tokenPath": "tools/art-generator/output/tokens/skeletal-warrior-token.png",
+      "generationStatus": "pending",
+      "approvalStatus": "pending"
+    }
+  ]
+}

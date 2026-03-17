@@ -1,0 +1,72 @@
+[
+  {
+    "monsterId": "mon-goblin",
+    "name": "Goblin",
+    "size": "small",
+    "type": "humanoid",
+    "species": "goblin",
+    "role": "scout",
+    "mood": "cunning",
+    "framing": "bust",
+    "tags": ["goblin", "scout"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  },
+  {
+    "monsterId": "mon-orc",
+    "name": "Orc",
+    "size": "medium",
+    "type": "humanoid",
+    "species": "orc",
+    "role": "brute",
+    "mood": "menacing",
+    "framing": "bust",
+    "tags": ["orc", "brute"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  },
+  {
+    "monsterId": "mon-skeleton",
+    "name": "Skeleton",
+    "size": "medium",
+    "type": "undead",
+    "species": "skeleton",
+    "role": "warrior",
+    "mood": "haunted",
+    "framing": "bust",
+    "tags": ["skeleton", "undead"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  },
+  {
+    "monsterId": "mon-zombie",
+    "name": "Zombie",
+    "size": "medium",
+    "type": "undead",
+    "species": "zombie",
+    "role": "brute",
+    "mood": "feral",
+    "framing": "bust",
+    "tags": ["zombie", "undead"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  },
+  {
+    "monsterId": "mon-bugbear",
+    "name": "Bugbear",
+    "size": "medium",
+    "type": "humanoid",
+    "species": "bugbear",
+    "role": "warrior",
+    "mood": "menacing",
+    "framing": "bust",
+    "tags": ["bugbear", "warrior"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  }
+]
