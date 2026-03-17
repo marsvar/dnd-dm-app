@@ -4,13 +4,13 @@ A DM-first tool for running live D&D 5e sessions (theatre-of-the-mind). Built fo
 
 ## What it does
 
-- **Campaigns** — organise sessions, track party members
-- **Encounter builder** — add monsters from the SRD bestiary and PCs to encounters
-- **Combat tracker** — event-driven initiative order, HP tracking, conditions, undo
+- **Campaigns** — organise sessions, track party members across encounters
+- **Encounter builder** — assemble encounters from the SRD bestiary; add monsters with average or rolled HP
+- **Combat tracker** — event-driven initiative order, HP tracking, conditions, death saves, inspiration, undo
 - **Notes & log** — session notes and an auto-generated combat event log
-- **Player companion** — read-only encounter view for players (DM-gated)
+- **Player companion** — PIN-gated player access with full character sheet editing, skill/save/ability display, and a live encounter view during combat
 
-All data is stored locally in your browser (`localStorage`). No account required.
+All game data is stored locally in your browser (`localStorage`) and synced to the cloud when signed in.
 
 ## Who it's for
 
@@ -25,7 +25,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-On first load you'll land on the role selector. Set a DM PIN to access the DM tools.
+Sign up or log in with email and password. On first load you'll choose your role (DM or Player). DM tools require an account; players join via a shareable link.
 
 ## Other commands
 
@@ -39,18 +39,18 @@ npm test        # run tests
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details, design system, and development conventions.
 
-Key decisions are documented in [DECISIONS.md](./DECISIONS.md).
-
 The roadmap is in [docs/ROADMAP.md](./docs/ROADMAP.md).
 
 ## Tech stack
 
-- Next.js (App Router)
+- Next.js 15 (App Router)
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS v4
+- Supabase (auth + cloud sync)
+- Zustand (client state)
 - Radix UI (dialogs)
 - lucide-react (icons)
-- localStorage for persistence
+- localStorage + Supabase `user_app_state` for persistence
 
 ## Content
 
