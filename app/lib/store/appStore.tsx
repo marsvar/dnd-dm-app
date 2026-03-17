@@ -447,7 +447,8 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const playerViewOwnedIdsRef = useRef<Set<string> | null>(null);
   const playerViewOwnedIdsFetchedAtRef = useRef<number | null>(null);
   const playerViewOwnedUserIdRef = useRef<string | null>(null);
-  const playerViewCampaignCountRef = useRef<number>(0);
+  const playerViewCampaignSignatureRef = useRef<string>("");
+  const playerViewActiveCampaignRef = useRef<string | null>(null);
   const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
@@ -607,8 +608,9 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
             playerViewOwnedIdsRef.current = null;
             playerViewOwnedIdsFetchedAtRef.current = null;
           }
-          if (playerViewCampaignCountRef.current !== state.campaigns.length) {
-            playerViewCampaignCountRef.current = state.campaigns.length;
+          const campaignSignature = state.campaigns.map((c) => c.id).sort().join("|");
+          if (playerViewCampaignSignatureRef.current !== campaignSignature) {
+            playerViewCampaignSignatureRef.current = campaignSignature;
             playerViewOwnedIdsRef.current = null;
             playerViewOwnedIdsFetchedAtRef.current = null;
           }
@@ -617,9 +619,15 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
             ownedIds &&
             playerViewOwnedIdsFetchedAtRef.current !== null &&
             now - playerViewOwnedIdsFetchedAtRef.current < PLAYER_VIEW_OWNED_IDS_TTL;
+          const activeCampaignId = state.activeCampaignId;
+          const activeChanged = playerViewActiveCampaignRef.current !== activeCampaignId;
+          if (activeChanged) {
+            playerViewActiveCampaignRef.current = activeCampaignId;
+          }
           const needsRefreshForActive =
-            Boolean(state.activeCampaignId) &&
-            !ownedIds.has(state.activeCampaignId as string);
+            Boolean(activeCampaignId) &&
+            activeChanged &&
+            !ownedIds.has(activeCampaignId as string);
 
           if (!ownedFresh || needsRefreshForActive) {
             const { data: ownedCampaigns } = await supabase
