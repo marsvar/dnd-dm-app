@@ -608,6 +608,8 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
             playerViewOwnedIdsRef.current = null;
             playerViewOwnedIdsFetchedAtRef.current = null;
           }
+          // Ownership does not change within the app; IDs are sufficient here.
+          // TTL refresh covers any rare external ownership changes.
           const campaignSignature = state.campaigns.map((c) => c.id).sort().join("|");
           if (playerViewCampaignSignatureRef.current !== campaignSignature) {
             playerViewCampaignSignatureRef.current = campaignSignature;
