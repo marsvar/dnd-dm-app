@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
-import { Button, Card, LinkButton, PageShell, Pill, SectionTitle } from "./components/ui";
+import { useMemo, useState } from "react";
+import { Button, Card, Dialog, DialogClose, DialogContent, DialogTitle, LinkButton, PageShell, Pill, SectionTitle } from "./components/ui";
 import { useAppStore } from "./lib/store/appStore";
 
 export default function Home() {
   const { state, resetState } = useAppStore();
+  const [isResetOpen, setIsResetOpen] = useState(false);
 
   const activeEncounter = useMemo(
     () => state.encounters.find((e) => e.status !== "completed") ?? null,
@@ -41,9 +42,6 @@ export default function Home() {
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg">Campaign Pulse</h3>
-            <Button variant="outline" onClick={resetState}>
-              Reset data
-            </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
@@ -141,6 +139,42 @@ export default function Home() {
           </Card>
         </div>
       </section>
+
+      {/* Danger zone */}
+      <section className="border-t border-black/10 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Reset all data</p>
+            <p className="text-xs text-muted mt-0.5">Wipes all monsters, PCs, encounters, notes, and log entries. Cannot be undone.</p>
+          </div>
+          <Button variant="outline" className="shrink-0 text-[var(--diff-hard)] hover:text-[var(--diff-deadly)] border-[var(--diff-hard)]/30 hover:border-[var(--diff-deadly)]/50" onClick={() => setIsResetOpen(true)}>
+            Reset data
+          </Button>
+        </div>
+      </section>
+
+      <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+        <DialogContent maxWidth="sm">
+          <DialogTitle>Reset all data?</DialogTitle>
+          <p className="mt-2 text-sm text-muted">
+            This will permanently delete all monsters, PCs, encounters, notes, and log entries. There is no undo.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                resetState();
+                setIsResetOpen(false);
+              }}
+              className="bg-[var(--diff-hard)] hover:bg-[var(--diff-deadly)] text-white border-transparent"
+            >
+              Yes, reset everything
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
