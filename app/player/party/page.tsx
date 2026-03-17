@@ -30,8 +30,14 @@ export default function PlayerPartyPage() {
 
   const pcsById = useMemo(() => new Map(state.pcs.map((pc) => [pc.id, pc])), [state.pcs]);
 
+  const statusBanner = statusMessage ? (
+    <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
+      {statusMessage}
+    </Card>
+  ) : null;
+
   const partyList = useMemo(() => {
-    if (!(status === "live" && snapshot?.party)) return state.pcs;
+    if (!snapshot?.party) return state.pcs;
     return snapshot.party.map((pc) => {
       const local = pcsById.get(pc.pc_id);
       return {
@@ -50,15 +56,11 @@ export default function PlayerPartyPage() {
         inspiration: local?.inspiration ?? false,
       };
     });
-  }, [snapshot, pcsById, state.pcs, status]);
+  }, [snapshot, pcsById, state.pcs]);
 
   return (
     <PlayerShell>
-      {statusMessage && (
-        <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
-          {statusMessage}
-        </Card>
-      )}
+      {statusBanner}
       <h2 className="mb-4 text-xl font-bold text-foreground">The Party</h2>
 
       {partyList.length === 0 ? (
