@@ -100,7 +100,7 @@ function HpControls({
           placeholder="0"
           onChange={(e) => setAmount(e.target.value)}
           className="flex-1 bg-transparent border-none outline-none font-mono font-bold text-sm text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          style={{ color: "var(--combat-fg)" }}
+          style={{ color: "var(--combat-fg)", WebkitTextFillColor: "var(--combat-fg)", caretColor: "var(--combat-fg)" }}
         />
       </div>
       <button

@@ -158,6 +158,8 @@ export function CombatParticipantRow({
               backgroundColor: "var(--combat-surface-raised)",
               border: "1.5px solid var(--combat-active-border)",
               color: "var(--combat-fg)",
+              WebkitTextFillColor: "var(--combat-fg)",
+              caretColor: "var(--combat-fg)",
             }}
           />
           <button
