@@ -8,20 +8,19 @@
 -- Example campaign id: 44444444-4444-4444-4444-444444444444
 -- Campaign id: <campaign-uuid>
 
--- ---------------------------------------------------------------------------
--- Seed snapshot as DM (committed so reads are meaningful)
+-- Single transaction so cleanup is automatic on failure.
 BEGIN;
 SET LOCAL role authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Seed snapshot as DM
 SET LOCAL request.jwt.claim.sub = '<dm-user-uuid>';
 INSERT INTO public.campaign_player_view (campaign_id, payload)
 VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}')
 ON CONFLICT (campaign_id) DO UPDATE SET payload = EXCLUDED.payload;
-COMMIT;
 
 -- ---------------------------------------------------------------------------
 -- Member: read succeeds, write fails
-BEGIN;
-SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<member-user-uuid>';
 
 DO $$
@@ -39,14 +38,15 @@ BEGIN
   VALUES ('<campaign-uuid>', '{"active_encounter":null,"participants":[],"party":[]}');
   RAISE EXCEPTION 'Expected member write to fail but it succeeded';
 EXCEPTION WHEN others THEN
-  RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
+  IF SQLSTATE = '42501' THEN
+    RAISE NOTICE 'Member write failed as expected: %', SQLERRM;
+  ELSE
+    RAISE;
+  END IF;
 END $$;
-ROLLBACK;
 
 -- ---------------------------------------------------------------------------
 -- Non-member: read fails (must not see the seeded row)
-BEGIN;
-SET LOCAL role authenticated;
 SET LOCAL request.jwt.claim.sub = '<nonmember-user-uuid>';
 
 DO $$
@@ -57,12 +57,5 @@ BEGIN
     RAISE EXCEPTION 'Expected non-member read to fail but saw % rows', c;
   END IF;
 END $$;
-ROLLBACK;
 
--- ---------------------------------------------------------------------------
--- Cleanup snapshot as DM
-BEGIN;
-SET LOCAL role authenticated;
-SET LOCAL request.jwt.claim.sub = '<dm-user-uuid>';
-DELETE FROM public.campaign_player_view WHERE campaign_id = '<campaign-uuid>';
-COMMIT;
+ROLLBACK;
