@@ -28,6 +28,8 @@ import {
 import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEvents";
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
+import { buildPlayerViewSnapshot } from "../engine/playerViewProjection";
+import { collectPlayerSnapshotCampaignIds } from "./playerViewPublish";
 
 // ── Phase 2a: entity-table helpers ─────────────────────────────────────────
 // campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
@@ -160,6 +162,18 @@ async function fetchEntityTables(
   }
 
   return { campaigns, pcs, campaignMembers };
+}
+
+async function upsertPlayerView(
+  supabase: SupabaseClient,
+  campaignId: string,
+  payload: unknown
+): Promise<void> {
+  await supabase.from("campaign_player_view").upsert({
+    campaign_id: campaignId,
+    payload,
+    updated_at: new Date().toISOString(),
+  });
 }
 
 // ── localStorage keys ───────────────────────────────────────────────────────
@@ -430,6 +444,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const [syncing, setSyncing] = useState(false);
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
   // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
@@ -557,6 +572,55 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       }
     }, 500);
   }, [state]);
+
+  useEffect(() => {
+    if (playerViewTimerRef.current) clearTimeout(playerViewTimerRef.current);
+    playerViewTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const { createSupabaseClient } = await import("../supabase/client");
+          const supabase = createSupabaseClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data: ownedCampaigns } = await supabase
+            .from("campaigns")
+            .select("id")
+            .eq("dm_user_id", user.id);
+          const ownedIds = new Set(
+            (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
+          );
+          if (!ownedIds.size) return;
+
+          const campaignIds = collectPlayerSnapshotCampaignIds(state).filter((id) =>
+            ownedIds.has(id)
+          );
+          if (!campaignIds.length) return;
+
+          await Promise.all(
+            campaignIds.map((campaignId) =>
+              upsertPlayerView(
+                supabase,
+                campaignId,
+                buildPlayerViewSnapshot(state, campaignId)
+              )
+            )
+          );
+        } catch {
+          // Non-fatal
+        }
+      })();
+    }, 300);
+
+    return () => {
+      if (playerViewTimerRef.current) {
+        clearTimeout(playerViewTimerRef.current);
+        playerViewTimerRef.current = null;
+      }
+    };
+  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs]);
 
   // React to changes made by the DM in another tab/window.
   // The `storage` event fires in every tab EXCEPT the one that wrote the change,
