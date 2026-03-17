@@ -8,6 +8,7 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
+  StatTile,
   Textarea,
 } from "./ui";
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -106,17 +107,7 @@ export const EncounterCompleteDialog = ({
             { label: "Defeated", value: defeatedMonsters.length },
             { label: "Total XP", value: totalXp.toLocaleString() },
           ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="rounded-xl bg-surface-strong p-3 text-center"
-            >
-              <p className="font-mono text-2xl font-semibold text-foreground">
-                {value}
-              </p>
-              <p className="text-xs uppercase tracking-[0.15em] text-muted mt-1">
-                {label}
-              </p>
-            </div>
+            <StatTile key={label} label={label} value={value} />
           ))}
         </div>
 

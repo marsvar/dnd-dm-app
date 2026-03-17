@@ -271,6 +271,15 @@ select option {
   background-color: var(--surface);
 }
 
+/* ── Shared shadow tokens ──────────────────────────────────────────────── */
+:root {
+  --shadow-card:    0 2px 8px rgba(0,0,0,0.05), 0 12px 30px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-dialog:  0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-button:  0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.12);
+  --shadow-popover: 0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-sm:      0 2px 8px rgba(0,0,0,0.15);
+}
+
 /* ── Combat motion ─────────────────────────────────────────────────────── */
 
 /* Inspector panel: fade-in when participant changes (key-driven remount) */

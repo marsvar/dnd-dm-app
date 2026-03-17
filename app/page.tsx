@@ -78,7 +78,7 @@ export default function Home() {
         <div className="grid gap-4 md:grid-cols-2">
           {activeEncounter && (
             <div
-              className="md:col-span-2 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+              className="md:col-span-2 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-[var(--shadow-sm)]"
               style={{
                 backgroundColor: "var(--combat-active-bg)",
                 color: "var(--combat-active-fg)",

@@ -76,7 +76,7 @@ export function CombatParticipantRow({
     <div
       onClick={handleRowClick}
       className={cn(
-        "relative flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-[3px] cursor-pointer select-none transition-colors",
+        "relative flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-[3px] cursor-pointer select-none transition-colors duration-200",
         isActive
           ? "border-l-[var(--combat-active-border)] bg-[var(--combat-active-row-bg)]"
           : "border-l-transparent hover:bg-[var(--combat-surface-raised)]"

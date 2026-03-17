@@ -40,7 +40,7 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.08)]",
+      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-card)]",
       className
     )}
     {...props}
@@ -52,7 +52,7 @@ const buttonBase =
 
 const buttonVariants = {
   primary:
-    "bg-accent text-white shadow-[0_1px_3px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-accent-strong active:shadow-none",
+    "bg-accent text-white shadow-[var(--shadow-button)] hover:bg-accent-strong active:shadow-none",
   outline:
     "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent active:bg-surface-strong",
   ghost: "bg-transparent text-muted hover:text-accent active:opacity-70",
@@ -148,6 +148,22 @@ export const Pill = ({
   >
     {label}
   </span>
+);
+
+// ---------------------------------------------------------------------------
+// StatTile — number + label display tile (use for summary stats in dialogs/cards)
+// ---------------------------------------------------------------------------
+export const StatTile = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) => (
+  <div className="rounded-xl bg-surface-strong p-3 text-center">
+    <p className="font-mono text-2xl font-semibold text-foreground">{value}</p>
+    <p className="mt-1 text-xs uppercase tracking-[0.15em] text-muted">{label}</p>
+  </div>
 );
 
 // ---------------------------------------------------------------------------
@@ -454,7 +470,7 @@ export const DialogContent = ({
     <RadixDialog.Content
       {...props}
       className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.08)] outline-none",
+        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none",
         fullHeight
           ? "bottom-8 flex flex-col overflow-hidden"
           : "max-h-[calc(100vh-4rem)] overflow-y-auto",
@@ -506,7 +522,7 @@ export const PopoverContent = ({
       sideOffset={sideOffset}
       align={align}
       className={cn(
-        "z-50 w-64 rounded-2xl border border-black/10 bg-surface p-4 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08)]",
+        "z-50 w-64 rounded-2xl border border-black/10 bg-surface p-4 text-foreground shadow-[var(--shadow-popover)]",
         className
       )}
       {...props}

@@ -2,7 +2,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import {
-  Button, Input, Card, cn,
+  Button, Input, Card, Pill, cn,
 } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import { TurnOrderPreview } from "../../components/TurnOrderPreview";
@@ -89,12 +89,7 @@ export function PrepPhase({ encounter }: Props) {
   return (
     <div className="space-y-6">
       {/* PREP status badge */}
-      <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-surface px-3 py-1.5 self-start">
-        <span className="size-2 rounded-full bg-muted/30" />
-        <span className="text-xs font-bold uppercase tracking-widest text-muted">
-          PREP — Roll Initiative
-        </span>
-      </div>
+      <Pill label="PREP — Roll Initiative" tone="neutral" className="self-start" />
 
       {/* Initiative table */}
       <Card>
