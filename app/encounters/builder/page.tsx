@@ -106,8 +106,6 @@ export default function EncounterBuilderPage() {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [variantSourceId, setVariantSourceId] = useState<string | null>(null);
   const [variantForm, setVariantForm] = useState({ name: "", ac: "", hp: "" });
-  const [isMonsterPickerModalOpen, setIsMonsterPickerModalOpen] = useState(false);
-  const [monsterPickerMode, setMonsterPickerMode] = useState<"create" | "edit" | null>(null);
 
   const selectedEncounter = useMemo(() => {
     if (!editingEncounterId) {
@@ -230,32 +228,15 @@ export default function EncounterBuilderPage() {
     setEditingEncounterId(null);
     setEncounterDraft({ name: "", location: "" });
     setActiveParticipantActionId(null);
-    setIsMonsterPickerModalOpen(false);
-    setMonsterPickerMode(null);
   }, []);
 
   const openCreateOverlay = () => {
     setCreateForm({ name: "", location: "" });
     setCreateDraftMonsters([]);
     setCreatePartyIds(new Set());
-    setIsMonsterPickerModalOpen(false);
-    setMonsterPickerMode(null);
     setIsCreateOpen(true);
   };
 
-
-  const openEditMonsterPicker = () => {
-    if (!selectedEncounter || builderLocked) {
-      return;
-    }
-    setMonsterPickerMode("edit");
-    setIsMonsterPickerModalOpen(true);
-  };
-
-  const closeMonsterPicker = useCallback(() => {
-    setIsMonsterPickerModalOpen(false);
-    setMonsterPickerMode(null);
-  }, []);
 
   const addMonsterToCreateDraft = (monsterId: string) => {
     const monster = monstersById.get(monsterId);
@@ -326,8 +307,7 @@ export default function EncounterBuilderPage() {
     setCreateDraftMonsters([]);
     setCreatePartyIds(new Set());
     setIsCreateOpen(false);
-    closeMonsterPicker();
-  }, [addEncounter, addEncounterParticipant, closeMonsterPicker, createDraftMonsters, createForm.location, createForm.name, createPartyMembers, state.activeCampaignId]);
+  }, [addEncounter, addEncounterParticipant, createDraftMonsters, createForm.location, createForm.name, createPartyMembers, state.activeCampaignId]);
 
   const saveEncounterMeta = () => {
     if (!selectedEncounter || builderLocked) {
@@ -470,7 +450,6 @@ export default function EncounterBuilderPage() {
     const isOverlayOpen =
       isCreateOpen ||
       isPartyModalOpen ||
-      isMonsterPickerModalOpen ||
       isVariantModalOpen ||
       !!selectedEncounter;
     if (!isOverlayOpen) {
@@ -482,10 +461,6 @@ export default function EncounterBuilderPage() {
         event.preventDefault();
         if (isVariantModalOpen) {
           setIsVariantModalOpen(false);
-          return;
-        }
-        if (isMonsterPickerModalOpen) {
-          closeMonsterPicker();
           return;
         }
         if (isPartyModalOpen) {
@@ -547,10 +522,8 @@ export default function EncounterBuilderPage() {
     confirmAddParty,
     confirmCreateEncounter,
     confirmVariantAdd,
-    closeMonsterPicker,
     createForm.name,
     isCreateOpen,
-    isMonsterPickerModalOpen,
     isPartyModalOpen,
     isVariantModalOpen,
     selectedEncounter,
@@ -1195,37 +1168,6 @@ export default function EncounterBuilderPage() {
         </DialogContent>
       </Dialog>
       )}
-
-      <Dialog
-        open={isMonsterPickerModalOpen && (monsterPickerMode === "create" || (monsterPickerMode === "edit" && !!selectedEncounter))}
-        onOpenChange={(open) => { if (!open) closeMonsterPicker(); }}
-      >
-        <DialogContent maxWidth="2xl">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <DialogTitle>Monster picker</DialogTitle>
-                <p className="text-sm text-muted">Click any monster to add it immediately.</p>
-              </div>
-              <DialogClose asChild>
-                <Button variant="outline">Close</Button>
-              </DialogClose>
-            </div>
-            <div className="mt-3">
-              <MonsterPicker
-                monsters={state.monsters}
-                disabled={monsterPickerMode === "edit" ? builderLocked : false}
-                onPickMonster={(monster) => {
-                  if (monsterPickerMode === "create") {
-                    addMonsterToCreateDraft(monster.id);
-                    return;
-                  }
-                  requestAddMonster(monster.id);
-                }}
-                listClassName="max-h-[16rem]"
-              />
-            </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={isPartyModalOpen && !!selectedEncounter} onOpenChange={setIsPartyModalOpen}>
         <DialogContent maxWidth="xl">
