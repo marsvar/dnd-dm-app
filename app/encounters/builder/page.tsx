@@ -162,29 +162,6 @@ export default function EncounterBuilderPage() {
     [createPartyIds, state.pcs]
   );
 
-  const createChallenges = useMemo(
-    () =>
-      createDraftMonsters
-        .map((monster) => monsterChallengeById.get(monster.refId) ?? "0")
-        .filter(Boolean),
-    [createDraftMonsters, monsterChallengeById]
-  );
-
-  const createTotalCr = useMemo(
-    () => formatTotalChallenge(getTotalChallenge(createChallenges)),
-    [createChallenges]
-  );
-
-  const createDifficulty = useMemo(
-    () => evaluateEncounterDifficulty(createChallenges, createPartyMembers.map((pc) => pc.level)),
-    [createChallenges, createPartyMembers]
-  );
-
-  const createDifficultyBreakdown = useMemo(
-    () => getEncounterDifficultyBreakdown(createChallenges, createPartyMembers.map((pc) => pc.level)),
-    [createChallenges, createPartyMembers]
-  );
-
   const selectedEncounterChallenges = useMemo(() => {
     if (!selectedEncounter) {
       return [];
@@ -219,31 +196,6 @@ export default function EncounterBuilderPage() {
     () => getEncounterDifficultyBreakdown(selectedEncounterChallenges, selectedEncounterPartyLevels),
     [selectedEncounterChallenges, selectedEncounterPartyLevels]
   );
-
-  const createSummary = useMemo(() => {
-    if (!createDraftMonsters.length) {
-      return {
-        count: 0,
-        totalHp: 0,
-        averageAc: 0,
-        highestCr: "0",
-      };
-    }
-    const count = createDraftMonsters.length;
-    const totalHp = createDraftMonsters.reduce((sum, monster) => sum + monster.hp, 0);
-    const totalAc = createDraftMonsters.reduce((sum, monster) => sum + monster.ac, 0);
-    const highestCrNumber = createDraftMonsters.reduce((highest, monster) => {
-      const source = monstersById.get(monster.refId);
-      const sourceCr = source ? parseChallenge(source.challenge) : 0;
-      return Math.max(highest, sourceCr);
-    }, 0);
-    return {
-      count,
-      totalHp,
-      averageAc: Math.round(totalAc / count),
-      highestCr: formatChallenge(highestCrNumber),
-    };
-  }, [createDraftMonsters, monstersById]);
 
   const existingPcRefIds = new Set(
     selectedEncounter?.participants
@@ -289,13 +241,6 @@ export default function EncounterBuilderPage() {
     setIsCreateOpen(true);
   };
 
-  const openCreateMonsterPicker = () => {
-    if (!isCreateOpen) {
-      return;
-    }
-    setMonsterPickerMode("create");
-    setIsMonsterPickerModalOpen(true);
-  };
 
   const openEditMonsterPicker = () => {
     if (!selectedEncounter || builderLocked) {
@@ -867,125 +812,110 @@ export default function EncounterBuilderPage() {
             </DialogClose>
           </div>
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-3 rounded-2xl border border-black/10 bg-surface-strong p-4">
-                <div className="space-y-2">
-                  <div>
-                    <FieldLabel>Encounter Name</FieldLabel>
-                    <Input
-                      value={createForm.name}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, name: event.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Location</FieldLabel>
-                    <Input
-                      value={createForm.location}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, location: event.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="rounded-xl border border-black/10 bg-surface px-3 py-2 text-xs text-muted">
-                  <span className="uppercase tracking-[0.2em]">Summary</span>
-                  <p className="mt-1">
-                    {createSummary.count} monsters · Total HP {createSummary.totalHp} · Avg AC {createSummary.averageAc || "--"} · Highest CR {createSummary.highestCr}
-                  </p>
-                  <p className="mt-1">Total CR {createTotalCr}</p>
-                  <p className="mt-1">
-                    Difficulty {createDifficulty} ({createPartyMembers.length} PCs)
-                  </p>
-                  <p className="mt-1">
-                    Base XP {createDifficultyBreakdown.baseXp} × {formatMultiplier(createDifficultyBreakdown.multiplier)} = Adjusted XP {createDifficultyBreakdown.adjustedXp}
-                  </p>
-                  <p className="mt-1">
-                    Thresholds E/M/H/D: {createDifficultyBreakdown.thresholds.easy} / {createDifficultyBreakdown.thresholds.medium} / {createDifficultyBreakdown.thresholds.hard} / {createDifficultyBreakdown.thresholds.deadly}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-black/10 bg-surface px-3 py-3 text-xs text-muted">
-                  <p className="uppercase tracking-[0.2em]">Party</p>
-                  <p className="mt-1">Add party for difficulty rating based on size and level.</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCreatePartyIds(new Set(state.pcs.map((pc) => pc.id)))}
-                    >
-                      Add entire party
-                    </Button>
-                    <Button variant="outline" onClick={() => setCreatePartyIds(new Set())}>
-                      Clear party
-                    </Button>
-                  </div>
-                  {createPartyMembers.length ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {createPartyMembers.map((pc) => (
-                        <Pill key={pc.id} label={`${pc.name} Lv ${pc.level}`} tone="neutral" />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="rounded-xl border border-black/10 bg-surface px-3 py-3 text-xs text-muted">
-                  <p className="uppercase tracking-[0.2em]">Monster picker</p>
-                  <p className="mt-1">Open picker in popup and click to add monsters immediately.</p>
+          {/* Name + Location — full-width top row */}
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Encounter Name</FieldLabel>
+              <Input
+                value={createForm.name}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <FieldLabel>Location</FieldLabel>
+              <Input
+                value={createForm.location}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, location: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          {/* Two-column: picker left, roster right */}
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            {/* Left: MonsterPicker + party toggles */}
+            <div className="space-y-3 rounded-2xl border border-black/10 bg-surface-strong p-4">
+              <MonsterPicker
+                monsters={state.monsters}
+                onPickMonster={(monster) => addMonsterToCreateDraft(monster.id)}
+                listClassName="max-h-[12rem]"
+              />
+
+              <div className="rounded-xl border border-black/10 bg-surface px-3 py-3 text-xs text-muted">
+                <p className="uppercase tracking-[0.2em]">Party</p>
+                <p className="mt-1">Add party for difficulty rating based on size and level.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    className="mt-3"
-                    onClick={openCreateMonsterPicker}
+                    onClick={() => setCreatePartyIds(new Set(state.pcs.map((pc) => pc.id)))}
                   >
-                    Open monster picker
+                    Add entire party
+                  </Button>
+                  <Button variant="outline" onClick={() => setCreatePartyIds(new Set())}>
+                    Clear party
                   </Button>
                 </div>
+                {createPartyMembers.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {createPartyMembers.map((pc) => (
+                      <Pill key={pc.id} label={`${pc.name} Lv ${pc.level}`} tone="neutral" />
+                    ))}
+                  </div>
+                ) : null}
               </div>
+            </div>
 
-              <div className="space-y-3 rounded-2xl border border-black/10 bg-surface p-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground">Encounter overview</h4>
-                  <p className="text-xs text-muted">Click a drafted monster to remove it.</p>
-                </div>
-                <div className="max-h-[30rem] space-y-2 overflow-auto pr-1">
-                  {createDraftMonsters.map((monster) => {
-                    const sourceMonster = monstersById.get(monster.refId);
-                    return (
-                      <button
-                        key={monster.draftId}
-                        type="button"
-                        className="w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-3 text-left"
-                        onClick={() => removeMonsterFromCreateDraft(monster.draftId)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <ParticipantAvatar
-                              name={monster.name}
-                              visual={monster.visual}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-surface object-cover text-[0.65rem] font-semibold text-muted"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">{monster.name}</p>
-                              <p className="text-xs text-muted">{sourceMonster?.type ?? "Monster"}</p>
-                            </div>
+            {/* Right: Draft roster */}
+            <div className="space-y-3 rounded-2xl border border-black/10 bg-surface p-4">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Encounter overview</h4>
+                <p className="text-xs text-muted">Click a drafted monster to remove it.</p>
+              </div>
+              <div className="max-h-[30rem] space-y-2 overflow-auto pr-1">
+                {createDraftMonsters.map((monster) => {
+                  const sourceMonster = monstersById.get(monster.refId);
+                  return (
+                    <button
+                      key={monster.draftId}
+                      type="button"
+                      className="w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-3 text-left"
+                      onClick={() => removeMonsterFromCreateDraft(monster.draftId)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <ParticipantAvatar
+                            name={monster.name}
+                            visual={monster.visual}
+                            size="sm"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{monster.name}</p>
+                            <p className="text-xs text-muted">{sourceMonster?.type ?? "Monster"}</p>
                           </div>
-                          <span className="rounded-full bg-surface-strong px-2 py-1 text-[0.65rem] font-semibold text-muted">
-                            CR {sourceMonster?.challenge ?? "--"}
-                          </span>
                         </div>
-                        <p className="mt-2 text-xs text-muted">AC {monster.ac} · HP {monster.hp}</p>
-                      </button>
-                    );
-                  })}
-                  {!createDraftMonsters.length ? (
-                    <p className="text-sm text-muted">No monsters added yet.</p>
-                  ) : null}
-                </div>
+                        <span className="rounded-full bg-surface-strong px-2 py-1 text-[0.65rem] font-semibold text-muted">
+                          CR {sourceMonster?.challenge ?? "--"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted">AC {monster.ac} · HP {monster.hp}</p>
+                    </button>
+                  );
+                })}
+                {!createDraftMonsters.length ? (
+                  <p className="text-sm text-muted">No monsters added yet.</p>
+                ) : null}
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={confirmCreateEncounter} disabled={!createForm.name.trim()}>
-                Create
-              </Button>
-            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <Button onClick={confirmCreateEncounter} disabled={!createForm.name.trim()}>
+              Create
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
