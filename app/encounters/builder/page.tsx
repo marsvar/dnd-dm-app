@@ -14,6 +14,7 @@ import {
   getTotalChallenge,
   parseChallenge,
   suggestUniqueName,
+  type EncounterDifficulty,
 } from "../../lib/engine/selectors";
 import { useAppStore } from "../../lib/store/appStore";
 
@@ -54,7 +55,7 @@ const getParticipantChallenge = (
 const formatMultiplier = (value: number) =>
   Number.isInteger(value) ? `${value}` : value.toFixed(1);
 
-const difficultyPillClasses = (difficulty: string): string => {
+const difficultyPillClasses = (difficulty: EncounterDifficulty): string => {
   switch (difficulty) {
     case "Easy":
       return "bg-[var(--diff-easy-bg)] text-[var(--diff-easy)] border border-[var(--diff-easy)]/25";
@@ -659,9 +660,13 @@ export default function EncounterBuilderPage() {
                         label={encounter.isRunning ? "LIVE" : "PREP"}
                         tone={encounter.isRunning ? "accent" : "neutral"}
                       />
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] ${difficultyPillClasses(difficulty)}`}>
-                        {difficulty === "No Party" ? "—" : difficulty}
-                      </span>
+                      {difficulty === "Trivial" || difficulty === "No Party" ? (
+                        <Pill label={difficulty === "No Party" ? "—" : difficulty} tone="neutral" />
+                      ) : (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] ${difficultyPillClasses(difficulty)}`}>
+                          {difficulty}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -709,7 +714,7 @@ export default function EncounterBuilderPage() {
                 {/* Footer toolbar */}
                 <div className="flex items-center gap-2 border-t border-black/10 bg-surface-strong px-3 py-2">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => removeEncounter(encounter.id)}
                     disabled={encounter.isRunning}
                     className={`text-[var(--diff-hard)] hover:text-[var(--diff-deadly)] ${encounter.isRunning ? "opacity-40" : ""}`}
