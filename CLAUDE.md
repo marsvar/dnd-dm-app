@@ -10,11 +10,11 @@
 > **Update this section before each working session.** This is the most important section for consistent results.
 
 ```
-Last worked on: 2026-03-01
-Current focus:  Encounter runner UI polish
-Recently completed: Phase 1 auth + cross-device sync fully smoke-tested. Fixed 3 auth bugs: DmLayoutGuard, Nav, and appStore all used one-shot auth.getUser() which ran before login and never re-ran — replaced with onAuthStateChange subscriptions throughout.
+Last worked on: 2026-03-17
+Current focus:  Live encounter improvements (quick actions, undo visibility)
+Recently completed: Encounter builder card redesign (info-dense cards, inline monster picker, difficulty/XP/CR display). Combat color shift fix (theme-adaptive warm accent instead of forced-dark flip). App-wide UI polish pass: collapsible add forms on PCs + Bestiary, danger zone for Reset data, Campaign Pulse icons, card mount animation, hoverable cards, StatBadge → Pill, nav active pill fix.
 Blocked on / open questions: —
-Next task: Encounter runner UI polish (active turn highlight, round controls, undo button)
+Next task: Live encounter improvements — quick damage/heal actions, visible undo + last-action summary
 ```
 
 ### Implementation status (as of 2026-03-01)

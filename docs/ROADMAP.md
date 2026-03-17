@@ -10,6 +10,29 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 
 ---
 
+## Done
+
+### Encounter builder redesign (2026-03-17)
+- Info-dense encounter cards: difficulty pill, adjusted XP, CR, combatant count, Launch/Resume button.
+- Inline monster picker in Create dialog (always-visible two-column layout).
+- Collapsible "Add Monsters" panel in Edit dialog (animated chevron, no nested dialog).
+- Encounter CR/XP difficulty indicator (was in Next — pulled forward, done).
+
+### Combat phase polish (2026-03-17)
+- Replaced forced-dark combat color flip with theme-adaptive warm accent treatment.
+- Active participant row uses amber tint (`--combat-active-row-bg`) instead of full dark surface inversion.
+
+### UI governance + app-wide polish (2026-03-17)
+- Encounter Builder, PCs, and Bestiary: collapsible add forms moved to top of page, grouped into Identity/Stats sections.
+- Home page: Reset data moved to danger zone with confirmation dialog.
+- Campaign Pulse stat boxes: added contextual icons.
+- Card mount animation (`cardEnter` keyframe) and `hoverable` prop for lift on interactive cards.
+- `ParticipantAvatar` className override removed from Bestiary (governance fix).
+- `StatBadge` in PcCard replaced with shared `Pill tone="stat"`.
+- Nav: sign-out separated with hairline divider; active primary pill changed from `bg-foreground` (black/white flash) to warm accent tint.
+
+---
+
 ## Now
 *Why this order: the core combat loop is the primary trust surface. DMs will not rely on the app at the table until combat tracking is reliable, fast, and forgiving. UI polish, quick actions, and undo visibility must come before any new features.*
 
@@ -19,21 +42,9 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
   - Quick actions for damage/heal, conditions, and notes.
   - Visible undo and last action summary.
 
-### DM workflow polish
-- Faster encounter prep.
-  - Quick-add rows for monsters and PCs.
-  - Bulk initiative tools and sorting controls.
-- Encounter builder clarity.
-  - Clear prep vs run states.
-  - Reduce friction between builder and runner.
-
 ### Small DM quality-of-life
 - **HP roll on monster add** — optional dice roll when adding a monster to an encounter instead of using average HP. Low effort, DMs expect it.
 - **Inspiration tracking in encounters** — `Pc.inspiration` already exists; surface it on combatant rows during combat.
-
-### UI governance baseline
-- Enforce shared participant visual system across Builder, Player, PCs, and Bestiary.
-- Require shared avatar component and fallback behavior for all participant surfaces.
 
 ---
 
