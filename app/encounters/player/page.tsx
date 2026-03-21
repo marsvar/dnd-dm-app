@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
 import { Button, Card, Dialog, DialogClose, DialogContent, DialogTitle, PageShell, Pill, SectionTitle, Select } from "../../components/ui";
 import { useAppStore } from "../../lib/store/appStore";
+import { getDefaultEncounter } from "../../lib/engine/encounterSelectors";
 import { PrepPhase } from "./PrepPhase";
 import { CombatHeader } from "./CombatHeader";
 import { CombatParticipantList } from "./CombatParticipantList";
@@ -23,10 +24,7 @@ export default function EncounterPlayerPage() {
   const [pinnedInspectorId, setPinnedInspectorId] = useState<string | null>(null);
 
   const selectedEncounter = useMemo(() => {
-    if (selectedId) {
-      return state.encounters.find((encounter) => encounter.id === selectedId) || null;
-    }
-    return state.encounters[0] || null;
+    return getDefaultEncounter(state.encounters, selectedId);
   }, [selectedId, state.encounters]);
 
   const monstersById = useMemo(() => {

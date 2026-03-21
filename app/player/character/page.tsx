@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../../lib/store/appStore";
 import { usePlayerSession } from "../../lib/store/usePlayerSession";
+import { getRunningEncounter } from "../../lib/engine/encounterSelectors";
 import { PlayerShell } from "../../components/PlayerShell";
 import {
   Card,
@@ -84,10 +85,14 @@ const COIN_META: { key: keyof Pc["currency"]; label: string; color: string }[] =
 // ---------------------------------------------------------------------------
 
 export default function PlayerCharacterPage() {
-  const { selectedPcId } = usePlayerSession();
+  const { selectedPcId, campaignId } = usePlayerSession();
   const { state, updatePc } = useAppStore();
   const pc = state.pcs.find((p) => p.id === selectedPcId);
   const [tab, setTab] = useState<Tab>("overview");
+  const activeEncounter = useMemo(
+    () => getRunningEncounter(state.encounters, campaignId),
+    [state.encounters, campaignId]
+  );
 
   if (!pc) return null;
 
@@ -155,7 +160,7 @@ export default function PlayerCharacterPage() {
 
           {/* Combat: HP + death saves + conditions + weapons + currency */}
           <div className={cn("flex flex-col gap-4", tab !== "combat" && "hidden md:flex")}>
-            <HpPanel pc={pc} up={up} />
+            <HpPanel pc={pc} up={up} combatLocked={Boolean(activeEncounter)} />
             <WeaponsPanel pc={pc} up={up} />
           </div>
 
@@ -299,7 +304,15 @@ function KeyStatsRow({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
 // ---------------------------------------------------------------------------
 // HP Panel — tracker, death saves, conditions
 // ---------------------------------------------------------------------------
-function HpPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
+function HpPanel({
+  pc,
+  up,
+  combatLocked,
+}: {
+  pc: Pc;
+  up: (p: Partial<Pc>) => void;
+  combatLocked: boolean;
+}) {
   const [delta, setDelta] = useState("");
   const [conditionMenu, setConditionMenu] = useState(false);
 
@@ -342,6 +355,7 @@ function HpPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
           variant="outline"
           className="shrink-0 border-red-400/50 text-red-500 hover:border-red-500"
           onClick={() => applyDelta("damage")}
+          disabled={combatLocked}
         >
           Dmg
         </Button>
@@ -349,10 +363,16 @@ function HpPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
           variant="outline"
           className="shrink-0 border-green-400/50 text-green-600 hover:border-green-500"
           onClick={() => applyDelta("heal")}
+          disabled={combatLocked}
         >
           Heal
         </Button>
       </div>
+      {combatLocked && (
+        <p className="mt-2 text-xs text-muted">
+          Combat is active. The DM controls HP changes until combat ends.
+        </p>
+      )}
 
       {/* Temp HP + Max HP */}
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1164,12 +1184,10 @@ function RollsTab({ pcId, pcName }: { pcId: string; pcName: string }) {
   const [pendingConfirm, setPendingConfirm] = useState(false);
 
   // Find the running encounter scoped to this player's campaign.
-  const activeEncounter = useMemo(() => {
-    if (campaignId) {
-      return state.encounters.find((e) => e.campaignId === campaignId && e.isRunning) ?? null;
-    }
-    return state.encounters.find((e) => e.isRunning) ?? null;
-  }, [state.encounters, campaignId]);
+  const activeEncounter = useMemo(
+    () => getRunningEncounter(state.encounters, campaignId),
+    [state.encounters, campaignId]
+  );
 
   function rollD20() {
     const result = Math.floor(Math.random() * 20) + 1;
