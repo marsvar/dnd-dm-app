@@ -75,11 +75,14 @@ export function useCampaignPlayerView(campaignId: string | null) {
       payloadRef.current = nextPayload;
       setPayload(nextPayload);
 
-      if (statusRef.current !== "paused") {
-        const updatedAtMs = updatedAtRef.current;
-        const isStale = updatedAtMs ? Date.now() - updatedAtMs > STALE_THRESHOLD_MS : false;
-        setStatus(isStale ? "stale" : "live");
+      if (!nextPayload) {
+        setStatus("paused");
+        return;
       }
+
+      const updatedAtMs = updatedAtRef.current;
+      const isStale = updatedAtMs ? Date.now() - updatedAtMs > STALE_THRESHOLD_MS : false;
+      setStatus(isStale ? "stale" : "live");
     },
     [clearCues, scheduleCueClear]
   );
@@ -92,7 +95,10 @@ export function useCampaignPlayerView(campaignId: string | null) {
       .eq("campaign_id", campaignId)
       .maybeSingle();
 
-    if (error) return;
+    if (error) {
+      setStatus("paused");
+      return;
+    }
 
     const nextPayload = (data?.payload ?? null) as PlayerViewSnapshot | null;
     applyPayload(nextPayload, data?.updated_at ?? null);
