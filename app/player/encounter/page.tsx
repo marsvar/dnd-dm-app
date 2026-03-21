@@ -88,7 +88,7 @@ export default function PlayerEncounterPage() {
   const hasSnapshot = Boolean(snapshot);
   const snapshotEncounter = hasSnapshot ? snapshot?.active_encounter ?? null : null;
   const statusMessage =
-    status === "loading"
+    status === "loading" && !snapshot
       ? "Connecting to live updates…"
       : status === "stale"
         ? "Live updates may be outdated."
@@ -102,7 +102,7 @@ export default function PlayerEncounterPage() {
     </Card>
   ) : null;
 
-  if (snapshot && snapshotEncounter === null) {
+  if (snapshot && snapshotEncounter === null && !localEncounter) {
     return (
       <PlayerShell>
         {statusBanner}

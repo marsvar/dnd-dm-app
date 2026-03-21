@@ -20,7 +20,7 @@ export default function PlayerPartyPage() {
   const { selectedPcId, campaignId } = usePlayerSession();
   const { payload: snapshot, status, cues } = useCampaignPlayerView(campaignId);
   const statusMessage =
-    status === "loading"
+    status === "loading" && !snapshot
       ? "Connecting to live updates…"
       : status === "stale"
         ? "Live updates may be outdated."
