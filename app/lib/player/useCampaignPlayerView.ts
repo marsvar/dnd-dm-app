@@ -5,7 +5,7 @@ import { createSupabaseClient } from "../supabase/client";
 import type { PlayerViewSnapshot } from "../engine/playerViewProjection";
 import { buildCueState, diffPlayerView, type CueState } from "./playerCue";
 
-type PlayerViewStatus = "loading" | "live" | "stale" | "paused";
+export type PlayerViewStatus = "loading" | "live" | "stale" | "paused";
 
 const CUE_DURATION_MS = 1500;
 const STALE_THRESHOLD_MS = 30000;
