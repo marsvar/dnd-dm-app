@@ -20,13 +20,15 @@ export default function PlayerPartyPage() {
   const { selectedPcId, campaignId } = usePlayerSession();
   const { payload: snapshot, status, cues } = useCampaignPlayerView(campaignId);
   const statusMessage =
-    status === "loading" && !snapshot
-      ? "Connecting to live updates…"
-      : status === "stale"
-        ? "Live updates may be outdated."
-        : status === "paused"
-          ? "Live updates paused."
-          : null;
+    !campaignId
+      ? null
+      : status === "loading" && !snapshot
+        ? "Connecting to live updates…"
+        : status === "stale"
+          ? "Live updates may be outdated."
+          : status === "paused"
+            ? "Live updates paused."
+            : null;
 
   const pcsById = useMemo(() => new Map(state.pcs.map((pc) => [pc.id, pc])), [state.pcs]);
 

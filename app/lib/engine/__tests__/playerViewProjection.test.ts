@@ -67,6 +67,8 @@ test("buildPlayerViewSnapshot masks monsters and returns PCs", () => {
   const snapshot = buildPlayerViewSnapshot(state, "camp-1");
   assert.equal(snapshot.active_encounter?.id, "enc-1");
   assert.equal(snapshot.participants.length, 2);
+  const pc = snapshot.participants.find((p) => p.kind === "pc");
+  assert.equal(pc?.pc_id, "pc-1");
   const monster = snapshot.participants.find((p) => p.kind === "monster");
   assert.ok(monster);
   assert.ok(!("current_hp" in monster));

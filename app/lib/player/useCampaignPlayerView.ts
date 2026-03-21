@@ -112,6 +112,10 @@ export function useCampaignPlayerView(campaignId: string | null) {
       return;
     }
 
+    setPayload(null);
+    payloadRef.current = null;
+    updatedAtRef.current = null;
+    clearCues();
     setStatus("loading");
 
     const channel = supabase

@@ -635,7 +635,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
             const { data: ownedCampaigns } = await supabase
               .from("campaigns")
               .select("id")
-              .eq("dm_user_id", user.id);
+              .eq("owner_id", user.id);
             ownedIds = new Set(
               (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
             );

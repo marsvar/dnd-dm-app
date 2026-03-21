@@ -88,13 +88,15 @@ export default function PlayerEncounterPage() {
   const hasSnapshot = Boolean(snapshot);
   const snapshotEncounter = hasSnapshot ? snapshot?.active_encounter ?? null : null;
   const statusMessage =
-    status === "loading" && !snapshot
-      ? "Connecting to live updates…"
-      : status === "stale"
-        ? "Live updates may be outdated."
-        : status === "paused"
-          ? "Live updates paused."
-          : null;
+    !campaignId
+      ? null
+      : status === "loading" && !snapshot
+        ? "Connecting to live updates…"
+        : status === "stale"
+          ? "Live updates may be outdated."
+          : status === "paused"
+            ? "Live updates paused."
+            : null;
 
   const statusBanner = statusMessage ? (
     <Card className="mb-4 border-amber-200 bg-amber-50 text-xs text-amber-700">
@@ -102,7 +104,7 @@ export default function PlayerEncounterPage() {
     </Card>
   ) : null;
 
-  if (snapshot && snapshotEncounter === null && !localEncounter) {
+  if (snapshot && snapshotEncounter === null) {
     return (
       <PlayerShell>
         {statusBanner}
@@ -154,7 +156,7 @@ export default function PlayerEncounterPage() {
             maxHp: p.max_hp ?? null,
             tempHp: p.temp_hp ?? null,
             conditions: p.conditions ?? [],
-            refId: local?.refId,
+            refId: p.pc_id ?? local?.refId,
             visual: local?.visual,
             notes: local?.notes,
             deathSaves: local?.deathSaves ?? null,

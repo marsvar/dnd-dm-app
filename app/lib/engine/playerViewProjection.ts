@@ -12,6 +12,7 @@ export type PlayerViewSnapshot = {
         id: string;
         name: string;
         kind: "pc";
+        pc_id: string | null;
         initiative: number | null;
         current_hp: number | null;
         max_hp: number | null;
@@ -57,6 +58,7 @@ export function buildPlayerViewSnapshot(state: AppState, campaignId: string): Pl
               id: p.id,
               name: p.name,
               kind: "pc" as const,
+              pc_id: p.refId ?? null,
               initiative: p.initiative ?? null,
               current_hp: p.currentHp ?? null,
               max_hp: p.maxHp ?? null,
