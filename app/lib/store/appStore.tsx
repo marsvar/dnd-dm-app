@@ -449,6 +449,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const playerViewOwnedUserIdRef = useRef<string | null>(null);
   const playerViewCampaignSignatureRef = useRef<string>("");
   const playerViewActiveCampaignRef = useRef<string | null>(null);
+  const playerViewPublishedIdsRef = useRef<Set<string>>(new Set());
   const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
@@ -645,10 +646,14 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           if (!ownedIds.size) return;
 
           const campaignIds = collectCampaignIds().filter((id) => ownedIds.has(id));
-          if (!campaignIds.length) return;
+          const publishIds = new Set([
+            ...playerViewPublishedIdsRef.current,
+            ...campaignIds,
+          ]);
+          if (!publishIds.size) return;
 
           await Promise.all(
-            campaignIds.map((campaignId) =>
+            Array.from(publishIds).map((campaignId) =>
               upsertPlayerView(
                 supabase,
                 campaignId,
@@ -656,6 +661,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
               )
             )
           );
+          playerViewPublishedIdsRef.current = new Set(campaignIds);
         } catch {
           // Non-fatal
         }

@@ -23,10 +23,10 @@ export default function PlayerPartyPage() {
     !campaignId
       ? null
       : status === "loading" && !snapshot
-        ? "Connecting to live updates…"
+        ? "Connecting to live updates..."
         : status === "stale"
           ? "Live updates may be outdated."
-          : status === "paused"
+          : status === "paused" && snapshot
             ? "Live updates paused."
             : null;
 
@@ -61,7 +61,7 @@ export default function PlayerPartyPage() {
   }, [snapshot, pcsById, state.pcs]);
 
   return (
-    <PlayerShell realtimeStatus={status}>
+    <PlayerShell realtimeStatus={snapshot || status === "loading" ? status : null}>
       {statusBanner}
       <h2 className="mb-4 text-xl font-bold text-foreground">The Party</h2>
 

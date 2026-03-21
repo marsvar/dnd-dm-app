@@ -91,10 +91,10 @@ export default function PlayerEncounterPage() {
     !campaignId
       ? null
       : status === "loading" && !snapshot
-        ? "Connecting to live updates…"
+        ? "Connecting to live updates..."
         : status === "stale"
           ? "Live updates may be outdated."
-          : status === "paused"
+          : status === "paused" && snapshot
             ? "Live updates paused."
             : null;
 
@@ -106,7 +106,7 @@ export default function PlayerEncounterPage() {
 
   if (snapshot && snapshotEncounter === null) {
     return (
-      <PlayerShell realtimeStatus={status}>
+      <PlayerShell realtimeStatus={snapshot || status === "loading" ? status : null}>
         {statusBanner}
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Swords size={40} className="mb-4 text-muted" strokeWidth={1.2} />
@@ -121,7 +121,7 @@ export default function PlayerEncounterPage() {
 
   if (!snapshot && !localEncounter) {
     return (
-      <PlayerShell realtimeStatus={status}>
+      <PlayerShell realtimeStatus={snapshot || status === "loading" ? status : null}>
         {statusBanner}
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Swords size={40} className="mb-4 text-muted" strokeWidth={1.2} />
@@ -230,7 +230,7 @@ export default function PlayerEncounterPage() {
   const atZeroHp = myParticipant !== null && (myParticipant.currentHp ?? 1) <= 0;
 
   return (
-    <PlayerShell realtimeStatus={status}>
+    <PlayerShell realtimeStatus={snapshot || status === "loading" ? status : null}>
       {statusBanner}
       {/* Round / turn banner */}
       <Card
