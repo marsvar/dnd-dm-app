@@ -8,11 +8,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useMemo } from "react";
 import { User, Swords, Users } from "lucide-react";
 import { cn } from "./ui";
 import { usePlayerSession } from "../lib/store/usePlayerSession";
-import { useCampaignPlayerView } from "../lib/player/useCampaignPlayerView";
+import type { PlayerViewStatus } from "../lib/player/useCampaignPlayerView";
 
 const tabs = [
   { href: "/player/character", label: "Character", Icon: User },
@@ -23,24 +23,23 @@ const tabs = [
 export function PlayerShell({
   children,
   wide = false,
+  realtimeStatus,
 }: {
   children: ReactNode;
   /** Expand max-width to 5xl for desktop sheet mode (character page). */
   wide?: boolean;
+  realtimeStatus?: PlayerViewStatus | null;
 }) {
-  const { selectedPcId, hydrated, campaignId } = usePlayerSession();
+  const { selectedPcId, hydrated } = usePlayerSession();
   const router = useRouter();
   const pathname = usePathname();
-  const { status } = useCampaignPlayerView(campaignId);
-
-  const statusLabel =
-    status === "loading"
-      ? "Connecting to live updates…"
-      : status === "stale"
-        ? "May be outdated"
-        : status === "paused"
-          ? "Live updates paused"
-          : null;
+  const statusLabel = useMemo(() => {
+    if (!realtimeStatus || realtimeStatus === "live") return null;
+    if (realtimeStatus === "loading") return "Connecting to live updates...";
+    if (realtimeStatus === "stale") return "May be outdated";
+    if (realtimeStatus === "paused") return "Live updates paused";
+    return null;
+  }, [realtimeStatus]);
 
   // Only redirect after localStorage has been read — avoids the flash where
   // selectedPcId is null on first render before hydration completes.

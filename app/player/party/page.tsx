@@ -61,7 +61,7 @@ export default function PlayerPartyPage() {
   }, [snapshot, pcsById, state.pcs]);
 
   return (
-    <PlayerShell>
+    <PlayerShell realtimeStatus={status}>
       {statusBanner}
       <h2 className="mb-4 text-xl font-bold text-foreground">The Party</h2>
 
