@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { Button, Card, Input, PageShell, SectionTitle } from "../components/ui";
 import { useAppStore } from "../lib/store/appStore";
+import { ExportMenu } from "../components/ExportMenu";
+import { logToMarkdown, logToJSON, slugify } from "../lib/export/formatters";
+import { downloadFile } from "../lib/export/download";
 
 export default function LogPage() {
   const { state, addLogEntry } = useAppStore();
   const [text, setText] = useState("");
 
   const activeCampaignId = state.activeCampaignId;
+  const campaignName =
+    state.campaigns.find((c) => c.id === activeCampaignId)?.name ?? "all-campaigns";
   const visibleLog = activeCampaignId
     ? state.log.filter((l) => l.campaignId === activeCampaignId)
     : state.log;
@@ -26,10 +31,31 @@ export default function LogPage() {
 
   return (
     <PageShell>
-      <SectionTitle
-        title="Combat Log"
-        subtitle="Capture quick events and memorable rolls."
-      />
+      <div className="flex items-start justify-between gap-4">
+        <SectionTitle
+          title="Combat Log"
+          subtitle="Capture quick events and memorable rolls."
+        />
+        <ExportMenu
+          disabled={!activeCampaignId}
+          onMarkdown={() => {
+            const date = new Date().toISOString().slice(0, 10);
+            downloadFile(
+              logToMarkdown(visibleLog, campaignName),
+              `${slugify(campaignName)}-log-${date}.md`,
+              "text/markdown"
+            );
+          }}
+          onJSON={() => {
+            const date = new Date().toISOString().slice(0, 10);
+            downloadFile(
+              logToJSON(visibleLog),
+              `${slugify(campaignName)}-log-${date}.json`,
+              "application/json"
+            );
+          }}
+        />
+      </div>
 
       <Card className="space-y-3">
         <h3 className="text-lg font-semibold">Add a log entry</h3>
