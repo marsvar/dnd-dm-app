@@ -28,6 +28,7 @@ import {
 import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEvents";
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
+import { buildPlayerViewSnapshot } from "../engine/playerViewProjection";
 
 // ── Phase 2a: entity-table helpers ─────────────────────────────────────────
 // campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
@@ -160,6 +161,18 @@ async function fetchEntityTables(
   }
 
   return { campaigns, pcs, campaignMembers };
+}
+
+async function upsertPlayerView(
+  supabase: SupabaseClient,
+  campaignId: string,
+  payload: unknown
+): Promise<void> {
+  await supabase.from("campaign_player_view").upsert({
+    campaign_id: campaignId,
+    payload,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "campaign_id" });
 }
 
 // ── localStorage keys ───────────────────────────────────────────────────────
@@ -430,6 +443,14 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const [syncing, setSyncing] = useState(false);
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewOwnedIdsRef = useRef<Set<string> | null>(null);
+  const playerViewOwnedIdsFetchedAtRef = useRef<number | null>(null);
+  const playerViewOwnedUserIdRef = useRef<string | null>(null);
+  const playerViewCampaignSignatureRef = useRef<string>("");
+  const playerViewActiveCampaignRef = useRef<string | null>(null);
+  const playerViewPublishedIdsRef = useRef<Set<string>>(new Set());
+  const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
   // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
@@ -557,6 +578,103 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       }
     }, 500);
   }, [state]);
+
+  useEffect(() => {
+    if (syncing) return;
+    const collectCampaignIds = () => {
+      const ids = new Set<string>();
+      if (state.activeCampaignId) ids.add(state.activeCampaignId);
+      for (const encounter of state.encounters) {
+        if (encounter.isRunning && encounter.campaignId) {
+          ids.add(encounter.campaignId);
+        }
+      }
+      return Array.from(ids);
+    };
+
+    if (playerViewTimerRef.current) clearTimeout(playerViewTimerRef.current);
+    playerViewTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const { createSupabaseClient } = await import("../supabase/client");
+          const supabase = createSupabaseClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const now = Date.now();
+          if (playerViewOwnedUserIdRef.current !== user.id) {
+            playerViewOwnedUserIdRef.current = user.id;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
+          // Ownership does not change within the app; IDs are sufficient here.
+          // TTL refresh covers any rare external ownership changes.
+          const campaignSignature = state.campaigns.map((c) => c.id).sort().join("|");
+          if (playerViewCampaignSignatureRef.current !== campaignSignature) {
+            playerViewCampaignSignatureRef.current = campaignSignature;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
+          let ownedIds = playerViewOwnedIdsRef.current ?? new Set<string>();
+          const ownedFresh =
+            ownedIds &&
+            playerViewOwnedIdsFetchedAtRef.current !== null &&
+            now - playerViewOwnedIdsFetchedAtRef.current < PLAYER_VIEW_OWNED_IDS_TTL;
+          const activeCampaignId = state.activeCampaignId;
+          const activeChanged = playerViewActiveCampaignRef.current !== activeCampaignId;
+          if (activeChanged) {
+            playerViewActiveCampaignRef.current = activeCampaignId;
+          }
+          const needsRefreshForActive =
+            Boolean(activeCampaignId) &&
+            activeChanged &&
+            !ownedIds.has(activeCampaignId as string);
+
+          if (!ownedFresh || needsRefreshForActive) {
+            const { data: ownedCampaigns } = await supabase
+              .from("campaigns")
+              .select("id")
+              .eq("owner_id", user.id);
+            ownedIds = new Set(
+              (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
+            );
+            playerViewOwnedIdsRef.current = ownedIds;
+            playerViewOwnedIdsFetchedAtRef.current = now;
+          }
+          if (!ownedIds.size) return;
+
+          const campaignIds = collectCampaignIds().filter((id) => ownedIds.has(id));
+          const publishIds = new Set([
+            ...playerViewPublishedIdsRef.current,
+            ...campaignIds,
+          ]);
+          if (!publishIds.size) return;
+
+          await Promise.all(
+            Array.from(publishIds).map((campaignId) =>
+              upsertPlayerView(
+                supabase,
+                campaignId,
+                buildPlayerViewSnapshot(state, campaignId)
+              )
+            )
+          );
+          playerViewPublishedIdsRef.current = new Set(campaignIds);
+        } catch {
+          // Non-fatal
+        }
+      })();
+    }, 300);
+
+    return () => {
+      if (playerViewTimerRef.current) {
+        clearTimeout(playerViewTimerRef.current);
+        playerViewTimerRef.current = null;
+      }
+    };
+  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs, state.campaigns, syncing]);
 
   // React to changes made by the DM in another tab/window.
   // The `storage` event fires in every tab EXCEPT the one that wrote the change,

@@ -3,13 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "../lib/store/appStore";
+import { useRoleStore } from "../lib/store/roleStore";
+import { shouldShowCombatActivePill } from "../lib/engine/combatUi";
 
 export const CombatActivePill = () => {
   const { state } = useAppStore();
+  const { activeRole } = useRoleStore();
   const pathname = usePathname();
 
   const runningEncounter = state.encounters.find((e) => e.isRunning) ?? null;
-  if (!runningEncounter || pathname === "/encounters/player") return null;
+  if (
+    !shouldShowCombatActivePill({
+      pathname,
+      activeRole,
+      hasRunning: Boolean(runningEncounter),
+    })
+  ) {
+    return null;
+  }
+  if (!runningEncounter) return null;
 
   const activeParticipant = runningEncounter.participants.find(
     (p) => p.id === runningEncounter.activeParticipantId
