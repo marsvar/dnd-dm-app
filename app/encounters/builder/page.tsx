@@ -809,6 +809,7 @@ export default function EncounterBuilderPage() {
                       Remove
                     </Button>
                     <div className="flex-1" />
+                    {/* Completed encounters always have events by definition */}
                     <ExportMenu {...exportEncounter(encounter)} />
                     <Button
                       variant="outline"
