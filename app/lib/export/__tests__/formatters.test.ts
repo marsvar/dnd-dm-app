@@ -60,6 +60,12 @@ describe("logToMarkdown", () => {
     const md = logToMarkdown(logEntries, "Test");
     assert.ok(md.includes("Party arrived at the inn"), md);
   });
+
+  it("returns valid header when entries array is empty", () => {
+    const md = logToMarkdown([], "Empty Campaign");
+    assert.ok(md.includes("# Session Log: Empty Campaign"), md);
+    assert.ok(md.includes("*(no log entries)*"), md);
+  });
 });
 
 describe("logToJSON", () => {
