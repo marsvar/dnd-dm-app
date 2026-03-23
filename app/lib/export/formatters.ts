@@ -96,7 +96,8 @@ export function notesToJSON(notes: Note[]): string {
 
 export function encounterToMarkdown(
   encounter: Encounter,
-  _logEntries: LogEntry[]
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for API symmetry with encounterToJSON; encounter.eventLog provides combat events
+  logEntries: LogEntry[]
 ): string {
   const date = isoDate();
 
