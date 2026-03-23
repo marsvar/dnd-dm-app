@@ -1,4 +1,5 @@
 import type { Encounter, LogEntry, Note } from "../models/types";
+import type { EncounterEvent } from "../engine/encounterEvents";
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -95,14 +96,140 @@ export function notesToJSON(notes: Note[]): string {
 
 export function encounterToMarkdown(
   encounter: Encounter,
-  logEntries: LogEntry[]
+  _logEntries: LogEntry[]
 ): string {
-  return ""; // TODO Task 4
+  const date = isoDate();
+
+  // Name lookup from current participants state.
+  // PARTICIPANT_ADDED events carry Omit<EncounterParticipant, "id"> — no ID in payload.
+  // Removed participants are not in encounter.participants, so fall back to "(removed participant)".
+  const nameById = new Map<string, string>();
+  for (const p of encounter.participants) nameById.set(p.id, p.name);
+  const getName = (id: string) => nameById.get(id) ?? "(removed participant)";
+
+  const lines: string[] = [
+    `# ${encounter.name}`,
+    `**Campaign:** ${encounter.campaignId ?? "—"} · **Location:** ${encounter.location ?? "—"}`,
+    `**Date:** ${date} · **Rounds:** ${encounter.round} · **Status:** ${encounter.status ?? "—"}`,
+    "",
+    "## Participants",
+    "| Name | Kind | HP | Conditions |",
+    "|------|------|-----|-----------|",
+  ];
+
+  for (const p of encounter.participants) {
+    const hp =
+      p.currentHp !== null && p.maxHp !== null
+        ? `${p.currentHp}/${p.maxHp}`
+        : "—";
+    const conditions = p.conditions.length ? p.conditions.join(", ") : "—";
+    lines.push(`| ${p.name} | ${p.kind.toUpperCase()} | ${hp} | ${conditions} |`);
+  }
+  lines.push("");
+
+  // Combat log (omit TURN_ADVANCED, INITIATIVE_SET, COMBAT_MODE_SET, ROLL_RECORDED)
+  lines.push("## Combat Log");
+  const combatLines: string[] = [];
+
+  for (const e of encounter.eventLog) {
+    const time = formatTime(e.at);
+    let text: string | null = null;
+
+    switch (e.t) {
+      case "COMBAT_STARTED":
+        text = "Combat started";
+        break;
+      case "COMBAT_STOPPED":
+        text = "Combat stopped";
+        break;
+      case "ENCOUNTER_COMPLETED":
+        text = "Encounter completed";
+        break;
+      case "ROUND_SET":
+        text = `Round ${e.value}`;
+        break;
+      case "PARTICIPANT_ADDED":
+        text = `${e.participant.name} joined`;
+        break;
+      case "PARTICIPANT_REMOVED":
+        text = `${getName(e.participantId)} removed`;
+        break;
+      case "DAMAGE_APPLIED":
+        text = `${getName(e.participantId)} took ${e.amount} damage`;
+        break;
+      case "HEAL_APPLIED":
+        text = `${getName(e.participantId)} healed ${e.amount} HP`;
+        break;
+      case "TEMP_HP_SET":
+        text =
+          e.value !== null
+            ? `${getName(e.participantId)} received ${e.value} temp HP`
+            : `${getName(e.participantId)} temp HP cleared`;
+        break;
+      case "CONDITIONS_SET":
+        text = `${getName(e.participantId)} conditions: ${
+          e.value.length ? e.value.join(", ") : "—"
+        }`;
+        break;
+      case "NOTES_SET":
+        text = `${getName(e.participantId)} note updated`;
+        break;
+      case "DEATH_SAVES_SET":
+        text = `${getName(e.participantId)} death saves: ${e.value.successes} successes, ${e.value.failures} failures`;
+        break;
+      case "CONCENTRATION_SET":
+        text = e.value
+          ? `${getName(e.participantId)} is now concentrating`
+          : `${getName(e.participantId)} dropped concentration`;
+        break;
+      // Omitted from combat log:
+      case "TURN_ADVANCED":
+      case "INITIATIVE_SET":
+      case "COMBAT_MODE_SET":
+      case "ROLL_RECORDED":
+        break;
+      default: {
+        // Exhaustiveness guard
+        const _: never = e;
+        void _;
+        break;
+      }
+    }
+
+    if (text !== null) combatLines.push(`- ${time} · ${text}`);
+  }
+
+  if (combatLines.length) {
+    lines.push(...combatLines);
+  } else {
+    lines.push("*(no combat events)*");
+  }
+  lines.push("");
+
+  // Rolls table (ROLL_RECORDED events only)
+  const rolls = encounter.eventLog.filter(
+    (e): e is Extract<EncounterEvent, { t: "ROLL_RECORDED" }> =>
+      e.t === "ROLL_RECORDED"
+  );
+
+  lines.push("## Rolls");
+  if (rolls.length) {
+    lines.push("| Who | Type | Formula | Result |");
+    lines.push("|-----|------|---------|--------|");
+    for (const r of rolls) {
+      const who = r.actorId ? (nameById.get(r.actorId) ?? "DM") : "DM";
+      lines.push(`| ${who} | ${r.context} | ${r.formula} | ${r.total} |`);
+    }
+  } else {
+    lines.push("*(no rolls recorded)*");
+  }
+
+  return lines.join("\n");
 }
 
 export function encounterToJSON(
   encounter: Encounter,
   logEntries: LogEntry[]
 ): string {
-  return ""; // TODO Task 4
+  return JSON.stringify({ encounter, logEntries }, null, 2);
 }
