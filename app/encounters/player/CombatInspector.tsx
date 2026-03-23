@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import { Pin } from "lucide-react";
 import { ConditionChip, ConditionPicker, Textarea, HpBar } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
@@ -62,73 +62,6 @@ function AbilityTile({ abbr, score }: { abbr: string; score: number }) {
   );
 }
 
-function HpControls({
-  onDamage,
-  onHeal,
-}: {
-  onDamage: (n: number) => void;
-  onHeal: (n: number) => void;
-}) {
-  const [amount, setAmount] = useState("");
-  const parsed = parseInt(amount, 10);
-  const valid = !isNaN(parsed) && parsed > 0;
-  const commit = (fn: (n: number) => void) => {
-    if (valid) {
-      fn(parsed);
-      setAmount("");
-    }
-  };
-
-  return (
-    <div className="flex w-full gap-2">
-      <div
-        className="flex-1 flex items-center gap-2 rounded-md px-3 py-1.5 border"
-        style={{
-          backgroundColor: "var(--combat-surface-raised)",
-          borderColor: "var(--combat-border-raised)",
-        }}
-      >
-        <span
-          className="text-[0.6rem] font-bold uppercase tracking-widest shrink-0"
-          style={{ color: "var(--combat-fg-muted)" }}
-        >
-          AMT
-        </span>
-        <input
-          type="number"
-          min={1}
-          value={amount}
-          placeholder="0"
-          onChange={(e) => setAmount(e.target.value)}
-          className="flex-1 bg-transparent border-none outline-none font-mono font-bold text-sm text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          style={{ color: "var(--combat-fg)", WebkitTextFillColor: "var(--combat-fg)", caretColor: "var(--combat-fg)" }}
-        />
-      </div>
-      <button
-        disabled={!valid}
-        onClick={() => commit(onDamage)}
-        className="text-xs font-bold px-3 py-1.5 rounded-md disabled:opacity-40"
-        style={{
-          backgroundColor: "var(--btn-damage-bg)",
-          color: "var(--btn-damage-fg)",
-        }}
-      >
-        Dmg
-      </button>
-      <button
-        disabled={!valid}
-        onClick={() => commit(onHeal)}
-        className="text-xs font-bold px-3 py-1.5 rounded-md disabled:opacity-40"
-        style={{
-          backgroundColor: "var(--btn-heal-bg)",
-          color: "var(--btn-heal-fg)",
-        }}
-      >
-        Heal
-      </button>
-    </div>
-  );
-}
 
 export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
   const { dispatchEncounterEvent, state } = useAppStore();
@@ -147,16 +80,6 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
 
   function dispatch(event: Parameters<typeof dispatchEncounterEvent>[1]) {
     dispatchEncounterEvent(encounter.id, event);
-  }
-
-  function handleDamage(amount: number) {
-    if (!p) return;
-    dispatch({ t: "DAMAGE_APPLIED", participantId: p.id, amount });
-  }
-
-  function handleHeal(amount: number) {
-    if (!p) return;
-    dispatch({ t: "HEAL_APPLIED", participantId: p.id, amount });
   }
 
   function handleConditions(conditions: string[]) {
@@ -308,9 +231,7 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
             </span>
           )}
         </div>
-        {/* HpBar owns HP-state color logic */}
         <HpBar current={p.currentHp ?? 0} max={p.maxHp ?? 0} className="h-1.5 mb-3" />
-        <HpControls onDamage={handleDamage} onHeal={handleHeal} />
       </div>
 
       {/* Quick stats */}
