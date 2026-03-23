@@ -1,9 +1,12 @@
 // app/encounters/player/CombatParticipantList.tsx
 "use client";
 import { useState, useCallback, useRef } from "react";
+import { Plus } from "lucide-react";
 import { CombatParticipantRow } from "../../components/CombatParticipantRow";
+import { MonsterPicker } from "../../components/MonsterPicker";
+import { Dialog, DialogContent, DialogTitle } from "../../components/ui";
 import { useAppStore } from "../../lib/store/appStore";
-import type { Encounter } from "../../lib/models/types";
+import type { Encounter, Monster } from "../../lib/models/types";
 
 interface Props {
   encounter: Encounter;
@@ -14,6 +17,7 @@ interface Props {
 export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: Props) {
   const { dispatchEncounterEvent, updatePc, state } = useAppStore();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [isAddMonsterOpen, setIsAddMonsterOpen] = useState(false);
   // concentrationNudgeId: participant currently showing the nudge banner.
   // Auto-dismissed after 2.5s via timeout ref.
   const [concentrationNudgeId, setConcentrationNudgeId] = useState<string | null>(null);
@@ -40,6 +44,30 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
 
   const handleHeal = useCallback((participantId: string, amount: number) => {
     dispatchEncounterEvent(encounter.id, { t: "HEAL_APPLIED", participantId, amount });
+  }, [encounter.id, dispatchEncounterEvent]);
+
+  const handleAddMonster = useCallback((monster: Monster, hp: number) => {
+    const dexMod = Math.floor((monster.abilities.dex - 10) / 2);
+    const initiative = Math.floor(Math.random() * 20) + 1 + dexMod;
+    dispatchEncounterEvent(encounter.id, {
+      t: "PARTICIPANT_ADDED",
+      participant: {
+        name: monster.name,
+        kind: "monster",
+        refId: monster.id,
+        initiative,
+        ac: monster.ac,
+        maxHp: hp,
+        currentHp: hp,
+        tempHp: null,
+        conditions: [],
+        notes: "",
+        visual: monster.visual ?? { fallback: "initials" },
+        concentrating: false,
+        deathSaves: null,
+      },
+    });
+    setIsAddMonsterOpen(false);
   }, [encounter.id, dispatchEncounterEvent]);
 
   // "Active" = currentHp > 0; "Downed" = currentHp <= 0.
@@ -124,6 +152,35 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
           })}
         </>
       )}
+      {/* Add Monster button */}
+      <div className="pt-2 pb-1 px-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setIsAddMonsterOpen(true)}
+          className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-md border transition-colors"
+          style={{
+            color: "var(--combat-fg-muted)",
+            borderColor: "var(--combat-border)",
+            backgroundColor: "transparent",
+          }}
+        >
+          <Plus size={12} />
+          Add Monster
+        </button>
+      </div>
+
+      <Dialog open={isAddMonsterOpen} onOpenChange={setIsAddMonsterOpen}>
+        <DialogContent maxWidth="lg">
+          <DialogTitle>Add Monster to Combat</DialogTitle>
+          <div className="mt-4">
+            <MonsterPicker
+              monsters={state.monsters}
+              onPickMonster={(monster) => handleAddMonster(monster, monster.hp)}
+              onRollAdd={(monster, rolledHp) => handleAddMonster(monster, rolledHp)}
+              listClassName="max-h-[24rem]"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

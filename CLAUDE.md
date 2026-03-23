@@ -10,11 +10,11 @@
 > **Update this section before each working session.** This is the most important section for consistent results.
 
 ```
-Last worked on: 2026-03-17
-Current focus:  Live encounter improvements (quick actions, undo visibility)
-Recently completed: Encounter builder card redesign (info-dense cards, inline monster picker, difficulty/XP/CR display). Combat color shift fix (theme-adaptive warm accent instead of forced-dark flip). App-wide UI polish pass: collapsible add forms on PCs + Bestiary, danger zone for Reset data, Campaign Pulse icons, card mount animation, hoverable cards, StatBadge → Pill, nav active pill fix.
+Last worked on: 2026-03-20
+Current focus:  CLAUDE.md roadmap sync
+Recently completed: Encounter builder redesign, combat color polish, UI governance pass, death save tracking, HP roll on monster add, inspiration tracking, concentration tracking, short/long rest.
 Blocked on / open questions: —
-Next task: Live encounter improvements — quick damage/heal actions, visible undo + last-action summary
+Next task: Player section (party dashboard, character access, controlled DM note sharing)
 ```
 
 ### Implementation status (as of 2026-03-01)
@@ -432,18 +432,9 @@ Current coverage: unit tests exist and are well-structured. Integration and smok
 See `docs/ROADMAP.md` for the full roadmap with sequencing rationale.
 
 ### Now (active focus)
-- Encounter runner UI polish — active turn highlight, round controls, quick damage/heal/condition/note actions, visible undo + last-action summary
-- HP roll on monster add — optional roll when adding monsters to encounters
-- Inspiration tracking in encounters — surface `Pc.inspiration` on combatant rows
-- UI governance baseline — enforce `ParticipantAvatar` across all participant surfaces
-
-### Next
-- Death save tracking — 3-success/3-failure UI on downed PCs
-- Concentration tracking — flag + nudge when concentrating caster takes damage
-- Encounter CR/XP summary — difficulty indicator in builder (pure calculation)
-- Short/long rest — resource reset mechanics
 - Player section — party dashboard, character access, controlled DM note sharing
-- Character sheet UI — pen-and-paper style, stats block, skills, saves
+- Character sheet UI — pen-and-paper style sheet: primary stats block, skills, saves, sidebar with active conditions/resources/quick actions, print-friendly layout
+- Data & quality — session notes linked to encounter events, basic log/notes export, perf hardening (rerender reduction, memoized selectors)
 
 ### Later
 - Legendary actions / lair actions — reminder system for boss monsters

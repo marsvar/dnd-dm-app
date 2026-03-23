@@ -121,7 +121,7 @@ export default function EncounterPlayerPage() {
               pinnedInspectorId={pinnedInspectorId}
               onPin={setPinnedInspectorId}
             />
-            <div style={{ borderLeft: "1px solid var(--combat-border)" }}>
+            <div className="h-full overflow-hidden" style={{ borderLeft: "1px solid var(--combat-border)" }}>
               <CombatInspector
                 encounter={selectedEncounter}
                 pinnedId={pinnedInspectorId}
