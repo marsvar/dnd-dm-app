@@ -17,7 +17,10 @@ import {
   type EncounterDifficulty,
 } from "../../lib/engine/selectors";
 import { useAppStore } from "../../lib/store/appStore";
-import type { Monster } from "../../lib/models/types";
+import type { Encounter, Monster } from "../../lib/models/types";
+import { ExportMenu } from "../../components/ExportMenu";
+import { encounterToMarkdown, encounterToJSON, slugify } from "../../lib/export/formatters";
+import { downloadFile } from "../../lib/export/download";
 
 type DraftMonster = {
   draftId: string;
@@ -552,6 +555,26 @@ export default function EncounterBuilderPage() {
     variantForm.name,
   ]);
 
+  function exportEncounter(encounter: Encounter) {
+    const date = new Date().toISOString().slice(0, 10);
+    const slug = slugify(encounter.name);
+    const logEntries = state.log.filter((l) => l.encounterId === encounter.id);
+    return {
+      onMarkdown: () =>
+        downloadFile(
+          encounterToMarkdown(encounter, logEntries),
+          `${slug}-${date}.md`,
+          "text/markdown"
+        ),
+      onJSON: () =>
+        downloadFile(
+          encounterToJSON(encounter, logEntries),
+          `${slug}-${date}.json`,
+          "application/json"
+        ),
+    };
+  }
+
   return (
     <PageShell>
       <SectionTitle
@@ -661,6 +684,9 @@ export default function EncounterBuilderPage() {
                     Remove
                   </Button>
                   <div className="flex-1" />
+                  {encounter.eventLog.length > 0 && (
+                    <ExportMenu {...exportEncounter(encounter)} />
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => openEditOverlay(encounter.id)}
@@ -783,6 +809,7 @@ export default function EncounterBuilderPage() {
                       Remove
                     </Button>
                     <div className="flex-1" />
+                    <ExportMenu {...exportEncounter(encounter)} />
                     <Button
                       variant="outline"
                       onClick={() => openEditOverlay(encounter.id)}
