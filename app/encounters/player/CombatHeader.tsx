@@ -4,6 +4,9 @@ import { useCallback, useEffect } from "react";
 import { useAppStore } from "../../lib/store/appStore";
 import type { Encounter, EncounterParticipant } from "../../lib/models/types";
 import type { EncounterEvent } from "../../lib/engine/encounterEvents";
+import { ExportMenu } from "../../components/ExportMenu";
+import { encounterToMarkdown, encounterToJSON, slugify } from "../../lib/export/formatters";
+import { downloadFile } from "../../lib/export/download";
 
 function describeLastEvent(
   event: EncounterEvent | undefined,
@@ -30,7 +33,7 @@ interface Props {
 }
 
 export function CombatHeader({ encounter, onEndEncounter }: Props) {
-  const { advanceEncounterTurn, undoEncounterEvent } = useAppStore();
+  const { advanceEncounterTurn, undoEncounterEvent, state } = useAppStore();
 
   const lastEvent = encounter.eventLog[encounter.eventLog.length - 1];
   const lastEventText = describeLastEvent(lastEvent, encounter.participants);
@@ -38,6 +41,26 @@ export function CombatHeader({ encounter, onEndEncounter }: Props) {
   const handlePrev = useCallback(() => advanceEncounterTurn(encounter.id, -1), [encounter.id, advanceEncounterTurn]);
   const handleNext = useCallback(() => advanceEncounterTurn(encounter.id, 1), [encounter.id, advanceEncounterTurn]);
   const handleUndo = useCallback(() => undoEncounterEvent(encounter.id), [encounter.id, undoEncounterEvent]);
+
+  const handleExportMarkdown = useCallback(() => {
+    const date = new Date().toISOString().slice(0, 10);
+    const logEntries = state.log.filter((l) => l.encounterId === encounter.id);
+    downloadFile(
+      encounterToMarkdown(encounter, logEntries),
+      `${slugify(encounter.name)}-${date}.md`,
+      "text/markdown"
+    );
+  }, [encounter, state.log]);
+
+  const handleExportJSON = useCallback(() => {
+    const date = new Date().toISOString().slice(0, 10);
+    const logEntries = state.log.filter((l) => l.encounterId === encounter.id);
+    downloadFile(
+      encounterToJSON(encounter, logEntries),
+      `${slugify(encounter.name)}-${date}.json`,
+      "application/json"
+    );
+  }, [encounter, state.log]);
 
   // Keyboard shortcuts: →/] next turn, ←/[ prev turn, ⌘Z undo
   useEffect(() => {
@@ -133,6 +156,10 @@ export function CombatHeader({ encounter, onEndEncounter }: Props) {
             ↩ {lastEventText}
           </button>
         )}
+        <ExportMenu
+          onMarkdown={handleExportMarkdown}
+          onJSON={handleExportJSON}
+        />
         <button
           onClick={onEndEncounter}
           className="text-xs font-semibold px-3 py-1.5 rounded-md shrink-0"
