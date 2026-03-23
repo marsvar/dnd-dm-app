@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *   /login, /signup, /select-role, /player/**, /_next/**, /favicon.ico
  */
 
-const PUBLIC_PATHS = ["/login", "/signup", "/select-role"];
+const PUBLIC_PATHS = ["/login", "/signup", "/select-role", "/design-system"];
 const PUBLIC_PREFIXES = ["/player/", "/_next/", "/favicon"];
 
 function isPublicRoute(pathname: string) {
@@ -19,6 +19,11 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // Skip auth entirely for public routes (avoids requiring Supabase env vars).
+  if (isPublicRoute(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   // Build a mutable response so we can forward refreshed auth cookies.
   const response = NextResponse.next({ request });
 
