@@ -859,18 +859,20 @@ export default function EncounterPlayerPage() {
                   ) : null}
                 </div>
                 <div className="space-y-2">
-                  {orderedParticipants.map((participant, index) => (
+                  {orderedParticipants.map((participant, index) => {
+                    const isDefeatedRow = participant.currentHp !== null && participant.currentHp !== undefined && participant.currentHp <= 0 && participant.kind !== "pc";
+                    return (
                     <div
                       key={participant.id}
                       className={`rounded-xl border px-3 py-3 text-sm transition hover:border-accent/50 ${
                         index === activeIndex
-                          ? "border-l-4 border-accent bg-surface-strong text-foreground ring-2 ring-[var(--ring)]"
-                          : "border-black/10 bg-surface text-foreground"
+                          ? "border bg-[var(--active-row-bg)] [border-color:var(--active-row-border)] text-foreground"
+                          : "border border-black/10 bg-surface text-foreground"
                       } ${
                         effectiveTargetId === participant.id
                           ? "targeted-outline"
                           : ""
-                      } ${combatMode ? "cursor-pointer" : ""}`}
+                      } ${combatMode ? "cursor-pointer" : ""} ${isDefeatedRow ? "opacity-70" : ""}`}
                       onClick={() => {
                         if (!combatMode) {
                           return;
@@ -878,70 +880,79 @@ export default function EncounterPlayerPage() {
                         setDamageTargetId(participant.id);
                       }}
                     >
-                      <div className="grid gap-3 md:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] md:items-center">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <ParticipantAvatar
-                              name={participant.name}
-                              visual={participant.visual}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-surface-strong object-cover text-[0.65rem] font-semibold text-muted"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold">{participant.name}</p>
-                              <Pill label={participant.kind.toUpperCase()} tone="neutral" />
+                      <div className="flex items-start gap-3">
+                        {/* Zone A — Identity */}
+                        <div className="flex min-w-0 flex-1 items-start gap-2">
+                          <ParticipantAvatar
+                            name={participant.name}
+                            visual={participant.visual}
+                            className={cn(
+                              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border object-cover text-[0.65rem] font-semibold",
+                              index === activeIndex
+                                ? "border-accent text-accent bg-surface-strong"
+                                : "border-black/10 bg-surface-strong text-muted"
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            {/* Name + kind inline */}
+                            <div className="flex min-w-0 items-baseline gap-2">
+                              <p className={cn(
+                                "truncate text-sm font-semibold leading-snug",
+                                index === activeIndex ? "text-accent" : "text-foreground"
+                              )}>
+                                {participant.name}
+                              </p>
+                              <span className="shrink-0 text-xs uppercase tracking-wide text-muted">
+                                {participant.kind}
+                              </span>
                             </div>
-                          </div>
-                          {index === activeIndex ? (
-                            <div className="mt-2">
-                              <Pill label="Active" tone="accent" />
-                            </div>
-                          ) : null}
-                          {participant.conditions.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {participant.conditions.map((cond) => (
-                                <ConditionChip
-                                  key={cond}
-                                  label={cond}
-                                  onRemove={() => {
-                                    if (!selectedEncounter) return;
-                                    dispatchEncounterEvent(selectedEncounter.id, {
-                                      t: "CONDITIONS_SET",
-                                      participantId: participant.id,
-                                      value: participant.conditions.filter((c) => c !== cond),
-                                    });
-                                  }}
+                            {/* HP bar + value */}
+                            {participant.maxHp != null && participant.currentHp != null && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <HpBar
+                                  current={participant.currentHp}
+                                  max={participant.maxHp}
+                                  className="h-1.5 w-20 shrink-0"
                                 />
-                              ))}
-                            </div>
-                          )}
+                                <span className="font-mono text-xs text-muted">
+                                  {participant.currentHp} / {participant.maxHp}
+                                  {participant.tempHp ? (
+                                    <span className="text-accent"> +{participant.tempHp}</span>
+                                  ) : null}
+                                </span>
+                              </div>
+                            )}
+                            {/* Conditions */}
+                            {participant.conditions.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {participant.conditions.map((cond) => (
+                                  <ConditionChip
+                                    key={cond}
+                                    label={cond}
+                                    onRemove={() => {
+                                      if (!selectedEncounter) return;
+                                      dispatchEncounterEvent(selectedEncounter.id, {
+                                        t: "CONDITIONS_SET",
+                                        participantId: participant.id,
+                                        value: participant.conditions.filter((c) => c !== cond),
+                                      });
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <FieldLabel>Init</FieldLabel>
+                        {/* Zone B — Stats */}
+                        <div className="shrink-0 text-right">
                           <p className="font-mono text-sm font-semibold">
                             {participant.initiative ?? "—"}
                           </p>
-                        </div>
-                        <div>
-                          <FieldLabel>AC</FieldLabel>
-                          <p className="font-mono text-sm font-semibold">{participant.ac ?? "—"}</p>
-                        </div>
-                        <div>
-                          <FieldLabel>HP</FieldLabel>
-                          <p className="font-mono text-sm font-semibold">
-                            {participant.currentHp ?? "—"}{participant.maxHp != null ? ` / ${participant.maxHp}` : ""}
+                          <p className="font-mono text-[0.65rem] uppercase tracking-wide text-muted">init</p>
+                          <p className="mt-1 font-mono text-sm font-semibold">
+                            {participant.ac ?? "—"}
                           </p>
-                          {participant.maxHp != null && participant.currentHp != null && (
-                            <HpBar
-                              current={participant.currentHp}
-                              max={participant.maxHp}
-                              className="mt-1.5"
-                            />
-                          )}
-                          {participant.tempHp ? (
-                            <p className="mt-1 font-mono text-xs text-muted">
-                              +{participant.tempHp} temp
-                            </p>
-                          ) : null}
+                          <p className="font-mono text-[0.65rem] uppercase tracking-wide text-muted">ac</p>
                         </div>
                       </div>
                       {/* Death save tracker — shown for PC participants at 0 HP */}
@@ -965,7 +976,8 @@ export default function EncounterPlayerPage() {
                           />
                         )}
                     </div>
-                  ))}
+                  );
+                  })}
                   {!orderedParticipants.length ? (
                     <p className="text-sm text-muted">No active participants to run.</p>
                   ) : null}
