@@ -1054,29 +1054,32 @@ export default function EncounterPlayerPage() {
                   {activePc ? (
                     <div className="mt-3 space-y-3">
                       <p className="text-base font-semibold text-foreground">{activePc.name}</p>
-                      <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="space-y-3">
+                        {/* Ability scores grid */}
                         <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted">Ability</p>
-                          <p>
-                            STR {activePc.abilities.str} · DEX {activePc.abilities.dex} · CON{" "}
-                            {activePc.abilities.con}
-                          </p>
-                          <p>
-                            INT {activePc.abilities.int} · WIS {activePc.abilities.wis} · CHA{" "}
-                            {activePc.abilities.cha}
-                          </p>
+                          <p className="mb-1 text-xs uppercase tracking-[0.2em] text-muted">Ability Scores</p>
+                          <div className="grid grid-cols-6 gap-1">
+                            {(["str", "dex", "con", "int", "wis", "cha"] as const).map((key) => (
+                              <div key={key} className="rounded-lg border border-black/10 bg-surface-strong p-1 text-center">
+                                <p className="text-[0.55rem] uppercase tracking-widest text-muted">{key}</p>
+                                <p className="font-mono text-sm font-bold text-foreground">{activePc.abilities[key]}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
+                        {/* Saves grid */}
                         <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted">Saves</p>
-                          <p>
-                            STR {getSaveValue("str")} · DEX {getSaveValue("dex")} · CON{" "}
-                            {getSaveValue("con")}
-                          </p>
-                          <p>
-                            INT {getSaveValue("int")} · WIS {getSaveValue("wis")} · CHA{" "}
-                            {getSaveValue("cha")}
-                          </p>
+                          <p className="mb-1 text-xs uppercase tracking-[0.2em] text-muted">Saves</p>
+                          <div className="grid grid-cols-6 gap-1">
+                            {(["str", "dex", "con", "int", "wis", "cha"] as const).map((key) => (
+                              <div key={key} className="rounded-lg border border-black/10 bg-surface-strong p-1 text-center">
+                                <p className="text-[0.55rem] uppercase tracking-widest text-muted">{key}</p>
+                                <p className="font-mono text-sm font-bold text-foreground">{getSaveValue(key)}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
+                        {/* Skills */}
                         <div>
                           <p className="text-xs uppercase tracking-[0.2em] text-muted">Skills</p>
                           <p>Perception {activePc.skills.perception}</p>
