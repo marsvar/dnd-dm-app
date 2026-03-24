@@ -218,16 +218,6 @@ export type Pc = {
   bonds: string;
   flaws: string;
   pin?: string | null;
-  // --- v8 ---
-  deathSaves: DeathSaves;
-  currency: Currency;
-  features: Feature[];
-  spellcasting: SpellcastingInfo;
-  weapons: Weapon[];
-  personalityTraits: string;
-  ideals: string;
-  bonds: string;
-  flaws: string;
 };
 
 export type EncounterParticipant = {
