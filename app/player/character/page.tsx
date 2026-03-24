@@ -52,13 +52,13 @@ import type {
 } from "../../lib/models/types";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Sparkles, Plus, Trash2, Dices } from "lucide-react";
+import { Dices, Plus, Sparkles, Trash2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types & constants
 // ---------------------------------------------------------------------------
 
-type Tab = "overview" | "skills" | "combat" | "bio" | "features" | "spells";
+type Tab = "overview" | "skills" | "combat" | "bio" | "features" | "spells" | "rolls";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -67,6 +67,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "bio", label: "Bio" },
   { id: "features", label: "Feats" },
   { id: "spells", label: "Spells" },
+  { id: "rolls", label: "Rolls" },
 ];
 
 /** Coin display metadata (in display order). */
@@ -184,6 +185,11 @@ export default function PlayerCharacterPage() {
             <SpellsPanel pc={pc} up={up} />
           </div>
         </div>
+      </div>
+
+      {/* Rolls: mobile-only tab; always hidden on desktop (sheet panels cover it) */}
+      <div className={cn(tab !== "rolls" && "hidden")}>
+        <RollsTab pcId={pc.id} pcName={pc.name} />
       </div>
     </PlayerShell>
   );

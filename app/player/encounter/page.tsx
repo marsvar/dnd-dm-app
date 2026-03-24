@@ -22,7 +22,7 @@ import { Button, Card, HpBar, ConditionChip, Input, Pill, cn } from "../../compo
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
 import type { DeathSaves, EncounterParticipant, Weapon } from "../../lib/models/types";
 import { formatMod, getWeaponDiceFormula } from "../../lib/engine/pcEngine";
-import { Shield, Swords, Dices } from "lucide-react";
+import { Dices, Shield, Swords } from "lucide-react";
 
 // ------------------------------------------------------------------
 // Dice helpers
@@ -398,7 +398,7 @@ function WeaponRollPanel({
   const [lastRoll, setLastRoll] = useState<LastRoll | null>(null);
 
   const handleRoll = (weapon: Weapon) => {
-    const d20 = Math.floor(Math.random() * 20) + 1;
+    const d20 = rollDice("1d20")[0];
     const atkTotal = d20 + weapon.attackBonus;
     const dmgRolls = rollDice(weapon.damageDice);
     const dmgTotal = dmgRolls.reduce((a, b) => a + b, 0) + weapon.damageBonus;

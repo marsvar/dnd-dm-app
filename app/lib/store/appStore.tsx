@@ -1,9 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AppState,
   Campaign,
+  CampaignMember,
   Encounter,
   EncounterBaseline,
   EncounterParticipant,
@@ -26,6 +28,144 @@ import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEve
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
 
+// ── Phase 2a: entity-table helpers ─────────────────────────────────────────
+// campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
+// so players can access DM data via proper per-entity RLS instead of relying
+// on the full blob being world-readable.
+
+/** Upsert campaigns, pcs, and campaign_members to their dedicated tables.
+ *  Also removes rows that no longer exist in the local state (orphan cleanup). */
+async function syncEntityTables(
+  supabase: SupabaseClient,
+  state: AppState,
+  userId: string
+): Promise<void> {
+  // ── Upsert campaigns ──────────────────────────────────────────────────────
+  if (state.campaigns.length > 0) {
+    await supabase.from("campaigns").upsert(
+      state.campaigns.map((c) => ({
+        id: c.id,
+        dm_user_id: userId,
+        name: c.name,
+        description: c.description ?? null,
+        created_at: c.createdAt,
+      })),
+      { onConflict: "id" }
+    );
+  }
+
+  // ── Upsert pcs ────────────────────────────────────────────────────────────
+  if (state.pcs.length > 0) {
+    await supabase.from("pcs").upsert(
+      state.pcs.map((pc) => ({
+        id: pc.id,
+        dm_user_id: userId,
+        name: pc.name,
+        pin: pc.pin ?? null,
+        data: pc as unknown as Record<string, unknown>,
+      })),
+      { onConflict: "id" }
+    );
+  }
+
+  // ── Upsert campaign_members ───────────────────────────────────────────────
+  if (state.campaignMembers.length > 0) {
+    await supabase.from("campaign_members").upsert(
+      state.campaignMembers.map((m) => ({
+        id: m.id,
+        campaign_id: m.campaignId,
+        pc_id: m.pcId,
+      })),
+      { onConflict: "id" }
+    );
+  }
+
+  // ── Orphan cleanup ────────────────────────────────────────────────────────
+  // Read IDs that exist in the DB for this DM and delete any that are no
+  // longer present in local state (handles deletes that failed to propagate).
+  const [existingCampaigns, existingPcs] = await Promise.all([
+    supabase.from("campaigns").select("id").eq("dm_user_id", userId),
+    supabase.from("pcs").select("id").eq("dm_user_id", userId),
+  ]);
+
+  const stateCampaignIds = new Set(state.campaigns.map((c) => c.id));
+  const orphanCampaignIds = (existingCampaigns.data ?? [])
+    .map((r: { id: string }) => r.id)
+    .filter((id) => !stateCampaignIds.has(id));
+  if (orphanCampaignIds.length > 0) {
+    await supabase.from("campaigns").delete().in("id", orphanCampaignIds);
+    // campaign_members are cascade-deleted via FK
+  }
+
+  const statePcIds = new Set(state.pcs.map((p) => p.id));
+  const orphanPcIds = (existingPcs.data ?? [])
+    .map((r: { id: string }) => r.id)
+    .filter((id) => !statePcIds.has(id));
+  if (orphanPcIds.length > 0) {
+    await supabase.from("pcs").delete().in("id", orphanPcIds);
+    // campaign_members are cascade-deleted via FK
+  }
+}
+
+/** Fetch campaigns, pcs, and campaign_members for a specific DM from entity tables. */
+async function fetchEntityTables(
+  supabase: SupabaseClient,
+  dmUserId: string
+): Promise<{ campaigns: Campaign[]; pcs: Pc[]; campaignMembers: CampaignMember[] }> {
+  const [campaignsRes, pcsRes] = await Promise.all([
+    supabase
+      .from("campaigns")
+      .select("id, name, description, created_at")
+      .eq("dm_user_id", dmUserId),
+    supabase
+      .from("pcs")
+      .select("id, name, pin, data")
+      .eq("dm_user_id", dmUserId),
+  ]);
+
+  const campaigns: Campaign[] = (campaignsRes.data ?? []).map(
+    (r: { id: string; name: string; description: string | null; created_at: string }) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description ?? undefined,
+      createdAt: r.created_at,
+    })
+  );
+
+  const pcs: Pc[] = (pcsRes.data ?? []).map(
+    (r: { id: string; name: string; pin: string | null; data: Record<string, unknown> }) => ({
+      ...(r.data as Pc),
+      id: r.id,
+      pin: r.pin ?? null,
+    })
+  );
+
+  const campaignIds = campaigns.map((c) => c.id);
+  let campaignMembers: CampaignMember[] = [];
+
+  if (campaignIds.length > 0) {
+    const { data: membersData } = await supabase
+      .from("campaign_members")
+      .select("id, campaign_id, pc_id")
+      .in("campaign_id", campaignIds);
+
+    campaignMembers = (membersData ?? []).map(
+      (m: { id: string; campaign_id: string; pc_id: string }) => ({
+        id: m.id,
+        campaignId: m.campaign_id,
+        pcId: m.pc_id,
+      })
+    );
+  }
+
+  return { campaigns, pcs, campaignMembers };
+}
+
+// ── localStorage keys ───────────────────────────────────────────────────────
+
+// localStorage key that stores the DM's user ID when a player has connected
+// via a /player?u=<dmUserId> link. Persists across page reloads so the player
+// doesn't need to re-enter the link every session.
 const PLAYER_CONNECT_KEY = "dnd_player_connect_id";
 
 /**
@@ -213,6 +353,16 @@ const normalizeState = (parsed: AppState): AppState => {
       skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
       // Migration: backfill pin for PCs saved before this field existed
       pin: pc.pin ?? null,
+      // v8: backfill new required fields
+      deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
+      currency: pc.currency ?? { ...DEFAULT_CURRENCY },
+      features: pc.features ?? [...DEFAULT_FEATURES],
+      spellcasting: pc.spellcasting ?? { ...DEFAULT_SPELLCASTING },
+      weapons: pc.weapons ?? [...DEFAULT_WEAPONS],
+      personalityTraits: pc.personalityTraits ?? "",
+      ideals: pc.ideals ?? "",
+      bonds: pc.bonds ?? "",
+      flaws: pc.flaws ?? "",
     })),
     encounters: normalizedEncounters,
   };
@@ -302,13 +452,45 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
 
       const fetchRemoteState = async (userId: string) => {
         try {
-          const { data } = await supabase
+          // Step 1: fetch the blob (full state for encounters, notes, monsters, etc.)
+          const { data: blobData } = await supabase
             .from("user_app_state")
             .select("state")
             .eq("user_id", userId)
             .single();
-          if (!cancelled && data?.state) {
-            const remote = normalizeState(data.state as AppState);
+
+          let remote: AppState | null = blobData?.state
+            ? normalizeState(blobData.state as AppState)
+            : null;
+
+          // Step 2: fetch entity tables and overlay (tables are authoritative for
+          // campaigns / pcs / campaign_members because they support proper RLS).
+          try {
+            const entities = await fetchEntityTables(supabase, userId);
+            if (
+              entities.campaigns.length > 0 ||
+              entities.pcs.length > 0 ||
+              entities.campaignMembers.length > 0
+            ) {
+              const base = remote ?? { ...seedState };
+              remote = {
+                ...base,
+                campaigns: entities.campaigns,
+                pcs: entities.pcs.map((pc) => ({
+                  ...pc,
+                  visual: normalizeVisual(pc.visual),
+                  skillProficiencies:
+                    pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+                  pin: pc.pin ?? null,
+                })),
+                campaignMembers: entities.campaignMembers,
+              };
+            }
+          } catch {
+            // Entity table fetch failure is non-fatal — continue with blob state.
+          }
+
+          if (!cancelled && remote) {
             setState(remote);
             window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
           }
@@ -362,11 +544,16 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         const supabase = createSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+        // Sync full blob (existing behaviour — source of truth for encounters, notes, etc.)
         await supabase.from("user_app_state").upsert({
           user_id: user.id,
           state: state as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
+
+        // Also sync entity tables (campaigns, pcs, campaign_members).
+        await syncEntityTables(supabase, state, user.id);
       } catch {
         // Sync failure is non-fatal — state is safely in localStorage.
       }
@@ -462,6 +649,17 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       ...prev,
       pcs: prev.pcs.filter((pc) => pc.id !== id),
     }));
+    // Fire-and-forget: delete from entity table immediately.
+    // The orphan cleanup in syncEntityTables catches any network failures.
+    void (async () => {
+      try {
+        const { createSupabaseClient } = await import("../supabase/client");
+        const supabase = createSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) await supabase.from("pcs").delete().eq("id", id);
+        // campaign_members cascade-deleted via FK
+      } catch { /* non-fatal */ }
+    })();
   }, []);
 
   const addEncounter = useCallback((name: string, location?: string, campaignId?: string) => {
@@ -848,6 +1046,16 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
 
   const deleteCampaign = useCallback((id: string) => {
     setState((prev) => deleteCampaignFromState(prev, id));
+    // Fire-and-forget: delete from entity table immediately.
+    // campaign_members cascade-deleted via FK.
+    void (async () => {
+      try {
+        const { createSupabaseClient } = await import("../supabase/client");
+        const supabase = createSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) await supabase.from("campaigns").delete().eq("id", id);
+      } catch { /* non-fatal */ }
+    })();
   }, []);
 
   const setActiveCampaign = useCallback((id: string | null) => {
@@ -879,6 +1087,21 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           (m) => !(m.campaignId === campaignId && m.pcId === pcId)
         ),
       }));
+      // Fire-and-forget: delete from entity table immediately.
+      void (async () => {
+        try {
+          const { createSupabaseClient } = await import("../supabase/client");
+          const supabase = createSupabaseClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from("campaign_members")
+              .delete()
+              .eq("campaign_id", campaignId)
+              .eq("pc_id", pcId);
+          }
+        } catch { /* non-fatal */ }
+      })();
     },
     []
   );
@@ -900,13 +1123,46 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       const { createSupabaseClient } = await import("../supabase/client");
       const supabase = createSupabaseClient();
-      const { data } = await supabase
+
+      // Fetch the full blob (for encounters, notes, monsters, etc.)
+      const { data: blobData } = await supabase
         .from("user_app_state")
         .select("state")
         .eq("user_id", dmUserId)
         .single();
-      if (data?.state) {
-        const remote = normalizeState(data.state as AppState);
+
+      let remote: AppState | null = blobData?.state
+        ? normalizeState(blobData.state as AppState)
+        : null;
+
+      // Overlay entity tables (campaigns / pcs / members are more reliably
+      // up-to-date here than in the blob, especially after Phase 2 migrations).
+      try {
+        const entities = await fetchEntityTables(supabase, dmUserId);
+        if (
+          entities.campaigns.length > 0 ||
+          entities.pcs.length > 0 ||
+          entities.campaignMembers.length > 0
+        ) {
+          const base = remote ?? { ...seedState };
+          remote = {
+            ...base,
+            campaigns: entities.campaigns,
+            pcs: entities.pcs.map((pc) => ({
+              ...pc,
+              visual: normalizeVisual(pc.visual),
+              skillProficiencies:
+                pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+              pin: pc.pin ?? null,
+            })),
+            campaignMembers: entities.campaignMembers,
+          };
+        }
+      } catch {
+        // Non-fatal — fall back to blob-only state.
+      }
+
+      if (remote) {
         setState(remote);
         if (typeof window !== "undefined") {
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
