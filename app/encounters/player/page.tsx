@@ -597,8 +597,9 @@ export default function EncounterPlayerPage() {
 
               {combatMode ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-surface-strong px-3 py-2 text-xs text-muted">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-stretch overflow-hidden rounded-2xl border border-black/10 bg-surface-strong text-xs text-muted">
+                    {/* Segment 1 — Round controls */}
+                    <div className="flex items-center gap-2 px-3 py-2">
                       <span className="uppercase tracking-[0.25em]">Round</span>
                       <Button
                         variant="outline"
@@ -626,25 +627,34 @@ export default function EncounterPlayerPage() {
                         Undo
                       </Button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="uppercase tracking-[0.25em]">Active</span>
-                      <span className="text-sm text-foreground">
+                    {/* Divider */}
+                    <div className="w-px self-stretch bg-black/10" />
+                    {/* Segment 2 — Active participant */}
+                    <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+                      <span className="shrink-0 uppercase tracking-[0.25em]">Active</span>
+                      <span className="truncate text-sm text-foreground">
                         {activeParticipant ? activeParticipant.name : "--"}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="uppercase tracking-[0.25em]">Last</span>
-                      <span className="text-sm text-foreground">{formatEventSummary(lastEvent)}</span>
+                    {/* Divider */}
+                    <div className="w-px self-stretch bg-black/10" />
+                    {/* Segment 3 — Last action */}
+                    <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2">
+                      <span className="shrink-0 uppercase tracking-[0.25em]">Last</span>
+                      <span className="truncate max-w-[16rem] text-sm text-foreground">
+                        {formatEventSummary(lastEvent)}
+                      </span>
                     </div>
+                    {/* Keyboard hint */}
                     {selectedEncounter.isRunning ? (
-                      <div className="text-[0.65rem] uppercase tracking-[0.2em] text-muted">
-                        Keys N / P
+                      <div className="ml-auto flex shrink-0 items-center px-3 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
+                        N / P
                       </div>
                     ) : null}
                     {!selectedEncounter.isRunning && !combatRequirementsMet ? (
-                      <p className="text-xs text-muted">
-                        {combatRequirementsMessage}
-                      </p>
+                      <div className="flex items-center px-3 py-2">
+                        <p className="text-xs text-muted">{combatRequirementsMessage}</p>
+                      </div>
                     ) : null}
                   </div>
 
