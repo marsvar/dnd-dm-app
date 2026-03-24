@@ -230,7 +230,7 @@ export function CombatParticipantRow({
       {concentrationNudge && (
         <div
           className="absolute inset-x-0 bottom-0 px-3 py-1 text-[0.65rem] font-bold text-center rounded-b-lg animate-[nudgePulse_300ms_ease-out_both]"
-          style={{ backgroundColor: "var(--hp-low)", color: "#fff" }}
+          style={{ backgroundColor: "var(--hp-low)", color: "var(--combat-fg)" }}
         >
           Concentration check!
         </div>

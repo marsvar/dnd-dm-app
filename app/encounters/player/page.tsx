@@ -73,6 +73,12 @@ export default function EncounterPlayerPage() {
     setPinnedInspectorId(null);
   }, [selectedEncounter?.activeParticipantId]);
 
+  // Clear pin state when switching between mobile and desktop layouts
+  // to prevent the sheet from opening involuntarily on orientation change.
+  useEffect(() => {
+    setPinnedInspectorId(null);
+  }, [isMobile]);
+
   return (
     <>
       {/* Dialogs rendered outside PageShell so they stack correctly in combat mode */}

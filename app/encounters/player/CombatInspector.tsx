@@ -68,10 +68,12 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
   const pcs = state.pcs;
   const monsters = state.monsters;
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingNotesDispatch = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       if (notesTimer.current) clearTimeout(notesTimer.current);
+      pendingNotesDispatch.current?.();
     };
   }, []);
 
@@ -96,8 +98,11 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
   function handleNotes(value: string) {
     if (!p) return;
     if (notesTimer.current) clearTimeout(notesTimer.current);
+    const save = () => dispatch({ t: "NOTES_SET", participantId: p.id, value });
+    pendingNotesDispatch.current = save;
     notesTimer.current = setTimeout(() => {
-      dispatch({ t: "NOTES_SET", participantId: p.id, value });
+      save();
+      pendingNotesDispatch.current = null;
     }, 500);
   }
 
