@@ -10,6 +10,21 @@ import { CombatHeader } from "./CombatHeader";
 import { CombatParticipantList } from "./CombatParticipantList";
 import { CombatInspector } from "./CombatInspector";
 
+/** Returns true when viewport width is below the md breakpoint (768px). SSR-safe — returns false on first render. */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 const isDefeated = (currentHp: number | null) =>
   currentHp !== null && currentHp <= 0;
 
@@ -22,6 +37,7 @@ export default function EncounterPlayerPage() {
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
   const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
   const [pinnedInspectorId, setPinnedInspectorId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const selectedEncounter = useMemo(() => {
     return getDefaultEncounter(state.encounters, selectedId);
@@ -115,20 +131,46 @@ export default function EncounterPlayerPage() {
             encounter={selectedEncounter}
             onEndEncounter={() => setIsEndEncounterOpen(true)}
           />
-          <div className="grid flex-1 min-h-0" style={{ gridTemplateColumns: "1fr 320px" }}>
+          {/* Combat layout: side-by-side on desktop, full-width list on mobile */}
+          <div
+            className="flex-1 min-h-0"
+            style={
+              isMobile
+                ? { overflow: "hidden" }
+                : { display: "grid", gridTemplateColumns: "1fr 320px", overflow: "hidden" }
+            }
+          >
             <CombatParticipantList
               encounter={selectedEncounter}
               pinnedInspectorId={pinnedInspectorId}
               onPin={setPinnedInspectorId}
             />
-            <div className="h-full overflow-hidden" style={{ borderLeft: "1px solid var(--combat-border)" }}>
+            {/* Desktop inspector panel — hidden on mobile */}
+            {!isMobile && (
+              <div className="h-full overflow-hidden" style={{ borderLeft: "1px solid var(--combat-border)" }}>
+                <CombatInspector
+                  encounter={selectedEncounter}
+                  pinnedId={pinnedInspectorId}
+                  onUnpin={() => setPinnedInspectorId(null)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mobile inspector — bottom sheet, opens when a participant is pinned on mobile */}
+          <Dialog
+            open={isMobile && pinnedInspectorId !== null}
+            onOpenChange={(open) => { if (!open) setPinnedInspectorId(null); }}
+          >
+            <DialogContent variant="sheet">
+              <DialogTitle className="sr-only">Participant Inspector</DialogTitle>
               <CombatInspector
                 encounter={selectedEncounter}
                 pinnedId={pinnedInspectorId}
                 onUnpin={() => setPinnedInspectorId(null)}
               />
-            </div>
-          </div>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <PageShell>

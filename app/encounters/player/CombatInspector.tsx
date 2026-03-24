@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Pin } from "lucide-react";
 import { ConditionChip, ConditionPicker, Textarea, HpBar } from "../../components/ui";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
@@ -68,6 +68,12 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
   const pcs = state.pcs;
   const monsters = state.monsters;
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (notesTimer.current) clearTimeout(notesTimer.current);
+    };
+  }, []);
 
   const participantId = pinnedId ?? encounter.activeParticipantId;
   const p = encounter.participants.find((x) => x.id === participantId) ?? null;
