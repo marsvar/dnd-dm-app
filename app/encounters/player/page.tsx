@@ -858,6 +858,7 @@ export default function EncounterPlayerPage() {
                     </div>
                   ) : null}
                 </div>
+                <div className="rounded-2xl border border-black/10 bg-surface p-4">
                 <div className="space-y-2">
                   {orderedParticipants.map((participant, index) => {
                     const isDefeatedRow = participant.currentHp !== null && participant.currentHp !== undefined && participant.currentHp <= 0 && participant.kind !== "pc";
@@ -1036,6 +1037,7 @@ export default function EncounterPlayerPage() {
                       </div>
                     </div>
                   ) : null}
+                </div>
                 </div>
                 <div className="rounded-2xl border border-black/10 bg-surface p-4 text-sm text-muted">
                   <p className="text-xs uppercase tracking-[0.3em] text-muted">Reference</p>
