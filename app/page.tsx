@@ -40,19 +40,19 @@ export default function Home() {
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
+            <div className="rounded-2xl border border-black/10 bg-surface-strong p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Monsters</p>
               <p className="text-3xl font-semibold text-foreground">{state.monsters.length}</p>
             </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
+            <div className="rounded-2xl border border-black/10 bg-surface-strong p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Party</p>
               <p className="text-3xl font-semibold text-foreground">{state.pcs.length}</p>
             </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
+            <div className="rounded-2xl border border-black/10 bg-surface-strong p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Encounters</p>
               <p className="text-3xl font-semibold text-foreground">{state.encounters.length}</p>
             </div>
-            <div className="rounded-xl border border-black/10 bg-surface-strong p-4">
+            <div className="rounded-2xl border border-black/10 bg-surface-strong p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Notes</p>
               <p className="text-3xl font-semibold text-foreground">{state.notes.length}</p>
             </div>
