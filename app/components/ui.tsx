@@ -461,33 +461,44 @@ export const DialogTitle = ({
 /** Optional accessible description for screen readers. Pass className="sr-only" to hide visually. */
 export const DialogDescription = RadixDialog.Description;
 
+/**
+ * Modal overlay built on @radix-ui/react-dialog.
+ *
+ * `variant="default"` — centered modal. `maxWidth` and `fullHeight` apply.
+ * `variant="sheet"` — bottom-anchored sheet (mobile). `maxWidth` and `fullHeight` are ignored.
+ */
 export const DialogContent = ({
   children,
   className,
   maxWidth = "2xl",
   fullHeight = false,
+  variant = "default",
   ...props
 }: ComponentPropsWithoutRef<typeof RadixDialog.Content> & {
   maxWidth?: keyof typeof dialogMaxWidths;
   fullHeight?: boolean;
-}) => (
-  <RadixDialog.Portal>
-    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
-    <RadixDialog.Content
-      {...props}
-      className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none",
-        fullHeight
-          ? "bottom-8 flex flex-col overflow-hidden"
-          : "max-h-[calc(100vh-4rem)] overflow-y-auto",
-        dialogMaxWidths[maxWidth],
-        className
-      )}
-    >
-      {children}
-    </RadixDialog.Content>
-  </RadixDialog.Portal>
-);
+  variant?: "default" | "sheet";
+}) => {
+  const contentCls =
+    variant === "sheet"
+      ? "fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none max-h-[85vh] overflow-y-auto"
+      : cn(
+          "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none",
+          fullHeight
+            ? "bottom-8 flex flex-col overflow-hidden"
+            : "max-h-[calc(100vh-4rem)] overflow-y-auto",
+          dialogMaxWidths[maxWidth]
+        );
+
+  return (
+    <RadixDialog.Portal>
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
+      <RadixDialog.Content {...props} className={cn(contentCls, className)}>
+        {children}
+      </RadixDialog.Content>
+    </RadixDialog.Portal>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Tooltip
