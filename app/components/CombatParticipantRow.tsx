@@ -90,8 +90,11 @@ export function CombatParticipantRow({
           : "border-l-transparent hover:bg-[var(--combat-surface-raised)]"
       )}
     >
-      {/* Avatar — click pins inspector, does NOT expand row */}
-      <div onClick={handleAvatarClick} className="shrink-0 cursor-pointer">
+      {/* Avatar — click pins inspector. min-h/w-[44px] meets touch target minimum (WCAG 2.5.5). */}
+      <div
+        onClick={handleAvatarClick}
+        className="shrink-0 cursor-pointer flex items-center justify-center min-h-[44px] min-w-[44px]"
+      >
         <ParticipantAvatar
           name={p.name}
           visual={p.visual}
@@ -192,6 +195,7 @@ export function CombatParticipantRow({
           <Input
             ref={inputRef}
             type="number"
+            inputMode="numeric"
             min={1}
             placeholder="0"
             onKeyDown={handleKeyDown}
