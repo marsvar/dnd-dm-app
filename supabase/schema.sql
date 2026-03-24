@@ -27,10 +27,21 @@ create table if not exists public.campaign_states (
 );
 
 -- ---------------------------------------------------------------------------
+-- campaign_player_view
+-- One row per campaign; holds the player-facing snapshot JSON.
+-- ---------------------------------------------------------------------------
+create table if not exists public.campaign_player_view (
+  campaign_id uuid primary key references public.campaigns(id) on delete cascade,
+  payload     jsonb not null default '{}',
+  updated_at  timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Row-Level Security
 -- ---------------------------------------------------------------------------
 alter table public.campaigns       enable row level security;
 alter table public.campaign_states enable row level security;
+alter table public.campaign_player_view enable row level security;
 
 -- DM: full access to own campaigns
 create policy "DM: own campaigns"
@@ -43,6 +54,21 @@ create policy "DM: own campaign states"
   on public.campaign_states for all
   using  (exists (select 1 from public.campaigns where id = campaign_id and owner_id = auth.uid()))
   with check (exists (select 1 from public.campaigns where id = campaign_id and owner_id = auth.uid()));
+
+-- DM: write player view
+create policy "DM: write player view"
+  on public.campaign_player_view for all
+  using  (exists (select 1 from public.campaigns where id = campaign_id and owner_id = auth.uid()))
+  with check (exists (select 1 from public.campaigns where id = campaign_id and owner_id = auth.uid()));
+
+-- Members: read player view
+create policy "Members: read player view"
+  on public.campaign_player_view for select
+  using (exists (
+    select 1 from public.campaign_members
+    where campaign_id = campaign_player_view.campaign_id
+      and user_id = auth.uid()
+  ));
 
 -- Players: anonymous read on campaign states (enables cross-device player view)
 create policy "Public: read campaign states"
@@ -73,3 +99,4 @@ create trigger campaign_states_updated_at
 -- Players subscribe to changes on campaign_states.
 -- ---------------------------------------------------------------------------
 alter publication supabase_realtime add table public.campaign_states;
+alter publication supabase_realtime add table public.campaign_player_view;

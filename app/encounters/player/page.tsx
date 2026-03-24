@@ -4,10 +4,26 @@ import { useEffect, useMemo, useState } from "react";
 import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
 import { Button, Card, Dialog, DialogClose, DialogContent, DialogTitle, PageShell, Pill, SectionTitle, Select } from "../../components/ui";
 import { useAppStore } from "../../lib/store/appStore";
+import { getDefaultEncounter } from "../../lib/engine/encounterSelectors";
 import { PrepPhase } from "./PrepPhase";
 import { CombatHeader } from "./CombatHeader";
 import { CombatParticipantList } from "./CombatParticipantList";
 import { CombatInspector } from "./CombatInspector";
+
+/** Returns true when viewport width is below the md breakpoint (768px). SSR-safe — returns false on first render. */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
 
 const isDefeated = (currentHp: number | null) =>
   currentHp !== null && currentHp <= 0;
@@ -21,12 +37,10 @@ export default function EncounterPlayerPage() {
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
   const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
   const [pinnedInspectorId, setPinnedInspectorId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const selectedEncounter = useMemo(() => {
-    if (selectedId) {
-      return state.encounters.find((encounter) => encounter.id === selectedId) || null;
-    }
-    return state.encounters[0] || null;
+    return getDefaultEncounter(state.encounters, selectedId);
   }, [selectedId, state.encounters]);
 
   const monstersById = useMemo(() => {
@@ -58,6 +72,12 @@ export default function EncounterPlayerPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPinnedInspectorId(null);
   }, [selectedEncounter?.activeParticipantId]);
+
+  // Clear pin state when switching between mobile and desktop layouts
+  // to prevent the sheet from opening involuntarily on orientation change.
+  useEffect(() => {
+    setPinnedInspectorId(null);
+  }, [isMobile]);
 
   return (
     <>
@@ -117,20 +137,46 @@ export default function EncounterPlayerPage() {
             encounter={selectedEncounter}
             onEndEncounter={() => setIsEndEncounterOpen(true)}
           />
-          <div className="grid flex-1 min-h-0" style={{ gridTemplateColumns: "1fr 320px" }}>
+          {/* Combat layout: side-by-side on desktop, full-width list on mobile */}
+          <div
+            className="flex-1 min-h-0"
+            style={
+              isMobile
+                ? { overflow: "hidden" }
+                : { display: "grid", gridTemplateColumns: "1fr 320px", overflow: "hidden" }
+            }
+          >
             <CombatParticipantList
               encounter={selectedEncounter}
               pinnedInspectorId={pinnedInspectorId}
               onPin={setPinnedInspectorId}
             />
-            <div style={{ borderLeft: "1px solid var(--combat-border)" }}>
+            {/* Desktop inspector panel — hidden on mobile */}
+            {!isMobile && (
+              <div className="h-full overflow-hidden" style={{ borderLeft: "1px solid var(--combat-border)" }}>
+                <CombatInspector
+                  encounter={selectedEncounter}
+                  pinnedId={pinnedInspectorId}
+                  onUnpin={() => setPinnedInspectorId(null)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mobile inspector — bottom sheet, opens when a participant is pinned on mobile */}
+          <Dialog
+            open={isMobile && pinnedInspectorId !== null}
+            onOpenChange={(open) => { if (!open) setPinnedInspectorId(null); }}
+          >
+            <DialogContent variant="sheet">
+              <DialogTitle className="sr-only">Participant Inspector</DialogTitle>
               <CombatInspector
                 encounter={selectedEncounter}
                 pinnedId={pinnedInspectorId}
                 onUnpin={() => setPinnedInspectorId(null)}
               />
-            </div>
-          </div>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <PageShell>

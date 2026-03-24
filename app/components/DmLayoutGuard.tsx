@@ -23,7 +23,7 @@ import { useRoleStore } from "../lib/store/roleStore";
 import { createSupabaseClient } from "../lib/supabase/client";
 import { Button } from "./ui";
 
-const ALWAYS_ALLOWED = ["/select-role", "/login", "/signup"];
+const ALWAYS_ALLOWED = ["/select-role", "/login", "/signup", "/design-system"];
 const PLAYER_PREFIX = "/player";
 
 export function DmLayoutGuard({ children }: { children: ReactNode }) {

@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f3ee;
-  --foreground: #1f1b16;
-  --surface: #fffaf2;
-  --surface-strong: #f1e8dc;
-  --accent: #7a4b1e;
-  --accent-strong: #513010;
-  --muted: #5a4f45;
-  --ring: rgba(122, 75, 30, 0.35);
+  --background: #F5EFE6;
+  --foreground: #1C1812;
+  --surface: #FBF5EA;
+  --surface-strong: #EDE0CB;
+  --accent: #8B5220;
+  --accent-strong: #5C3010;
+  --muted: #6B5C4D;
+  --ring: rgba(139, 83, 32, 0.35);
   --nav-height: 64px;
 
   /* HP state colors */
@@ -54,24 +54,24 @@
   --diff-deadly-bg: #f8d7da;
 
   /* Combat phase — follows the app theme, no forced dark flip */
-  --combat-bg: #f7f3ee;
-  --combat-surface: #fffaf2;
-  --combat-surface-raised: #f1e8dc;
+  --combat-bg: #F5EFE6;
+  --combat-surface: #FBF5EA;
+  --combat-surface-raised: #EDE0CB;
   --combat-border: rgba(0, 0, 0, 0.1);
   --combat-border-raised: rgba(0, 0, 0, 0.12);
-  --combat-fg: #1f1b16;
-  --combat-fg-muted: #5a4f45;
+  --combat-fg: #1C1812;
+  --combat-fg-muted: #6B5C4D;
 
-  --combat-active-row-bg: #fff3cd;
-  --combat-active-border: #7a4b1e;
-  --combat-active-name: #513010;
-  --combat-active-avatar-ring: #7a4b1e;
+  --combat-active-row-bg: rgba(139, 82, 32, 0.06);
+  --combat-active-border: #8B5220;
+  --combat-active-name: #5C3010;
+  --combat-active-avatar-ring: #8B5220;
 
   --combat-live-bg: #fcd8d8;
   --combat-live-fg: #b83030;
   --combat-live-dot: #b83030;
 
-  --combat-round-number: #513010;
+  --combat-round-number: #5C3010;
 }
 
 @theme inline {
@@ -132,14 +132,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f0c09;
-    --foreground: #f1e8dc;
-    --surface: #1a1410;
-    --surface-strong: #241c16;
-    --accent: #e3b36f;
-    --accent-strong: #f7d39b;
-    --muted: #b5a495;
-    --ring: rgba(227, 179, 111, 0.3);
+    --background: #0D0A07;
+    --foreground: #F0E5D0;
+    --surface: #171109;
+    --surface-strong: #201810;
+    --accent: #E8B060;
+    --accent-strong: #F5CC88;
+    --muted: #A89070;
+    --ring: rgba(232, 176, 96, 0.3);
 
     /* HP state colors (dark) */
     --hp-full: #6fcf8a;
@@ -177,18 +177,18 @@
     --diff-deadly-bg: #2a0a0a;
 
     /* Combat phase (dark) */
-    --combat-bg: #0f0c09;
-    --combat-surface: #1a1410;
-    --combat-surface-raised: #241c16;
+    --combat-bg: #0D0A07;
+    --combat-surface: #171109;
+    --combat-surface-raised: #201810;
     --combat-border: rgba(0, 0, 0, 0.3);
     --combat-border-raised: rgba(0, 0, 0, 0.4);
-    --combat-fg: #f1e8dc;
-    --combat-fg-muted: #b5a495;
+    --combat-fg: #F0E5D0;
+    --combat-fg-muted: #A89070;
 
-    --combat-active-row-bg: #3a2e0a;
-    --combat-active-border: #e3b36f;
-    --combat-active-name: #f7d39b;
-    --combat-active-avatar-ring: #e3b36f;
+    --combat-active-row-bg: rgba(232, 176, 96, 0.08);
+    --combat-active-border: #E8B060;
+    --combat-active-name: #F5CC88;
+    --combat-active-avatar-ring: #E8B060;
 
     --combat-live-bg: #3a1515;
     --combat-live-fg: #e87070;
