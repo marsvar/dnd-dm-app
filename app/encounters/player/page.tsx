@@ -597,7 +597,7 @@ export default function EncounterPlayerPage() {
 
               {combatMode ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/5 bg-surface-strong px-3 py-2 text-xs text-muted">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-surface-strong px-3 py-2 text-xs text-muted">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="uppercase tracking-[0.25em]">Round</span>
                       <Button
@@ -1025,7 +1025,7 @@ export default function EncounterPlayerPage() {
                     </div>
                   ) : null}
                 </div>
-                <div className="rounded-2xl border border-black/5 bg-surface p-4 text-sm text-muted">
+                <div className="rounded-2xl border border-black/10 bg-surface p-4 text-sm text-muted">
                   <p className="text-xs uppercase tracking-[0.3em] text-muted">Reference</p>
                   {activePc ? (
                     <div className="mt-3 space-y-3">

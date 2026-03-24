@@ -785,7 +785,7 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
       {expanded && (
         <>
           {/* Remove button row */}
-          <div className="flex items-center justify-between border-t border-black/5 px-4 py-1.5">
+          <div className="flex items-center justify-between border-t border-black/10 px-4 py-1.5">
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
               <label className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 Class:

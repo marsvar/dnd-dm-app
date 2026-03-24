@@ -38,7 +38,7 @@ export default function NotesPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {visibleNotes.map((note) => (
-          <Card key={note.id} className="space-y-3 bg-surface">
+          <Card key={note.id} className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold">{note.title}</h3>
