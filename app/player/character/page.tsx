@@ -392,7 +392,7 @@ function HpPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
       </div>
 
       {/* Conditions */}
-      <div className="mt-4 border-t border-black/5 pt-3">
+      <div className="mt-4 border-t border-black/10 pt-3">
         <div className="mb-2 flex items-center justify-between">
           <FieldLabel>Conditions</FieldLabel>
           <button
@@ -414,7 +414,7 @@ function HpPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
           ))}
         </div>
         {conditionMenu && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-black/5 pt-3">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-black/10 pt-3">
             {SRD_CONDITIONS.filter((c) => !pc.conditions.includes(c)).map((c) => (
               <button
                 key={c}
@@ -556,7 +556,7 @@ function WeaponsPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
       )}
 
       {pc.weapons.map((w) => (
-        <div key={w.id} className="mb-3 border-b border-black/5 pb-3 last:mb-0 last:border-0 last:pb-0">
+        <div key={w.id} className="mb-3 border-b border-black/10 pb-3 last:mb-0 last:border-0 last:pb-0">
           {/* Main row */}
           <div className="mb-1 grid grid-cols-[1fr_52px_80px_22px] items-center gap-1">
             <Input
@@ -621,7 +621,7 @@ function WeaponsPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
       ))}
 
       {/* Currency */}
-      <div className="mt-4 border-t border-black/5 pt-3">
+      <div className="mt-4 border-t border-black/10 pt-3">
         <FieldLabel className="mb-2">Currency</FieldLabel>
         <div className="grid grid-cols-5 gap-1">
           {COIN_META.map(({ key, label, color }) => (
@@ -943,7 +943,7 @@ function FeaturesPanel({ pc, up }: { pc: Pc; up: (p: Partial<Pc>) => void }) {
       </div>
 
       {/* Class Resources (legacy) */}
-      <div className="mt-4 border-t border-black/5 pt-3">
+      <div className="mt-4 border-t border-black/10 pt-3">
         <FieldLabel className="mb-2">Class Resources</FieldLabel>
         <ul className="flex flex-col gap-1">
           {pc.resources.map((r, i) => (

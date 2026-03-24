@@ -151,7 +151,7 @@ export function MonsterPicker({
                   className={`flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
                     isHighlighted
                       ? "border-accent bg-surface-strong"
-                      : "border-black/5 bg-surface"
+                      : "border-black/10 bg-surface"
                   }`}
                   onMouseEnter={() => setHighlightedMonsterId(monster.id)}
                   onClick={() => onPickMonster(monster)}

@@ -628,7 +628,7 @@ export default function EncounterPlayerPage() {
                       </Button>
                     </div>
                     {/* Divider */}
-                    <div className="w-px self-stretch bg-black/10" />
+                    <div className="w-px self-stretch bg-surface-strong" />
                     {/* Segment 2 — Active participant */}
                     <div className="flex min-w-0 items-center gap-2 px-3 py-2">
                       <span className="shrink-0 uppercase tracking-[0.25em]">Active</span>
@@ -637,7 +637,7 @@ export default function EncounterPlayerPage() {
                       </span>
                     </div>
                     {/* Divider */}
-                    <div className="w-px self-stretch bg-black/10" />
+                    <div className="w-px self-stretch bg-surface-strong" />
                     {/* Segment 3 — Last action */}
                     <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2">
                       <span className="shrink-0 uppercase tracking-[0.25em]">Last</span>
