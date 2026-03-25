@@ -432,7 +432,57 @@ const loadState = (): AppState => {
   }
   try {
     const parsed = JSON.parse(raw) as AppState;
-    return normalizeState(parsed);
+    if (!parsed.version || parsed.version !== seedState.version) {
+      return seedState;
+    }
+    const parsedMonsters = Array.isArray(parsed.monsters) ? parsed.monsters : [];
+    const parsedPcs = Array.isArray(parsed.pcs) ? parsed.pcs : seedState.pcs;
+    const missingSeedMonsters = seedState.monsters.filter(
+      (monster) => !parsedMonsters.some((existing) => existing.id === monster.id)
+    );
+    // Build a lookup so SRD seed images can be applied to existing saved monsters
+    // that don't yet have a user-set imageUrl.
+    const seedById = Object.fromEntries(seedState.monsters.map((m) => [m.id, m]));
+    const normalizedEncounters = (parsed.encounters ?? []).map((encounter) => ({
+      ...encounter,
+      eventLog: Array.isArray(encounter.eventLog) ? encounter.eventLog : [],
+      participants: Array.isArray(encounter.participants)
+        ? encounter.participants.map(normalizeParticipant)
+        : [],
+    }));
+    return {
+      ...seedState,
+      ...parsed,
+      campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : [],
+      campaignMembers: Array.isArray(parsed.campaignMembers) ? parsed.campaignMembers : [],
+      activeCampaignId: parsed.activeCampaignId ?? null,
+      monsters: [...parsedMonsters, ...missingSeedMonsters].map((monster) => {
+        const seed = seedById[monster.id];
+        // Apply seed imageUrl as a default only when the user hasn't set their own.
+        const visual = normalizeVisual(monster.visual);
+        if (!visual.imageUrl && seed?.visual?.imageUrl) {
+          visual.imageUrl = seed.visual.imageUrl;
+        }
+        return { ...monster, visual };
+      }),
+      pcs: parsedPcs.map((pc) => ({
+        ...pc,
+        visual: normalizeVisual(pc.visual),
+        // v7: backfill skillProficiencies
+        skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
+        // v8: backfill new required fields
+        deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
+        currency: pc.currency ?? { ...DEFAULT_CURRENCY },
+        features: pc.features ?? [...DEFAULT_FEATURES],
+        spellcasting: pc.spellcasting ?? { ...DEFAULT_SPELLCASTING },
+        weapons: pc.weapons ?? [...DEFAULT_WEAPONS],
+        personalityTraits: pc.personalityTraits ?? "",
+        ideals: pc.ideals ?? "",
+        bonds: pc.bonds ?? "",
+        flaws: pc.flaws ?? "",
+      })),
+      encounters: normalizedEncounters,
+    };
   } catch {
     return seedState;
   }

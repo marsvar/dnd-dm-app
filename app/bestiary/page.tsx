@@ -285,7 +285,9 @@ export default function BestiaryPage() {
       </Card>
 
       {monsters.length === 0 && (
-        <p className="text-sm text-muted">No monsters match your search.</p>
+        <p className="text-sm text-muted">
+          No monsters match your search.
+        </p>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -347,6 +349,35 @@ export default function BestiaryPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="space-y-4">
+        <h3 className="text-lg font-semibold">Add custom monster</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(
+            [
+              { key: "name", label: "Name *" },
+              { key: "type", label: "Type" },
+              { key: "size", label: "Size" },
+              { key: "alignment", label: "Alignment" },
+              { key: "ac", label: "AC", type: "number" },
+              { key: "hp", label: "HP", type: "number" },
+              { key: "speed", label: "Speed" },
+              { key: "challenge", label: "Challenge" },
+            ] as { key: keyof typeof EMPTY_FORM; label: string; type?: string }[]
+          ).map(({ key, label, type }) => (
+            <label key={key} className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{label}</span>
+              <Input
+                type={type ?? "text"}
+                value={form[key]}
+                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              />
+            </label>
+          ))}
+        </div>
+        <Button className="mt-2" onClick={handleAdd}>Add monster</Button>
+      </Card>
     </PageShell>
   );
 }

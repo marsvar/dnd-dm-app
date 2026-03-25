@@ -84,8 +84,8 @@ export const Nav = () => {
   };
 
   return (
-    <header className="fixed top-0 z-10 w-full h-16 border-b border-black/10 bg-surface/80 backdrop-blur">
-      <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6 sm:px-8">
+    <header className="sticky top-0 z-10 border-b border-black/10 bg-surface/80 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
         {/* Wordmark */}
         <div className="flex items-center gap-3">
         <Link href={activeRole === "dm" ? "/" : activeRole === "player" ? "/player" : "/select-role"} className="flex flex-col">
@@ -249,26 +249,6 @@ export const Nav = () => {
                     isActivePath(link.href)
                       ? "bg-surface-strong text-accent"
                       : "text-foreground"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-            {/* Visual separator */}
-            <li className="my-1 border-t border-black/10" aria-hidden />
-            {/* Secondary links */}
-            {secondaryLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  onClick={() => setOpen(false)}
-                  aria-current={isActivePath(link.href) ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-strong hover:text-foreground",
-                    isActivePath(link.href)
-                      ? "bg-surface-strong text-accent font-semibold"
-                      : "text-muted"
                   )}
                 >
                   {link.label}

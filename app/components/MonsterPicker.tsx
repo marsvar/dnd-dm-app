@@ -149,32 +149,31 @@ export function MonsterPicker({
             {filteredMonsters.map((monster) => {
               const isHighlighted = effectiveHighlightedMonsterId === monster.id;
               return (
-                <div key={monster.id} className="relative">
-                  <button
-                    className={`w-full flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
-                      isHighlighted
-                        ? "border-accent bg-surface-strong"
-                        : "border-black/5 bg-surface"
-                    }`}
-                    onMouseEnter={() => setHighlightedMonsterId(monster.id)}
-                    onClick={() => onPickMonster(monster)}
-                    disabled={disabled}
-                  >
-                    <div className="flex items-start justify-between gap-1.5">
-                      <div className="min-w-0 flex items-center gap-2">
-                        <ParticipantAvatar
-                          name={monster.name}
-                          visual={monster.visual}
-                          className="h-7 w-7 rounded-md border border-black/10 bg-surface-strong object-cover text-center text-[0.6rem] font-semibold leading-[1.7rem] text-muted"
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-[0.8rem] font-semibold leading-tight text-foreground">
-                            {monster.name}
-                          </p>
-                          <p className="truncate text-[0.68rem] leading-tight text-muted">
-                            {monster.size} {monster.type}
-                          </p>
-                        </div>
+                <button
+                  key={monster.id}
+                  className={`flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
+                    isHighlighted
+                      ? "border-accent bg-surface-strong"
+                      : "border-black/10 bg-surface"
+                  }`}
+                  onMouseEnter={() => setHighlightedMonsterId(monster.id)}
+                  onClick={() => onPickMonster(monster)}
+                  disabled={disabled}
+                >
+                  <div className="flex items-start justify-between gap-1.5">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <ParticipantAvatar
+                        name={monster.name}
+                        visual={monster.visual}
+                        className="h-7 w-7 rounded-md border border-black/10 bg-surface-strong object-cover text-center text-[0.6rem] font-semibold leading-[1.7rem] text-muted"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-[0.8rem] font-semibold leading-tight text-foreground">
+                          {monster.name}
+                        </p>
+                        <p className="truncate text-[0.68rem] leading-tight text-muted">
+                          {monster.size} {monster.type}
+                        </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 font-mono text-[0.6rem] leading-none text-foreground">
                         CR {monster.challenge}

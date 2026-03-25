@@ -68,6 +68,14 @@ function makeUpdate(pc: Pc, onUpdate: (u: Partial<Pc>) => void) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
+function StatBadge({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col items-center rounded-lg border border-black/10 bg-surface-strong px-2 py-1 min-w-[2.75rem]">
+      <span className="text-[0.6rem] uppercase tracking-widest text-muted leading-none">{label}</span>
+      <span className="font-mono text-sm font-bold text-foreground leading-tight mt-0.5">{value}</span>
+    </div>
+  );
+}
 
 function AbilityBlock({
   abilityKey,
@@ -80,7 +88,7 @@ function AbilityBlock({
 }) {
   const mod = getAbilityMod(score);
   return (
-    <div className="flex flex-col items-center gap-1 rounded-2xl border border-black/10 bg-surface p-2 text-center">
+    <div className="flex flex-col items-center gap-1 rounded-2xl border border-black/10 bg-surface-strong p-2 text-center">
       <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
         {ABILITY_ABBREV[abilityKey]}
       </p>
@@ -91,7 +99,7 @@ function AbilityBlock({
         type="number"
         value={score}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-12 rounded-lg border border-black/10 bg-surface-strong px-1 py-0.5 text-center text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-1 focus:ring-[var(--ring)]"
+        className="w-12 rounded-lg border border-black/10 bg-surface px-1 py-0.5 text-center text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-1 focus:ring-[var(--ring)]"
       />
     </div>
   );
@@ -284,7 +292,7 @@ function CombatTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void })
         </div>
         <div>
           <FieldLabel>Initiative</FieldLabel>
-          <div className="flex h-9 items-center rounded-xl border border-black/10 bg-surface px-3 text-sm font-mono font-bold text-foreground">
+          <div className="flex h-9 items-center rounded-xl border border-black/10 bg-surface-strong px-3 text-sm font-mono font-bold text-foreground">
             {formatMod(initBonus)}
             <span className="ml-1.5 text-xs font-normal text-muted">(DEX)</span>
           </div>
@@ -300,7 +308,7 @@ function CombatTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void })
       </div>
 
       {/* Passive Perception */}
-      <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-surface px-3 py-2">
+      <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-surface-strong px-3 py-2">
         <span className="text-xs uppercase tracking-widest text-muted">Passive Perception</span>
         <span className="font-mono text-xl font-bold text-foreground">{getPassivePerception(pc)}</span>
         <span className="text-xs text-muted/60">(auto)</span>
@@ -379,7 +387,7 @@ function AbilitiesTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void
         </div>
 
         {/* Proficiency bonus */}
-        <div className="rounded-xl border border-black/10 bg-surface px-3 py-2">
+        <div className="rounded-xl border border-black/10 bg-surface-strong px-3 py-2">
           <div className="flex items-center justify-between gap-3">
             <FieldLabel>Proficiency Bonus</FieldLabel>
             <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
@@ -437,7 +445,7 @@ function AbilitiesTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void
                       onChange={(e) =>
                         update({ saveBonuses: { ...pc.saveBonuses, [key]: Number(e.target.value) || 0 } })
                       }
-                      className="w-10 rounded border border-black/10 bg-surface-strong px-1 py-0.5 text-center text-xs font-mono text-foreground outline-none focus:border-accent"
+                      className="w-10 rounded border border-black/10 bg-surface px-1 py-0.5 text-center text-xs font-mono text-foreground outline-none focus:border-accent"
                     />
                   </div>
                 </div>
@@ -449,7 +457,7 @@ function AbilitiesTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void
 
       {/* ── Right: skills ── */}
       <div>
-        <div className="mb-3 flex items-center justify-between rounded-xl border border-black/10 bg-surface px-3 py-2">
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-black/10 bg-surface-strong px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted">Passive Perception</span>
           <span className="font-mono text-xl font-bold text-foreground">{passivePerc}</span>
         </div>
@@ -739,10 +747,10 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
   ];
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-surface-strong overflow-hidden">
+    <div className="rounded-2xl border border-black/10 bg-surface overflow-hidden">
       {/* ── Collapsed header (always visible) ── */}
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-surface transition-colors"
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-surface-strong transition-colors"
         onClick={() => setExpanded((v) => !v)}
         role="button"
         aria-expanded={expanded}
@@ -752,7 +760,7 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
           name={pc.name}
           visual={pc.visual}
           className={cn(
-            "h-11 w-11 shrink-0 rounded-full border border-black/10 bg-surface object-cover text-sm font-semibold text-muted",
+            "h-11 w-11 shrink-0 rounded-full border border-black/10 bg-surface-strong object-cover text-sm font-semibold text-muted",
             "flex items-center justify-center"
           )}
         />
@@ -789,7 +797,7 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
               <ConditionChip key={c} label={c} />
             ))}
             {pc.conditions.length > 2 && (
-              <span className="rounded-full bg-surface px-1.5 py-0.5 text-[0.65rem] font-semibold text-muted border border-black/10">
+              <span className="rounded-full bg-surface-strong px-1.5 py-0.5 text-[0.65rem] font-semibold text-muted border border-black/10">
                 +{pc.conditions.length - 2}
               </span>
             )}
@@ -799,7 +807,7 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
         {pc.pin && (
           <span
             title="Player PIN set"
-            className="hidden sm:flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface shrink-0"
+            className="hidden sm:flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-surface-strong shrink-0"
           >
             <Lock className="h-2.5 w-2.5 text-muted" />
           </span>
@@ -827,7 +835,7 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
       {expanded && (
         <>
           {/* Remove button row */}
-          <div className="flex items-center justify-between border-t border-black/5 px-4 py-1.5">
+          <div className="flex items-center justify-between border-t border-black/10 px-4 py-1.5">
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
               <label className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 Class:
