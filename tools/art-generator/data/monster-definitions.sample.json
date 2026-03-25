@@ -1,0 +1,34 @@
+[
+  {
+    "monsterId": "goblin-scout",
+    "name": "Goblin Scout",
+    "size": "small",
+    "type": "humanoid",
+    "species": "goblin",
+    "role": "scout",
+    "mood": "cunning",
+    "framing": "bust",
+    "tags": ["goblin", "scout"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" },
+      "token": { "size": 512, "format": "png" }
+    }
+  },
+  {
+    "monsterId": "skeletal-warrior",
+    "name": "Skeletal Warrior",
+    "size": "medium",
+    "type": "undead",
+    "species": "skeleton",
+    "role": "warrior",
+    "mood": "haunted",
+    "framing": "full",
+    "tags": ["undead", "bones"],
+    "promptOverride": "A skeletal warrior in rusted mail, carrying a chipped shield and iron sword, full figure, cold moonlight, moody oil paint style, misty background",
+    "negativePromptOverride": "cartoon, neon, text",
+    "output": {
+      "portrait": { "width": 896, "height": 1152, "format": "png" },
+      "token": { "size": 512, "format": "png" }
+    }
+  }
+]

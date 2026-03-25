@@ -2,6 +2,7 @@
 
 # Claude Code worktrees and local AI tooling
 .claude/
+.superpowers/
 
 # dependencies
 /node_modules
@@ -186,3 +187,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+.worktrees/
+
+# Local art generator outputs
+/tools/art-generator/output/

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mon-goblin",
+    "name": "Goblin",
+    "size": "small",
+    "type": "humanoid",
+    "tags": [
+      "goblin",
+      "scout"
+    ],
+    "framing": "bust",
+    "style": {
+      "artStyle": "painted fantasy illustration",
+      "lighting": "soft directional studio light",
+      "palette": [
+        "earth",
+        "muted jewel",
+        "bone",
+        "steel"
+      ]
+    },
+    "prompt": "portrait composition, centered subject, clear silhouette, chest-up framing, Goblin, bust portrait, lean goblin with sharp ears and wiry frame, sallow green skin, light armor, travel-worn cloak, alert posture, narrowed eyes, slight smirk, high detail, painterly brushwork, crisp edges on face and weapons, painted fantasy illustration, soft directional studio light, subtle textured backdrop, low contrast, no scenery",
+    "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background",
+    "output": {
+      "portrait": {
+        "width": 768,
+        "height": 1024,
+        "format": "png"
+      }
+    }
+  }
+]

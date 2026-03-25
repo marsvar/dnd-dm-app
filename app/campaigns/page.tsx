@@ -23,13 +23,14 @@ import {
 } from "../components/ui";
 import { useAppStore } from "../lib/store/appStore";
 import { ParticipantAvatar } from "../components/ParticipantAvatar";
-import { CheckCircle, Trash2, Users } from "lucide-react";
+import { CheckCircle, Moon, Sunset, Trash2, Users } from "lucide-react";
+import { applyLongRest, applyShortRest } from "../lib/engine/pcEngine";
 
 // ---------------------------------------------------------------------------
 // Sub-component: party management for a single campaign
 // ---------------------------------------------------------------------------
 function CampaignPartySection({ campaignId }: { campaignId: string }) {
-  const { state, addCampaignMember, removeCampaignMember } = useAppStore();
+  const { state, addCampaignMember, removeCampaignMember, updatePc } = useAppStore();
 
   const memberPcIds = useMemo(
     () =>
@@ -66,11 +67,13 @@ function CampaignPartySection({ campaignId }: { campaignId: string }) {
               </p>
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
+              className="px-2 py-1 text-xs"
               onClick={() => removeCampaignMember(campaignId, pc.id)}
               aria-label={`Remove ${pc.name} from party`}
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
+              <span className="ml-1">Remove</span>
             </Button>
           </li>
         ))}
@@ -92,6 +95,36 @@ function CampaignPartySection({ campaignId }: { campaignId: string }) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {members.length > 0 && (
+        <div className="pt-2 border-t border-black/10 flex flex-wrap gap-2">
+          <p className="w-full text-xs uppercase tracking-[0.25em] text-muted">Rest party</p>
+          <Button
+            variant="ghost"
+            className="text-xs"
+            onClick={() => {
+              if (confirm(`Short rest for ${members.map((m) => m.name).join(", ")}?\n\nShort-rest class features will recharge. HP is not changed — apply hit dice healing manually.`)) {
+                members.forEach((pc) => updatePc(pc.id, applyShortRest(pc)));
+              }
+            }}
+          >
+            <Sunset size={13} />
+            <span className="ml-1.5">Short Rest</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-xs"
+            onClick={() => {
+              if (confirm(`Long rest for ${members.map((m) => m.name).join(", ")}?\n\nAll HP restored, all spell slots recovered, all features recharged, death saves cleared.`)) {
+                members.forEach((pc) => updatePc(pc.id, applyLongRest(pc)));
+              }
+            }}
+          >
+            <Moon size={13} />
+            <span className="ml-1.5">Long Rest</span>
+          </Button>
         </div>
       )}
     </div>
@@ -246,7 +279,8 @@ export default function CampaignsPage() {
                         <span className="ml-1">Party</span>
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
+                        className="px-2 py-1 text-xs"
                         onClick={() => {
                           if (
                             confirm(
@@ -258,7 +292,8 @@ export default function CampaignsPage() {
                         }}
                         aria-label={`Delete campaign ${campaign.name}`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={12} />
+                        <span className="ml-1">Delete</span>
                       </Button>
                     </div>
                   </div>

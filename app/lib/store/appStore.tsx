@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { TooltipProvider } from "../../components/ui";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AppState,
@@ -27,6 +28,7 @@ import {
 import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEvents";
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
+import { buildPlayerViewSnapshot } from "../engine/playerViewProjection";
 
 // ── Phase 2a: entity-table helpers ─────────────────────────────────────────
 // campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
@@ -161,6 +163,18 @@ async function fetchEntityTables(
   return { campaigns, pcs, campaignMembers };
 }
 
+async function upsertPlayerView(
+  supabase: SupabaseClient,
+  campaignId: string,
+  payload: unknown
+): Promise<void> {
+  await supabase.from("campaign_player_view").upsert({
+    campaign_id: campaignId,
+    payload,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "campaign_id" });
+}
+
 // ── localStorage keys ───────────────────────────────────────────────────────
 
 // localStorage key that stores the DM's user ID when a player has connected
@@ -203,6 +217,7 @@ type AddPcInput = Omit<
 type AppStore = {
   state: AppState;
   hydrated: boolean;
+  syncing: boolean;
   /**
    * Connect to a DM's game as an unauthenticated player.
    * Stores the DM's userId in localStorage and fetches their app state from
@@ -271,6 +286,36 @@ const normalizeParticipant = (
   visual: normalizeVisual(participant.visual),
   deathSaves: participant.deathSaves ?? null,
 });
+
+const shouldPersistPc = (pc: Pc) => pc.persistToCloud !== false;
+
+const getPersistableState = (state: AppState): AppState => {
+  const pcs = state.pcs.filter(shouldPersistPc);
+  if (pcs.length === state.pcs.length) return state;
+  const persistedPcIds = new Set(pcs.map((pc) => pc.id));
+  return {
+    ...state,
+    pcs,
+    campaignMembers: state.campaignMembers.filter((m) => persistedPcIds.has(m.pcId)),
+  };
+};
+
+const mergeLocalOnlyPcs = (remote: AppState, local: AppState): AppState => {
+  const localOnlyPcs = local.pcs.filter((pc) => pc.persistToCloud === false);
+  if (localOnlyPcs.length === 0) return remote;
+  const localOnlyIds = new Set(localOnlyPcs.map((pc) => pc.id));
+  return {
+    ...remote,
+    pcs: [
+      ...remote.pcs.filter((pc) => !localOnlyIds.has(pc.id)),
+      ...localOnlyPcs,
+    ],
+    campaignMembers: [
+      ...remote.campaignMembers.filter((m) => !localOnlyIds.has(m.pcId)),
+      ...local.campaignMembers.filter((m) => localOnlyIds.has(m.pcId)),
+    ],
+  };
+};
 
 const getEncounterBaseline = (encounter: Encounter): EncounterBaseline => {
   if (encounter.eventLogBase) {
@@ -344,6 +389,13 @@ const normalizeState = (parsed: AppState): AppState => {
       if (!visual.imageUrl && seed?.visual?.imageUrl) {
         visual.imageUrl = seed.visual.imageUrl;
       }
+      // Migrate legacy seed monster image paths to the new public/monsters assets.
+      if (
+        visual.imageUrl?.startsWith("/images/monsters/") &&
+        seed?.visual?.imageUrl
+      ) {
+        visual.imageUrl = seed.visual.imageUrl;
+      }
       return { ...monster, visual };
     }),
     pcs: parsedPcs.map((pc) => ({
@@ -353,6 +405,8 @@ const normalizeState = (parsed: AppState): AppState => {
       skillProficiencies: pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
       // Migration: backfill pin for PCs saved before this field existed
       pin: pc.pin ?? null,
+      // Migration: default persistToCloud for older PCs
+      persistToCloud: pc.persistToCloud ?? true,
       // v8: backfill new required fields
       deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
       currency: pc.currency ?? { ...DEFAULT_CURRENCY },
@@ -436,8 +490,17 @@ const loadState = (): AppState => {
 
 export const AppStoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<AppState>(() => loadState());
+  const [syncing, setSyncing] = useState(false);
   const hydrated = true;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerViewOwnedIdsRef = useRef<Set<string> | null>(null);
+  const playerViewOwnedIdsFetchedAtRef = useRef<number | null>(null);
+  const playerViewOwnedUserIdRef = useRef<string | null>(null);
+  const playerViewCampaignSignatureRef = useRef<string>("");
+  const playerViewActiveCampaignRef = useRef<string | null>(null);
+  const playerViewPublishedIdsRef = useRef<Set<string>>(new Set());
+  const PLAYER_VIEW_OWNED_IDS_TTL = 60000;
 
   // On mount: subscribe to auth state changes and fetch from Supabase whenever the
   // user is authenticated (INITIAL_SESSION fires on page load if already logged in;
@@ -451,6 +514,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       const supabase = createSupabaseClient();
 
       const fetchRemoteState = async (userId: string) => {
+        setSyncing(true);
         try {
           // Step 1: fetch the blob (full state for encounters, notes, monsters, etc.)
           const { data: blobData } = await supabase
@@ -491,11 +555,14 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           }
 
           if (!cancelled && remote) {
-            setState(remote);
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+            const merged = mergeLocalOnlyPcs(remote, loadState());
+            setState(merged);
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
           }
         } catch {
           // Remote fetch failure is non-fatal — continue with localStorage state.
+        } finally {
+          if (!cancelled) setSyncing(false);
         }
       };
 
@@ -545,20 +612,119 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        const persistableState = getPersistableState(state);
+
         // Sync full blob (existing behaviour — source of truth for encounters, notes, etc.)
         await supabase.from("user_app_state").upsert({
           user_id: user.id,
-          state: state as unknown as Record<string, unknown>,
+          state: persistableState as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
 
         // Also sync entity tables (campaigns, pcs, campaign_members).
-        await syncEntityTables(supabase, state, user.id);
+        await syncEntityTables(supabase, persistableState, user.id);
       } catch {
         // Sync failure is non-fatal — state is safely in localStorage.
       }
     }, 500);
   }, [state]);
+
+  useEffect(() => {
+    if (syncing) return;
+    const collectCampaignIds = () => {
+      const ids = new Set<string>();
+      if (state.activeCampaignId) ids.add(state.activeCampaignId);
+      for (const encounter of state.encounters) {
+        if (encounter.isRunning && encounter.campaignId) {
+          ids.add(encounter.campaignId);
+        }
+      }
+      return Array.from(ids);
+    };
+
+    if (playerViewTimerRef.current) clearTimeout(playerViewTimerRef.current);
+    playerViewTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const { createSupabaseClient } = await import("../supabase/client");
+          const supabase = createSupabaseClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const now = Date.now();
+          if (playerViewOwnedUserIdRef.current !== user.id) {
+            playerViewOwnedUserIdRef.current = user.id;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
+          // Ownership does not change within the app; IDs are sufficient here.
+          // TTL refresh covers any rare external ownership changes.
+          const campaignSignature = state.campaigns.map((c) => c.id).sort().join("|");
+          if (playerViewCampaignSignatureRef.current !== campaignSignature) {
+            playerViewCampaignSignatureRef.current = campaignSignature;
+            playerViewOwnedIdsRef.current = null;
+            playerViewOwnedIdsFetchedAtRef.current = null;
+          }
+          let ownedIds = playerViewOwnedIdsRef.current ?? new Set<string>();
+          const ownedFresh =
+            ownedIds &&
+            playerViewOwnedIdsFetchedAtRef.current !== null &&
+            now - playerViewOwnedIdsFetchedAtRef.current < PLAYER_VIEW_OWNED_IDS_TTL;
+          const activeCampaignId = state.activeCampaignId;
+          const activeChanged = playerViewActiveCampaignRef.current !== activeCampaignId;
+          if (activeChanged) {
+            playerViewActiveCampaignRef.current = activeCampaignId;
+          }
+          const needsRefreshForActive =
+            Boolean(activeCampaignId) &&
+            activeChanged &&
+            !ownedIds.has(activeCampaignId as string);
+
+          if (!ownedFresh || needsRefreshForActive) {
+            const { data: ownedCampaigns } = await supabase
+              .from("campaigns")
+              .select("id")
+              .eq("owner_id", user.id);
+            ownedIds = new Set(
+              (ownedCampaigns ?? []).map((c: { id: string }) => c.id)
+            );
+            playerViewOwnedIdsRef.current = ownedIds;
+            playerViewOwnedIdsFetchedAtRef.current = now;
+          }
+          if (!ownedIds.size) return;
+
+          const campaignIds = collectCampaignIds().filter((id) => ownedIds.has(id));
+          const publishIds = new Set([
+            ...playerViewPublishedIdsRef.current,
+            ...campaignIds,
+          ]);
+          if (!publishIds.size) return;
+
+          await Promise.all(
+            Array.from(publishIds).map((campaignId) =>
+              upsertPlayerView(
+                supabase,
+                campaignId,
+                buildPlayerViewSnapshot(state, campaignId)
+              )
+            )
+          );
+          playerViewPublishedIdsRef.current = new Set(campaignIds);
+        } catch {
+          // Non-fatal
+        }
+      })();
+    }, 300);
+
+    return () => {
+      if (playerViewTimerRef.current) {
+        clearTimeout(playerViewTimerRef.current);
+        playerViewTimerRef.current = null;
+      }
+    };
+  }, [state.activeCampaignId, state.campaignMembers, state.encounters, state.pcs, state.campaigns, syncing]);
 
   // React to changes made by the DM in another tab/window.
   // The `storage` event fires in every tab EXCEPT the one that wrote the change,
@@ -623,6 +789,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           ...pc,
           id: createId(),
           visual: normalizeVisual(pc.visual),
+          persistToCloud: pc.persistToCloud ?? true,
           deathSaves: pc.deathSaves ?? { ...DEFAULT_DEATH_SAVES },
           currency: pc.currency ?? { ...DEFAULT_CURRENCY },
           features: pc.features ?? [...DEFAULT_FEATURES],
@@ -1177,6 +1344,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     () => ({
       state,
       hydrated,
+      syncing,
       connectToGame,
       addMonster,
       updateMonster,
@@ -1211,6 +1379,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     [
       state,
       hydrated,
+      syncing,
       connectToGame,
       addMonster,
       updateMonster,
@@ -1244,7 +1413,11 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
     ]
   );
 
-  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+  return (
+    <AppStoreContext.Provider value={value}>
+      <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+    </AppStoreContext.Provider>
+  );
 };
 
 export const useAppStore = () => {

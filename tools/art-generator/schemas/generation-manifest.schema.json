@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GenerationManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestId", "createdAt", "provider", "items"],
+  "properties": {
+    "manifestId": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "provider": { "type": "string" },
+    "notes": { "type": "string" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["itemId", "promptId", "status", "outputs"],
+        "properties": {
+          "itemId": { "type": "string" },
+          "promptId": { "type": "string" },
+          "variant": { "type": "integer", "minimum": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "generated", "failed"]
+          },
+          "artifact": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "portraitPath": { "type": "string" },
+              "tokenPath": { "type": "string" },
+              "publicPortraitPath": { "type": "string" },
+              "publicTokenPath": { "type": "string" }
+            }
+          },
+          "outputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["portrait", "token"],
+            "properties": {
+              "portrait": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["filename", "format"],
+                "properties": {
+                  "filename": { "type": "string" },
+                  "format": { "type": "string", "enum": ["png", "webp"] }
+                }
+              },
+              "token": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["filename", "format"],
+                "properties": {
+                  "filename": { "type": "string" },
+                  "format": { "type": "string", "enum": ["png", "webp"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

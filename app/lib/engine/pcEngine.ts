@@ -218,6 +218,53 @@ export const DEFAULT_FEATURES: Feature[] = [];
 export const DEFAULT_WEAPONS: Weapon[] = [];
 
 // ---------------------------------------------------------------------------
+// Rest mechanics
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the Partial<Pc> updates for a long rest:
+ * - HP restored to max
+ * - All spell slots recovered (used = 0)
+ * - All limited-use features recharged (uses = maxUses)
+ * - Death saves cleared
+ *
+ * Does NOT touch conditions or inspiration — those are DM decisions.
+ */
+export function applyLongRest(pc: Pc): Partial<Pc> {
+  return {
+    currentHp: pc.maxHp,
+    deathSaves: DEFAULT_DEATH_SAVES,
+    spellcasting: {
+      ...pc.spellcasting,
+      spellSlots: (pc.spellcasting?.spellSlots ?? []).map((slot) => ({
+        ...slot,
+        used: 0,
+      })),
+    },
+    features: pc.features.map((f) =>
+      f.maxUses !== undefined && f.uses !== undefined ? { ...f, uses: f.maxUses } : f
+    ),
+  };
+}
+
+/**
+ * Returns the Partial<Pc> updates for a short rest:
+ * - Features with recharge "Short Rest" are recharged (uses = maxUses)
+ * - HP is NOT changed — hit dice rolls are the DM's call
+ * - Spell slots are NOT changed (except classes that recharge on short rest
+ *   should have their slots tagged as Short Rest features)
+ */
+export function applyShortRest(pc: Pc): Partial<Pc> {
+  return {
+    features: pc.features.map((f) =>
+      f.maxUses !== undefined && f.uses !== undefined && f.recharge === "Short Rest"
+        ? { ...f, uses: f.maxUses }
+        : f
+    ),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Spellcasting derivations
 // ---------------------------------------------------------------------------
 

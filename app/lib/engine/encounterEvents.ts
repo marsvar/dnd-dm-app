@@ -32,6 +32,13 @@ export type EncounterEvent =
   | {
       id: string;
       at: string;
+      t: "CONCENTRATION_SET";
+      participantId: string;
+      value: boolean;
+    }
+  | {
+      id: string;
+      at: string;
       t: "ROLL_RECORDED";
       /** PC or participant id who made the roll. Omit for DM rolls. */
       actorId?: string;

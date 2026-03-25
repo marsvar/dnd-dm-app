@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { Button, Card, Input, PageShell, Pill, SectionTitle, Textarea } from "../components/ui";
 import { useAppStore } from "../lib/store/appStore";
+import { ExportMenu } from "../components/ExportMenu";
+import { notesToMarkdown, notesToJSON, slugify } from "../lib/export/formatters";
+import { downloadFile } from "../lib/export/download";
 
 export default function NotesPage() {
   const { state, addNote, removeNote } = useAppStore();
   const [form, setForm] = useState({ title: "", body: "", tags: "" });
 
   const activeCampaignId = state.activeCampaignId;
+  const campaignName =
+    state.campaigns.find((c) => c.id === activeCampaignId)?.name ?? "all-campaigns";
   const visibleNotes = activeCampaignId
     ? state.notes.filter((n) => n.campaignId === activeCampaignId)
     : state.notes;
@@ -31,10 +36,31 @@ export default function NotesPage() {
 
   return (
     <PageShell>
-      <SectionTitle
-        title="Campaign Notes"
-        subtitle="Track scenes, NPCs, and discoveries."
-      />
+      <div className="flex items-start justify-between gap-4">
+        <SectionTitle
+          title="Campaign Notes"
+          subtitle="Track scenes, NPCs, and discoveries."
+        />
+        <ExportMenu
+          disabled={!activeCampaignId}
+          onMarkdown={() => {
+            const date = new Date().toISOString().slice(0, 10);
+            downloadFile(
+              notesToMarkdown(visibleNotes, campaignName),
+              `${slugify(campaignName)}-notes-${date}.md`,
+              "text/markdown"
+            );
+          }}
+          onJSON={() => {
+            const date = new Date().toISOString().slice(0, 10);
+            downloadFile(
+              notesToJSON(visibleNotes),
+              `${slugify(campaignName)}-notes-${date}.json`,
+              "application/json"
+            );
+          }}
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {visibleNotes.map((note) => (
@@ -61,7 +87,12 @@ export default function NotesPage() {
           </Card>
         ))}
         {!visibleNotes.length ? (
-          <p className="text-sm text-muted">{activeCampaignId ? "No notes for this campaign yet." : "Capture your first session note."}</p>
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {activeCampaignId ? "No notes for this campaign yet." : "No notes yet."}
+            </p>
+            <p className="mt-1 text-sm text-muted">Capture a moment, ruling, or plot thread below.</p>
+          </div>
         ) : null}
       </div>
 

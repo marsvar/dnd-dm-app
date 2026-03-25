@@ -248,4 +248,49 @@ describe("applyEncounterEvent", () => {
     assert.equal(beforeComplete.isRunning, true);
     assert.equal(beforeComplete.status, undefined);
   });
+
+  it("sets concentrating flag on CONCENTRATION_SET", () => {
+    const encounter = createEncounter();
+    const event: EncounterEvent = {
+      id: "evt-conc-1",
+      at: "2026-03-17T00:00:00.000Z",
+      t: "CONCENTRATION_SET",
+      participantId: "p-1",
+      value: true,
+    };
+    const next = applyEncounterEvent(encounter, event);
+    const p = next.participants.find((x) => x.id === "p-1")!;
+    assert.equal(p.concentrating, true);
+    // Other participant unaffected
+    assert.equal(next.participants.find((x) => x.id === "p-2")!.concentrating, undefined);
+  });
+
+  it("clears concentrating flag on CONCENTRATION_SET false", () => {
+    const encounter = createEncounter({
+      participants: createParticipants().map((p) =>
+        p.id === "p-1" ? { ...p, concentrating: true } : p
+      ),
+    });
+    const event: EncounterEvent = {
+      id: "evt-conc-2",
+      at: "2026-03-17T00:00:01.000Z",
+      t: "CONCENTRATION_SET",
+      participantId: "p-1",
+      value: false,
+    };
+    const next = applyEncounterEvent(encounter, event);
+    assert.equal(next.participants.find((x) => x.id === "p-1")!.concentrating, false);
+  });
+
+  it("CONCENTRATION_SET is undoable (event pop restores prior concentrating state)", () => {
+    const encounter = createEncounter();
+    const events: EncounterEvent[] = [
+      { id: "e-c1", at: "2026-03-17T00:00:00.000Z", t: "CONCENTRATION_SET", participantId: "p-1", value: true },
+      { id: "e-c2", at: "2026-03-17T00:00:01.000Z", t: "CONCENTRATION_SET", participantId: "p-1", value: false },
+    ];
+    const afterBoth = applyEvents(encounter, events);
+    const afterFirst = applyEvents(encounter, events.slice(0, 1));
+    assert.equal(afterBoth.participants.find((x) => x.id === "p-1")!.concentrating, false);
+    assert.equal(afterFirst.participants.find((x) => x.id === "p-1")!.concentrating, true);
+  });
 });

@@ -10,11 +10,11 @@
 > **Update this section before each working session.** This is the most important section for consistent results.
 
 ```
-Last worked on: 2026-03-01
-Current focus:  Encounter runner UI polish
-Recently completed: Phase 1 auth + cross-device sync fully smoke-tested. Fixed 3 auth bugs: DmLayoutGuard, Nav, and appStore all used one-shot auth.getUser() which ran before login and never re-ran — replaced with onAuthStateChange subscriptions throughout.
+Last worked on: 2026-03-20
+Current focus:  CLAUDE.md roadmap sync
+Recently completed: Encounter builder redesign, combat color polish, UI governance pass, death save tracking, HP roll on monster add, inspiration tracking, concentration tracking, short/long rest.
 Blocked on / open questions: —
-Next task: Encounter runner UI polish (active turn highlight, round controls, undo button)
+Next task: Player section (party dashboard, character access, controlled DM note sharing)
 ```
 
 ### Implementation status (as of 2026-03-01)
@@ -58,6 +58,58 @@ You are **not** expected to:
 - Write large amounts of code
 - Optimise prematurely
 - Add dependencies without justification
+
+---
+
+## Design toolchain (required for all UI/UX work)
+
+Use these MCP tools in sequence before writing any new UI component or modifying an existing one:
+
+### 1. UI/UX Pro Max — workflow & interaction modeling
+Invoke `ui-ux-pro-max` skill **before** designing any new screen, panel, or interaction pattern.
+
+- Analyze the DM user workflow: what state are they in, what do they need next, how many clicks does it take
+- Model the optimal interaction: minimize clicks, maximize information density, surface critical state without requiring navigation
+- Apply the DM stress-test lens: *noisy table, 6 players, time pressure* — would this work?
+- Output: interaction model, layout rationale, information hierarchy
+
+### 2. 21st.dev — component variation generation
+Use the `mcp__magic__21st_magic_component_builder` and `mcp__magic__21st_magic_component_refiner` tools to generate and refine component variations.
+
+- Generate multiple UI variations before committing to one
+- Use for: participant rows, stat displays, quick-action panels, overlays, inspector-style sidebars
+- Evaluate each variation against: information density, single-glance readability, one-click primary action
+
+### 3. Context7 — implementation pattern verification
+Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` to verify best practices before implementation.
+
+- Look up current Next.js App Router patterns (server vs client components, data fetching, layout nesting)
+- Verify React patterns: correct hook usage, memoization, event handling
+- Check shadcn/ui component APIs and composition patterns when adopting shadcn-style primitives
+- Confirm Tailwind utility usage against current docs
+
+### Design inspiration sources
+When designing interaction patterns, draw from these reference products:
+
+| Product | What to borrow |
+|---|---|
+| **Notion** | Inline editing, property sidebars, block-level actions appearing on hover/focus |
+| **Linear** | Dense information rows, keyboard-first shortcuts, command palette patterns, status chips |
+| **Obsidian** | Panel layouts, inspector sidebars, minimal chrome letting content breathe |
+| **D&D Beyond** | Domain-specific stat display, ability score blocks, condition iconography |
+| **Figma inspector** | Right-panel property display: compact, scannable, grouped by concern |
+
+**Core principle:** Every DM interaction should feel like Figma's inspector — precise, dense, instantly readable, zero wasted space.
+
+### Design constraints (non-negotiable)
+- **Minimize clicks** — primary DM actions must be reachable in 1 click or 1 keypress from the active screen
+- **Maximize information** — show HP, conditions, initiative, and round without scrolling or expanding
+- **No hidden state** — never put required combat info behind hover, tooltip, or secondary tab
+- **Inline > modal** — prefer inline editing (Linear-style) over opening a dialog when the edit is simple (single value)
+- **Glanceable** — a DM must be able to read participant state in under 1 second at a glance
+
+### shadcn/ui patterns
+Use Context7 to verify shadcn/ui component composition patterns. When a component from the shadcn/ui ecosystem is the right primitive (e.g. Command palette, Popover, Tooltip, Sheet), adopt its API pattern and composition model — but implement it using the project's existing Radix UI primitives and design tokens rather than adding the full shadcn/ui package unless explicitly approved. Document any new Radix primitives added.
 
 ---
 
@@ -224,6 +276,9 @@ ROLL_RECORDED          (mode, context, formula, rawRolls, total)
 2. **Keyboard-first, mouse-optional** — core actions keyboard-accessible; focus states obvious; tab order follows DM intent
 3. **Stability over cleverness** — stable IDs, predictable ordering, no surprise reflows; no animations that obscure state
 4. **Explicit state** — HP, initiative, conditions are explicit values; avoid deeply derived state; favour simple reducers
+5. **Information density over whitespace** — pack critical combat state (HP, init, conditions, round) into every participant row; whitespace is a luxury the DM doesn't have mid-combat
+6. **Inline editing over dialogs** — single-value edits (initiative, HP delta, conditions) must be inline; reserve modals for multi-field forms only
+7. **Progressive disclosure** — secondary info (notes, full stat block) lives in a slide-in panel or expandable row, never a full-page navigation
 
 ---
 
@@ -337,6 +392,13 @@ Do not nest `Card` inside `Card`.
 - [ ] No hardcoded hex/rgb values
 - [ ] No `dark:` Tailwind variants
 
+### New UI component or significant UX change
+- [ ] UI/UX Pro Max workflow analysis done — interaction model documented before coding
+- [ ] 21st.dev variations explored — at least 2 variations considered
+- [ ] Context7 patterns verified — Next.js, React, and any shadcn/ui APIs confirmed
+- [ ] Passes DM stress-test: 1-click primary action, glanceable state, no hidden required info
+- [ ] Click count for primary action ≤ 1 from active screen
+
 ---
 
 ## Testing strategy
@@ -370,18 +432,9 @@ Current coverage: unit tests exist and are well-structured. Integration and smok
 See `docs/ROADMAP.md` for the full roadmap with sequencing rationale.
 
 ### Now (active focus)
-- Encounter runner UI polish — active turn highlight, round controls, quick damage/heal/condition/note actions, visible undo + last-action summary
-- HP roll on monster add — optional roll when adding monsters to encounters
-- Inspiration tracking in encounters — surface `Pc.inspiration` on combatant rows
-- UI governance baseline — enforce `ParticipantAvatar` across all participant surfaces
-
-### Next
-- Death save tracking — 3-success/3-failure UI on downed PCs
-- Concentration tracking — flag + nudge when concentrating caster takes damage
-- Encounter CR/XP summary — difficulty indicator in builder (pure calculation)
-- Short/long rest — resource reset mechanics
 - Player section — party dashboard, character access, controlled DM note sharing
-- Character sheet UI — pen-and-paper style, stats block, skills, saves
+- Character sheet UI — pen-and-paper style sheet: primary stats block, skills, saves, sidebar with active conditions/resources/quick actions, print-friendly layout
+- Data & quality — session notes linked to encounter events, basic log/notes export, perf hardening (rerender reduction, memoized selectors)
 
 ### Later
 - Legendary actions / lair actions — reminder system for boss monsters

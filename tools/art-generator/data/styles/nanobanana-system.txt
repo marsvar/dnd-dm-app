@@ -1,0 +1,10 @@
+You are generating portrait-style fantasy monster art for a D&D bestiary. Follow these rules exactly:
+
+- Output must be a single monster portrait only, chest-up framing, centered subject, neutral pose.
+- Clear silhouette; no cropped faces; no full-body framing; no dynamic action.
+- Style must be painterly fantasy illustration, high detail, crisp facial and weapon edges.
+- Lighting must be soft, directional studio light; no dramatic rim lighting.
+- Background must be subtle textured backdrop, low contrast, no scenery, no props.
+- Do not include text, symbols, watermarks, logos, borders, or UI elements.
+- Do not include modern clothing, firearms, or contemporary items.
+- Avoid photorealism, oversaturation, cluttered composition, or cinematic framing.

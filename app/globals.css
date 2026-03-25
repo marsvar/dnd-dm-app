@@ -55,18 +55,46 @@
   /* Condition */
   --color-condition-bg: var(--condition-bg);
   --color-condition-fg: var(--condition-fg);
+
+  /* Combat phase */
+  --color-combat-bg: var(--combat-bg);
+  --color-combat-surface: var(--combat-surface);
+  --color-combat-surface-raised: var(--combat-surface-raised);
+  --color-combat-border: var(--combat-border);
+  --color-combat-border-raised: var(--combat-border-raised);
+  --color-combat-fg: var(--combat-fg);
+  --color-combat-fg-muted: var(--combat-fg-muted);
+  --color-combat-active-row-bg: var(--combat-active-row-bg);
+  --color-combat-active-border: var(--combat-active-border);
+  --color-combat-active-name: var(--combat-active-name);
+  --color-combat-active-avatar-ring: var(--combat-active-avatar-ring);
+  --color-combat-live-bg: var(--combat-live-bg);
+  --color-combat-live-fg: var(--combat-live-fg);
+  --color-combat-live-dot: var(--combat-live-dot);
+  --color-combat-round-number: var(--combat-round-number);
+
+  /* Difficulty */
+  --color-surface-raised: var(--surface-raised);
+  --color-diff-easy: var(--diff-easy);
+  --color-diff-easy-bg: var(--diff-easy-bg);
+  --color-diff-medium: var(--diff-medium);
+  --color-diff-medium-bg: var(--diff-medium-bg);
+  --color-diff-hard: var(--diff-hard);
+  --color-diff-hard-bg: var(--diff-hard-bg);
+  --color-diff-deadly: var(--diff-deadly);
+  --color-diff-deadly-bg: var(--diff-deadly-bg);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f0c09;
-    --foreground: #f1e8dc;
-    --surface: #1a1410;
-    --surface-strong: #241c16;
-    --accent: #e3b36f;
-    --accent-strong: #f7d39b;
-    --muted: #b5a495;
-    --ring: rgba(227, 179, 111, 0.3);
+    --background: #0D0A07;
+    --foreground: #F0E5D0;
+    --surface: #171109;
+    --surface-strong: #201810;
+    --accent: #E8B060;
+    --accent-strong: #F5CC88;
+    --muted: #A89070;
+    --ring: rgba(232, 176, 96, 0.3);
 
     /* HP state colors (dark) */
     --hp-full: #6fcf8a;
@@ -125,8 +153,13 @@ body::after {
 }
 
 @media (prefers-color-scheme: dark) {
+  body::before {
+    mix-blend-mode: screen;
+    opacity: 0.35;
+  }
+
   body::after {
-    opacity: 0.055;
+    opacity: 0.10;
     mix-blend-mode: screen;
   }
 }
@@ -144,7 +177,6 @@ a {
 }
 
 input[type="number"] {
-  padding-right: 2.25rem;
   appearance: textfield;
   -moz-appearance: textfield;
 }
@@ -155,13 +187,14 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
+/* Default input colours — NO !important so combat inputs can override via inline styles */
 select,
 input,
 textarea {
-  color: var(--foreground) !important;
-  background-color: var(--surface-strong) !important;
-  -webkit-text-fill-color: var(--foreground) !important;
-  caret-color: var(--foreground) !important;
+  color: var(--foreground);
+  background-color: var(--surface-strong);
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
 }
 
 input:focus,
@@ -170,21 +203,20 @@ select:focus,
 input:active,
 textarea:active,
 select:active {
-  color: var(--foreground) !important;
-  -webkit-text-fill-color: var(--foreground) !important;
+  color: var(--foreground);
+  -webkit-text-fill-color: var(--foreground);
 }
 
 input[type="number"] {
-  color: var(--foreground) !important;
-  -webkit-text-fill-color: var(--foreground) !important;
-  text-shadow: 0 0 0 var(--foreground);
+  color: var(--foreground);
+  -webkit-text-fill-color: var(--foreground);
 }
 
 input[type="number"]::placeholder,
 input::placeholder,
 textarea::placeholder {
-  color: var(--muted) !important;
-  -webkit-text-fill-color: var(--muted) !important;
+  color: var(--muted);
+  -webkit-text-fill-color: var(--muted);
   opacity: 1;
 }
 
@@ -207,7 +239,49 @@ select option {
   background-color: var(--surface);
 }
 
-.targeted-outline {
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
+/* ── Shared shadow tokens ──────────────────────────────────────────────── */
+:root {
+  --shadow-card:    0 2px 8px rgba(0,0,0,0.05), 0 12px 30px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-dialog:  0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-button:  0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.12);
+  --shadow-popover: 0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-sm:      0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ── Combat motion ─────────────────────────────────────────────────────── */
+
+/* Inspector panel: fade-in when participant changes (key-driven remount) */
+@keyframes inspectorFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Combat overlay: fade-in on launch from prep mode */
+@keyframes combatEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Card: subtle rise on mount */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Concentration nudge: brief pulse on damage to a concentrating participant */
+@keyframes nudgePulse {
+  0%   { opacity: 0; transform: scaleY(0.6); }
+  60%  { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes cardEnter {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes nudgePulse {
+    from { opacity: 1; }
+    to   { opacity: 1; }
+  }
 }

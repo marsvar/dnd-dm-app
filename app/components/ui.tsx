@@ -2,9 +2,11 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
+import * as RadixPopover from "@radix-ui/react-popover";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import {
+import React, {
   ButtonHTMLAttributes,
   ComponentPropsWithoutRef,
   HTMLAttributes,
@@ -35,10 +37,16 @@ export const PageShell = ({ className, ...props }: HTMLAttributes<HTMLDivElement
   <div className={cn("space-y-10", className)} {...props} />
 );
 
-export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
+export const Card = ({
+  className,
+  hoverable,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { hoverable?: boolean }) => (
   <div
     className={cn(
-      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.05),0_12px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)]",
+      "rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-card)]",
+      "animate-[cardEnter_250ms_ease-out_both]",
+      hoverable && "transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-[var(--shadow-dialog)]",
       className
     )}
     {...props}
@@ -50,7 +58,7 @@ const buttonBase =
 
 const buttonVariants = {
   primary:
-    "bg-accent text-white shadow-[0_1px_3px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-accent-strong active:shadow-none",
+    "bg-accent text-white shadow-[var(--shadow-button)] hover:bg-accent-strong active:shadow-none",
   outline:
     "border border-black/10 bg-transparent text-foreground hover:border-accent hover:text-accent active:bg-surface-strong",
   ghost: "bg-transparent text-muted hover:text-accent active:opacity-70",
@@ -84,21 +92,25 @@ export const LinkButton = ({
   </Link>
 );
 
-export const Input = ({ className, style, ...props }: InputHTMLAttributes<HTMLInputElement>) => (
-  <input
-    className={cn(
-      "w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-[var(--ring)]",
-      className
-    )}
-    style={{
-      color: "var(--foreground)",
-      WebkitTextFillColor: "var(--foreground)",
-      caretColor: "var(--foreground)",
-      ...style,
-    }}
-    {...props}
-  />
+export const Input = React.forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, style, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={cn(
+        "w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-[var(--ring)]",
+        className
+      )}
+      style={{
+        color: "var(--foreground)",
+        WebkitTextFillColor: "var(--foreground)",
+        caretColor: "var(--foreground)",
+        ...style,
+      }}
+      {...props}
+    />
+  )
 );
+Input.displayName = "Input";
 
 export const Textarea = ({
   className,
@@ -142,6 +154,22 @@ export const Pill = ({
   >
     {label}
   </span>
+);
+
+// ---------------------------------------------------------------------------
+// StatTile — number + label display tile (use for summary stats in dialogs/cards)
+// ---------------------------------------------------------------------------
+export const StatTile = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) => (
+  <div className="rounded-xl bg-surface-strong p-3 text-center">
+    <p className="font-mono text-2xl font-semibold text-foreground">{value}</p>
+    <p className="mt-1 text-xs uppercase tracking-[0.15em] text-muted">{label}</p>
+  </div>
 );
 
 // ---------------------------------------------------------------------------
@@ -223,57 +251,93 @@ export const HpBar = ({
   current,
   max,
   className,
+  showLabel,
 }: {
   current: number;
   max: number;
   className?: string;
+  showLabel?: boolean;
 }) => {
   const pct = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
   const { fg, bg } = hpBarColors(current, max);
+  const label =
+    showLabel && max > 0
+      ? current <= 0
+        ? { text: "Down", color: "var(--hp-zero)" }
+        : pct <= 0.25
+          ? { text: "Critical", color: "var(--hp-low)" }
+          : pct <= 0.5
+            ? { text: "Bloodied", color: "var(--hp-mid)" }
+            : null
+      : null;
   return (
-    <div
-      role="progressbar"
-      aria-valuenow={current}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      className={cn("h-2 w-full overflow-hidden rounded-full", className)}
-      style={{ backgroundColor: bg }}
-    >
+    <div className={cn("w-full", showLabel && label ? "space-y-0.5" : "")}>
       <div
-        className="h-full rounded-full transition-[width] duration-300"
-        style={{ width: `${pct * 100}%`, backgroundColor: fg }}
-      />
+        role="progressbar"
+        aria-valuenow={current}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label={label ? `HP: ${label.text}` : undefined}
+        className={cn("h-2 w-full overflow-hidden rounded-full", className)}
+        style={{ backgroundColor: bg }}
+      >
+        <div
+          className="h-full rounded-full transition-[width,background-color] duration-300"
+          style={{ width: `${pct * 100}%`, backgroundColor: fg }}
+        />
+      </div>
+      {label && (
+        <span
+          className="text-[0.6rem] font-semibold uppercase tracking-[0.15em]"
+          style={{ color: label.color }}
+        >
+          {label.text}
+        </span>
+      )}
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// ConditionChip — dismissible condition badge
+// ConditionChip — dismissible condition badge with optional tooltip description
 // ---------------------------------------------------------------------------
 export const ConditionChip = ({
   label,
+  description,
   onRemove,
 }: {
   label: string;
+  description?: string;
   onRemove?: () => void;
-}) => (
-  <span
-    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-    style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
-  >
-    {label}
-    {onRemove && (
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove condition ${label}`}
-        className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
-      >
-        <X size={10} strokeWidth={2.5} />
-      </button>
-    )}
-  </span>
-);
+}) => {
+  const chip = (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ backgroundColor: "var(--condition-bg)", color: "var(--condition-fg)" }}
+    >
+      {label}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove condition ${label}`}
+          className="-mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
+        >
+          <X size={10} strokeWidth={2.5} />
+        </button>
+      )}
+    </span>
+  );
+
+  if (!description) return chip;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{chip}</TooltipTrigger>
+      <TooltipContent>{description}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 // ConditionPicker — toggleable condition selector
 // Renders a set of chips for known conditions (e.g. SRD list) plus a free-text
@@ -397,30 +461,88 @@ export const DialogTitle = ({
 /** Optional accessible description for screen readers. Pass className="sr-only" to hide visually. */
 export const DialogDescription = RadixDialog.Description;
 
+/**
+ * Modal overlay built on @radix-ui/react-dialog.
+ *
+ * `variant="default"` — centered modal. `maxWidth` and `fullHeight` apply.
+ * `variant="sheet"` — bottom-anchored sheet (mobile). `maxWidth` and `fullHeight` are ignored.
+ */
 export const DialogContent = ({
   children,
   className,
   maxWidth = "2xl",
   fullHeight = false,
+  variant = "default",
   ...props
 }: ComponentPropsWithoutRef<typeof RadixDialog.Content> & {
   maxWidth?: keyof typeof dialogMaxWidths;
   fullHeight?: boolean;
-}) => (
-  <RadixDialog.Portal>
-    <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
-    <RadixDialog.Content
-      {...props}
+  variant?: "default" | "sheet";
+}) => {
+  const contentCls =
+    variant === "sheet"
+      ? "fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none max-h-[85vh] overflow-y-auto"
+      : cn(
+          "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[var(--shadow-dialog)] outline-none",
+          fullHeight
+            ? "bottom-8 flex flex-col overflow-hidden"
+            : "max-h-[calc(100vh-4rem)] overflow-y-auto",
+          dialogMaxWidths[maxWidth]
+        );
+
+  return (
+    <RadixDialog.Portal>
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[1px]" />
+      <RadixDialog.Content {...props} className={cn(contentCls, className)}>
+        {children}
+      </RadixDialog.Content>
+    </RadixDialog.Portal>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Tooltip
+// ---------------------------------------------------------------------------
+export const TooltipProvider = RadixTooltip.Provider;
+export const Tooltip = RadixTooltip.Root;
+export const TooltipTrigger = RadixTooltip.Trigger;
+export const TooltipContent = ({
+  className,
+  sideOffset = 4,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTooltip.Content>) => (
+  <RadixTooltip.Portal>
+    <RadixTooltip.Content
+      sideOffset={sideOffset}
       className={cn(
-        "fixed left-1/2 top-8 z-50 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl border border-black/10 bg-surface p-5 text-foreground shadow-[0_8px_40px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] outline-none",
-        fullHeight
-          ? "bottom-8 flex flex-col overflow-hidden"
-          : "max-h-[calc(100vh-4rem)] overflow-y-auto",
-        dialogMaxWidths[maxWidth],
+        "z-50 max-w-xs rounded-lg border border-black/10 bg-surface px-2.5 py-1.5 text-xs text-foreground shadow-md",
         className
       )}
-    >
-      {children}
-    </RadixDialog.Content>
-  </RadixDialog.Portal>
+      {...props}
+    />
+  </RadixTooltip.Portal>
+);
+
+// ---------------------------------------------------------------------------
+// Popover
+// ---------------------------------------------------------------------------
+export const Popover = RadixPopover.Root;
+export const PopoverTrigger = RadixPopover.Trigger;
+export const PopoverContent = ({
+  className,
+  sideOffset = 6,
+  align = "center",
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixPopover.Content>) => (
+  <RadixPopover.Portal>
+    <RadixPopover.Content
+      sideOffset={sideOffset}
+      align={align}
+      className={cn(
+        "z-50 w-64 rounded-2xl border border-black/10 bg-surface p-4 text-foreground shadow-[var(--shadow-popover)]",
+        className
+      )}
+      {...props}
+    />
+  </RadixPopover.Portal>
 );

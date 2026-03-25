@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Dices } from "lucide-react";
 import type { Monster } from "../lib/models/types";
 import { fuzzyIncludes, parseChallenge } from "../lib/engine/selectors";
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -9,6 +10,7 @@ import { Input, Select } from "./ui";
 type MonsterPickerProps = {
   monsters: Monster[];
   onPickMonster: (monster: Monster) => void;
+  onRollAdd?: (monster: Monster, rolledHp: number) => void;
   disabled?: boolean;
   emptyMessage?: string;
   listClassName?: string;
@@ -17,6 +19,7 @@ type MonsterPickerProps = {
 export function MonsterPicker({
   monsters,
   onPickMonster,
+  onRollAdd,
   disabled = false,
   emptyMessage = "No monsters match this search.",
   listClassName = "max-h-[20rem]",
@@ -172,18 +175,29 @@ export function MonsterPicker({
                           {monster.size} {monster.type}
                         </p>
                       </div>
+                      <span className="shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 font-mono text-[0.6rem] leading-none text-foreground">
+                        CR {monster.challenge}
+                      </span>
                     </div>
-                    <span className="shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 font-mono text-[0.6rem] leading-none text-foreground">
-                      CR {monster.challenge}
-                    </span>
-                  </div>
-                  <div className="mt-auto pt-2">
-                    <div className="flex items-center gap-1.5 text-[0.65rem] text-muted">
-                      <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">AC {monster.ac}</span>
-                      <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">HP {monster.hp}</span>
+                    <div className="mt-auto pt-2 pr-5">
+                      <div className="flex items-center gap-1.5 text-[0.65rem] text-muted">
+                        <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">AC {monster.ac}</span>
+                        <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">HP {monster.hp}</span>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  {onRollAdd && !disabled && (
+                    <button
+                      type="button"
+                      onClick={() => onRollAdd(monster, Math.round(monster.hp * (0.8 + Math.random() * 0.4)))}
+                      className="absolute bottom-2 right-2 p-1 rounded opacity-40 hover:opacity-100 transition-opacity duration-150 active:scale-95 text-accent"
+                      title={`Add ${monster.name} with rolled HP`}
+                      aria-label={`Add ${monster.name} with rolled HP`}
+                    >
+                      <Dices size={13} />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

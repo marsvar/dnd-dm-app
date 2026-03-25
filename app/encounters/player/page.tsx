@@ -1,81 +1,51 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MonsterPicker } from "../../components/MonsterPicker";
-import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
-import { SRD_CONDITIONS } from "../../lib/data/srd";
-import { suggestUniqueName } from "../../lib/engine/selectors";
-import { getPassivePerception } from "../../lib/engine/pcEngine";
+import { EncounterCompleteDialog } from "../../components/EncounterCompleteDialog";
+import { Button, Card, Dialog, DialogClose, DialogContent, DialogTitle, PageShell, Pill, SectionTitle, Select } from "../../components/ui";
 import { useAppStore } from "../../lib/store/appStore";
-import type { DeathSaves, Pc } from "../../lib/models/types";
+import { getDefaultEncounter } from "../../lib/engine/encounterSelectors";
+import { PrepPhase } from "./PrepPhase";
+import { CombatHeader } from "./CombatHeader";
+import { CombatParticipantList } from "./CombatParticipantList";
+import { CombatInspector } from "./CombatInspector";
+
+/** Returns true when viewport width is below the md breakpoint (768px). SSR-safe — returns false on first render. */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
 
 const isDefeated = (currentHp: number | null) =>
   currentHp !== null && currentHp <= 0;
 
-const getAbilityMod = (score: number) => Math.floor((score - 10) / 2);
-const rollD20 = () => Math.floor(Math.random() * 20) + 1;
-
 export default function EncounterPlayerPage() {
   const {
     state,
-    removeEncounterParticipant,
-    startEncounter,
-    stopEncounter,
-    advanceEncounterTurn,
     dispatchEncounterEvent,
-    undoEncounterEvent,
   } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [damageTargetId, setDamageTargetId] = useState<string | null>(null);
-  const [damageAmount, setDamageAmount] = useState("");
-  const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
-  const [addParticipantMode, setAddParticipantMode] = useState<"premade" | "custom">(
-    "premade"
-  );
-  const [premadeType, setPremadeType] = useState<"pc" | "monster">("monster");
-  const [premadePcSelectionId, setPremadePcSelectionId] = useState("");
-  const [customParticipantForm, setCustomParticipantForm] = useState({
-    name: "",
-    kind: "npc" as "pc" | "monster" | "npc",
-    ac: "",
-    hp: "",
-    initiative: "",
-  });
-  const [expandedPrepIds, setExpandedPrepIds] = useState<Set<string>>(new Set());
   const [isEndEncounterOpen, setIsEndEncounterOpen] = useState(false);
-  const [endEncounterNotes, setEndEncounterNotes] = useState("");
+  const [completedEncounterSnapshot, setCompletedEncounterSnapshot] = useState<typeof selectedEncounter | null>(null);
+  const [pinnedInspectorId, setPinnedInspectorId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const selectedEncounter = useMemo(() => {
-    if (selectedId) {
-      return state.encounters.find((encounter) => encounter.id === selectedId) || null;
-    }
-    return state.encounters[0] || null;
+    return getDefaultEncounter(state.encounters, selectedId);
   }, [selectedId, state.encounters]);
-
-  const pcsById = useMemo(() => {
-    return new Map(state.pcs.map((pc) => [pc.id, pc]));
-  }, [state.pcs]);
 
   const monstersById = useMemo(() => {
     return new Map(state.monsters.map((monster) => [monster.id, monster]));
   }, [state.monsters]);
-
-  const orderedParticipants = useMemo(() => {
-    if (!selectedEncounter) {
-      return [];
-    }
-    return [...selectedEncounter.participants]
-      .filter((participant) => !isDefeated(participant.currentHp))
-      .sort((a, b) => {
-        const aInit = a.initiative ?? Number.NEGATIVE_INFINITY;
-        const bInit = b.initiative ?? Number.NEGATIVE_INFINITY;
-        if (aInit !== bInit) {
-          return bInit - aInit;
-        }
-        return a.name.localeCompare(b.name);
-      });
-  }, [selectedEncounter]);
 
   const defeatedParticipants = useMemo(() => {
     if (!selectedEncounter) {
@@ -86,385 +56,28 @@ export default function EncounterPlayerPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [selectedEncounter]);
 
-  const activeIndex = selectedEncounter
-    ? orderedParticipants.findIndex(
-        (participant) => participant.id === selectedEncounter.activeParticipantId
-      )
-    : -1;
-
-  const hasParticipants =
-    !!selectedEncounter && selectedEncounter.participants.length > 0;
-  const allInitiativeSet =
-    !!selectedEncounter &&
-    selectedEncounter.participants.every((participant) => participant.initiative !== null);
-  const combatRequirementsMet = hasParticipants && allInitiativeSet;
-  const combatRequirementsMessage = !hasParticipants
-    ? "Add at least one participant before going to combat mode."
-    : !allInitiativeSet
-      ? "Set initiative for all participants before going to combat mode."
-      : "Ready for combat mode.";
-
-  const activeParticipant =
-    activeIndex >= 0 ? orderedParticipants[activeIndex] : null;
-  const nextParticipant =
-    activeIndex >= 0 && orderedParticipants.length > 1
-      ? orderedParticipants[(activeIndex + 1) % orderedParticipants.length]
-      : null;
-  const activePc =
-    activeParticipant?.kind === "pc" && activeParticipant.refId
-      ? pcsById.get(activeParticipant.refId)
-      : null;
-  const activeMonster =
-    activeParticipant?.kind === "monster" && activeParticipant.refId
-      ? monstersById.get(activeParticipant.refId)
-      : null;
-
-  const participantNameById = useMemo(() => {
-    if (!selectedEncounter) {
-      return new Map<string, string>();
-    }
-    return new Map(selectedEncounter.participants.map((participant) => [participant.id, participant.name]));
-  }, [selectedEncounter]);
-
-  const lastEvent = selectedEncounter?.eventLog?.length
-    ? selectedEncounter.eventLog[selectedEncounter.eventLog.length - 1]
-    : null;
-
-  const defaultTargetId = activeParticipant?.id ?? selectedEncounter?.participants[0]?.id ?? "";
-  const selectedTargetId = damageTargetId === null ? defaultTargetId : damageTargetId;
-  const effectiveTargetId =
-    selectedEncounter?.participants.some((participant) => participant.id === selectedTargetId)
-      ? selectedTargetId
-      : "";
-  const encounterNames = selectedEncounter?.participants.map((participant) => participant.name) ?? [];
-
-  // combatMode is derived from the encounter event log (COMBAT_MODE_SET), not local state.
-  // This means it survives page reloads and is part of the undoable event history.
-  const combatMode = selectedEncounter?.combatMode === "live";
-
-  const getSaveValue = (key: "str" | "dex" | "con" | "int" | "wis" | "cha") => {
-    if (!activePc) {
-      return "--";
-    }
-    const mod = getAbilityMod(activePc.abilities[key]);
-    const prof = activePc.saveProficiencies[key] ? activePc.proficiencyBonus : 0;
-    const bonus = activePc.saveBonuses[key] ?? 0;
-    const total = mod + prof + bonus;
-    return total >= 0 ? `+${total}` : `${total}`;
-  };
-
-  const rollInitiative = (
-    encounterId: string,
-    participantId: string,
-    participantName: string
-  ) => {
-    const roll = rollD20();
-    const shouldLogRoll =
-      selectedEncounter?.id === encounterId && selectedEncounter.isRunning;
-    if (shouldLogRoll) {
-      dispatchEncounterEvent(encounterId, {
-        t: "ROLL_RECORDED",
-        mode: "digital",
-        context: `${participantName} initiative`,
-        formula: "1d20",
-        rawRolls: [roll],
-        total: roll,
-      });
-    }
-    dispatchEncounterEvent(encounterId, {
-      t: "INITIATIVE_SET",
-      participantId,
-      value: roll,
-    });
-  };
-
-  const rollAllInitiative = () => {
-    if (!selectedEncounter) return;
-    selectedEncounter.participants
-      .filter((p) => p.initiative === null)
-      .forEach((p) => rollInitiative(selectedEncounter.id, p.id, p.name));
-  };
-
+  // Lock page scroll in combat mode — prevents the document from scrolling behind the fixed overlay.
+  // Uses "clip" (not "hidden") to avoid scrollbar-width layout shifts.
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!selectedEncounter?.isRunning) {
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") {
-        return;
-      }
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "n") {
-        event.preventDefault();
-        advanceEncounterTurn(selectedEncounter.id, 1);
-      }
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "p") {
-        event.preventDefault();
-        advanceEncounterTurn(selectedEncounter.id, -1);
-      }
+    if (selectedEncounter?.combatMode !== "live") return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "clip";
+    return () => {
+      document.body.style.overflow = prev;
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [advanceEncounterTurn, selectedEncounter]);
+  }, [selectedEncounter?.combatMode]);
 
-  const setInitiative = (participantId: string, value: number | null) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "INITIATIVE_SET",
-      participantId,
-      value,
-    });
-  };
+  // Clear the pinned reference panel target whenever the active participant changes.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPinnedInspectorId(null);
+  }, [selectedEncounter?.activeParticipantId]);
 
-  const setParticipantHp = (participantId: string, nextValue: number | null) => {
-    if (!selectedEncounter || nextValue === null) {
-      return;
-    }
-    const participant = selectedEncounter.participants.find(
-      (entry) => entry.id === participantId
-    );
-    if (!participant) {
-      return;
-    }
-    const baseCurrent = participant.currentHp ?? participant.maxHp ?? 0;
-    const delta = nextValue - baseCurrent;
-    if (delta === 0) {
-      return;
-    }
-    if (delta < 0) {
-      dispatchEncounterEvent(selectedEncounter.id, {
-        t: "DAMAGE_APPLIED",
-        participantId,
-        amount: Math.abs(delta),
-      });
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "HEAL_APPLIED",
-      participantId,
-      amount: delta,
-    });
-  };
-
-  const setTempHp = (participantId: string, value: number | null) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "TEMP_HP_SET",
-      participantId,
-      value,
-    });
-  };
-
-  const setConditions = (participantId: string, value: string) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "CONDITIONS_SET",
-      participantId,
-      value: value
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    });
-  };
-
-  const setNotes = (participantId: string, value: string) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "NOTES_SET",
-      participantId,
-      value,
-    });
-  };
-
-  const adjustRound = (delta: number) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    const nextRound = Math.max(1, selectedEncounter.round + delta);
-    dispatchEncounterEvent(selectedEncounter.id, { t: "ROUND_SET", value: nextRound });
-  };
-
-  const formatEventSummary = (event: typeof lastEvent) => {
-    if (!event) {
-      return "No actions yet";
-    }
-    const name =
-      "participantId" in event ? participantNameById.get(event.participantId) ?? "Unknown" : "";
-    switch (event.t) {
-      case "COMBAT_STARTED":
-        return "Combat started";
-      case "COMBAT_STOPPED":
-        return "Combat stopped";
-      case "PARTICIPANT_ADDED":
-        return `Participant added: ${event.participant.name}`;
-      case "PARTICIPANT_REMOVED":
-        return `Participant removed: ${name || "Participant"}`;
-      case "ROUND_SET":
-        return `Round set to ${Math.max(1, event.value)}`;
-      case "TURN_ADVANCED":
-        return event.direction > 0 ? "Advanced turn" : "Rewound turn";
-      case "INITIATIVE_SET":
-        return `Initiative set: ${name || "Participant"} ${event.value ?? "--"}`;
-      case "DAMAGE_APPLIED":
-        return `Damage: ${name || "Participant"} -${event.amount}`;
-      case "HEAL_APPLIED":
-        return `Heal: ${name || "Participant"} +${event.amount}`;
-      case "TEMP_HP_SET":
-        return `Temp HP: ${name || "Participant"} ${event.value ?? "--"}`;
-      case "CONDITIONS_SET":
-        return `Conditions updated: ${name || "Participant"}`;
-      case "NOTES_SET":
-        return `Notes updated: ${name || "Participant"}`;
-      case "ROLL_RECORDED":
-        return `Roll ${event.context}: ${event.total}`;
-      case "DEATH_SAVES_SET":
-        return `Death saves: ${name || "Participant"} (${event.value.successes}S/${event.value.failures}F)`;
-      default:
-        return "Action recorded";
-    }
-  };
-
-  const applyDamageToTarget = (direction: 1 | -1) => {
-    if (!selectedEncounter || !effectiveTargetId) {
-      return;
-    }
-    const amount = Number(damageAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: direction > 0 ? "HEAL_APPLIED" : "DAMAGE_APPLIED",
-      participantId: effectiveTargetId,
-      amount,
-    });
-    setDamageAmount("");
-  };
-
-  const removeTargetFromCombat = () => {
-    if (!selectedEncounter || !effectiveTargetId) {
-      return;
-    }
-    removeEncounterParticipant(selectedEncounter.id, effectiveTargetId);
-    setDamageTargetId(null);
-  };
-
-  const dispatchParticipantAdded = (participant: {
-    name: string;
-    kind: "pc" | "monster" | "npc";
-    refId?: string;
-    initiative: number | null;
-    ac: number | null;
-    maxHp: number | null;
-    currentHp: number | null;
-    tempHp: number | null;
-    conditions: string[];
-    notes?: string;
-    visual?: { imageUrl?: string; fallback: "initials" };
-    deathSaves: DeathSaves | null;
-  }) => {
-    if (!selectedEncounter) {
-      return;
-    }
-    dispatchEncounterEvent(selectedEncounter.id, {
-      t: "PARTICIPANT_ADDED",
-      participant,
-    });
-  };
-
-  const addCustomParticipantMidCombat = () => {
-    const name = customParticipantForm.name.trim();
-    if (!name) {
-      return;
-    }
-    const nextHp = customParticipantForm.hp === "" ? null : Number(customParticipantForm.hp);
-    dispatchParticipantAdded({
-      name,
-      kind: customParticipantForm.kind,
-      initiative:
-        customParticipantForm.initiative === ""
-          ? null
-          : Number(customParticipantForm.initiative),
-      ac: customParticipantForm.ac === "" ? null : Number(customParticipantForm.ac),
-      maxHp: nextHp,
-      currentHp: nextHp,
-      tempHp: 0,
-      conditions: [],
-      notes: "",
-      visual: { fallback: "initials" },
-      deathSaves: null,
-    });
-    setCustomParticipantForm({ name: "", kind: "npc", ac: "", hp: "", initiative: "" });
-    setIsAddParticipantOpen(false);
-  };
-
-  const addPremadeParticipantMidCombat = () => {
-    if (!premadePcSelectionId) {
-      return;
-    }
-    const pc = state.pcs.find((entry) => entry.id === premadePcSelectionId);
-    if (!pc) {
-      return;
-    }
-    dispatchParticipantAdded({
-      name: pc.name,
-      kind: "pc",
-      refId: pc.id,
-      initiative: null,
-      ac: pc.ac,
-      maxHp: pc.maxHp,
-      currentHp: pc.currentHp,
-      tempHp: pc.tempHp,
-      conditions: [...pc.conditions],
-      notes: pc.notes,
-      visual: pc.visual,
-      deathSaves: pc.deathSaves ?? null,
-    });
-    setPremadePcSelectionId("");
-    setIsAddParticipantOpen(false);
-  };
-
-  const addMonsterMidCombat = (monsterId: string) => {
-    const monster = state.monsters.find((entry) => entry.id === monsterId);
-    if (!monster) {
-      return;
-    }
-    dispatchParticipantAdded({
-      name: suggestUniqueName(monster.name, encounterNames),
-      kind: "monster",
-      refId: monster.id,
-      initiative: null,
-      ac: monster.ac,
-      maxHp: monster.hp,
-      currentHp: monster.hp,
-      tempHp: 0,
-      conditions: [],
-      notes: "",
-      visual: monster.visual,
-      deathSaves: null,
-    });
-    setIsAddParticipantOpen(false);
-  };
-
-  const togglePrepDetails = (participantId: string) => {
-    setExpandedPrepIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(participantId)) {
-        next.delete(participantId);
-      } else {
-        next.add(participantId);
-      }
-      return next;
-    });
-  };
+  // Clear pin state when switching between mobile and desktop layouts
+  // to prevent the sheet from opening involuntarily on orientation change.
+  useEffect(() => {
+    setPinnedInspectorId(null);
+  }, [isMobile]);
 
   return (
     <PageShell>
@@ -1511,28 +1124,15 @@ export default function EncounterPlayerPage() {
                     : defeatedParticipants.map((p) => p.name).join(", ")}
                 </p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.25em] text-muted">Session notes (optional)</p>
-                <textarea
-                  className="w-full rounded-xl border border-black/10 bg-surface-strong px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  rows={3}
-                  placeholder="What happened? Any notable moments?"
-                  value={endEncounterNotes}
-                  onChange={(e) => setEndEncounterNotes(e.target.value)}
-                />
-              </div>
               <div className="flex justify-end gap-2">
                 <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button
                   onClick={() => {
-                    dispatchEncounterEvent(selectedEncounter.id, {
-                      t: "ENCOUNTER_COMPLETED",
-                      ...(endEncounterNotes.trim() ? { notes: endEncounterNotes.trim() } : {}),
-                    });
+                    setCompletedEncounterSnapshot(selectedEncounter);
+                    dispatchEncounterEvent(selectedEncounter.id, { t: "ENCOUNTER_COMPLETED" });
                     setIsEndEncounterOpen(false);
-                    setEndEncounterNotes("");
                   }}
                 >
                   Complete Encounter
@@ -1542,131 +1142,121 @@ export default function EncounterPlayerPage() {
           )}
         </DialogContent>
       </Dialog>
-    </PageShell>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// DmDeathSaveTracker — compact death save circles for the DM encounter view
-// ---------------------------------------------------------------------------
-function DmDeathSaveTracker({
-  deathSaves,
-  onSave,
-}: {
-  deathSaves: DeathSaves;
-  onSave: (ds: DeathSaves) => void;
-}) {
-  const { successes, failures, stable } = deathSaves;
-
-  if (stable || successes >= 3) {
-    return (
-      <div className="mt-2 text-xs font-semibold text-green-600">
-        ✓ Stable
-      </div>
-    );
-  }
-  if (failures >= 3) {
-    return (
-      <div className="mt-2 text-xs font-semibold text-red-600">
-        ✗ Death
-      </div>
-    );
-  }
-
-  const handleCircle = (type: "success" | "failure", i: number) => {
-    const current = type === "success" ? successes : failures;
-    const next = Math.max(0, Math.min(3, i < current ? i : i + 1));
-    if (type === "success") onSave({ successes: next, failures, stable: next >= 3 });
-    else onSave({ successes, failures: next, stable });
-  };
-
-  return (
-    <div className="mt-2 flex items-center gap-3 text-xs">
-      <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted">Death saves</span>
-      <div className="flex items-center gap-1">
-        <span className="text-[0.6rem] text-green-600 mr-0.5">S</span>
-        {Array.from({ length: 3 }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => handleCircle("success", i)}
-            className={cn(
-              "h-3.5 w-3.5 rounded-full border-2 transition-colors",
-              i < successes
-                ? "border-green-500 bg-green-500"
-                : "border-black/20 bg-transparent hover:border-green-400"
-            )}
-            aria-label={`Death save success ${i + 1}`}
+      {selectedEncounter && selectedEncounter.combatMode === "live" && selectedEncounter.status !== "completed" ? (
+        <div
+          className="flex flex-col overflow-hidden animate-[combatEnter_200ms_ease-out_both]"
+          style={{ height: "calc(100vh - var(--nav-height))" }}
+        >
+          <CombatHeader
+            encounter={selectedEncounter}
+            onEndEncounter={() => setIsEndEncounterOpen(true)}
           />
-        ))}
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="text-[0.6rem] text-red-500 mr-0.5">F</span>
-        {Array.from({ length: 3 }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => handleCircle("failure", i)}
-            className={cn(
-              "h-3.5 w-3.5 rounded-full border-2 transition-colors",
-              i < failures
-                ? "border-red-500 bg-red-500"
-                : "border-black/20 bg-transparent hover:border-red-400"
-            )}
-            aria-label={`Death save failure ${i + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SpellSlotsReadout — read-only spell slot pips for the Reference panel
-// ---------------------------------------------------------------------------
-function SpellSlotsReadout({ pc }: { pc: Pc }) {
-  const slots = pc.spellcasting?.spellSlots ?? [];
-  const ability = pc.spellcasting?.spellcastingAbility;
-  if (!slots.length) return null;
-
-  const abilityMod = ability ? getAbilityMod(pc.abilities[ability]) : 0;
-  const saveDc = ability ? 8 + pc.proficiencyBonus + abilityMod : null;
-  const atkBonus = ability ? pc.proficiencyBonus + abilityMod : null;
-
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted">Spell Slots</p>
-      {saveDc !== null && (
-        <p className="mb-1 text-xs text-muted">
-          Save DC {saveDc} · Atk {atkBonus! >= 0 ? `+${atkBonus}` : `${atkBonus}`}
-        </p>
-      )}
-      <div className="space-y-1">
-        {slots.map((slot) => {
-          const available = slot.total - slot.used;
-          return (
-            <div key={slot.level} className="flex items-center gap-2">
-              <span className="w-8 text-[0.65rem] text-muted">Lv {slot.level}</span>
-              <div className="flex gap-1">
-                {Array.from({ length: slot.total }, (_, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      "h-3 w-3 rounded-full border",
-                      i < available
-                        ? "border-accent bg-accent"
-                        : "border-black/20 bg-transparent"
-                    )}
-                  />
-                ))}
+          {/* Combat layout: side-by-side on desktop, full-width list on mobile */}
+          <div
+            className="flex-1 min-h-0"
+            style={
+              isMobile
+                ? { overflow: "hidden" }
+                : { display: "grid", gridTemplateColumns: "1fr 320px", overflow: "hidden" }
+            }
+          >
+            <CombatParticipantList
+              encounter={selectedEncounter}
+              pinnedInspectorId={pinnedInspectorId}
+              onPin={setPinnedInspectorId}
+            />
+            {/* Desktop inspector panel — hidden on mobile */}
+            {!isMobile && (
+              <div className="h-full overflow-hidden" style={{ borderLeft: "1px solid var(--combat-border)" }}>
+                <CombatInspector
+                  encounter={selectedEncounter}
+                  pinnedId={pinnedInspectorId}
+                  onUnpin={() => setPinnedInspectorId(null)}
+                />
               </div>
-              <span className="text-[0.65rem] text-muted">
-                {available}/{slot.total}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            )}
+          </div>
+
+          {/* Mobile inspector — bottom sheet, opens when a participant is pinned on mobile */}
+          <Dialog
+            open={isMobile && pinnedInspectorId !== null}
+            onOpenChange={(open) => { if (!open) setPinnedInspectorId(null); }}
+          >
+            <DialogContent variant="sheet">
+              <DialogTitle className="sr-only">Participant Inspector</DialogTitle>
+              <CombatInspector
+                encounter={selectedEncounter}
+                pinnedId={pinnedInspectorId}
+                onUnpin={() => setPinnedInspectorId(null)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      ) : (
+        <PageShell>
+          <SectionTitle
+            title="Encounter Player"
+            subtitle="Run encounters with live HP and turn controls."
+          />
+
+          <div className="grid gap-6">
+            <Card className="space-y-4">
+              {selectedEncounter ? (
+                <>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold">{selectedEncounter.name}</h3>
+                        <Pill
+                          label={selectedEncounter.status === "completed" ? "Completed" : selectedEncounter.isRunning ? "Live" : "Prep"}
+                          tone={selectedEncounter.status === "completed" ? "neutral" : selectedEncounter.isRunning ? "accent" : "neutral"}
+                        />
+                      </div>
+                      <p className="text-sm text-muted">
+                        {selectedEncounter.location || "Unknown location"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                          Encounter
+                        </span>
+                        <Select
+                          className="w-56"
+                          value={selectedEncounter.id}
+                          onChange={(event) => setSelectedId(event.target.value)}
+                        >
+                          {state.encounters.map((encounter) => (
+                            <option key={encounter.id} value={encounter.id}>
+                              {encounter.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <PrepPhase encounter={selectedEncounter} />
+                </>
+              ) : (
+                <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+                  <p className="text-sm font-medium text-foreground">No encounters yet</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Build an encounter first, then come back here to run it.
+                  </p>
+                  <a
+                    href="/encounters/builder"
+                    className="mt-4 inline-block rounded-xl border border-black/10 px-4 py-2 text-sm font-medium text-accent transition-colors hover:border-accent"
+                  >
+                    Go to Encounter Builder →
+                  </a>
+                </div>
+              )}
+            </Card>
+          </div>
+        </PageShell>
+      )}
+    </>
   );
 }

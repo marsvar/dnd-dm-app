@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, PageShell, SectionTitle } from "../components/ui";
+import { Button, Checkbox, Input, PageShell, SectionTitle } from "../components/ui";
 import { PcCard } from "../components/PcCard";
 import { useAppStore } from "../lib/store/appStore";
 import { DEFAULT_SKILL_PROFICIENCIES, getProficiencyBonus } from "../lib/engine/pcEngine";
 import type { Pc } from "../lib/models/types";
+import { ChevronDown } from "lucide-react";
+
+function parseDndBeyondId(input: string): string | null {
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/\/characters?\/(\d+)/);
+  return match ? match[1] : null;
+}
 
 const EMPTY_FORM = {
   name: "",
@@ -21,6 +29,95 @@ const EMPTY_FORM = {
 export default function PartyPage() {
   const { state, addPc, updatePc, removePc } = useAppStore();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [dndInput, setDndInput] = useState("");
+  const [dndLoading, setDndLoading] = useState(false);
+  const [dndStatus, setDndStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [persistImportedPc, setPersistImportedPc] = useState(true);
+  const [dndSyncing, setDndSyncing] = useState(false);
+  const [dndSyncStatus, setDndSyncStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleDndImport = async () => {
+    const characterId = parseDndBeyondId(dndInput);
+    if (!characterId) {
+      setDndStatus({ ok: false, msg: "Enter a character ID (e.g. 144304045) or a dndbeyond.com/characters/… URL." });
+      return;
+    }
+    setDndLoading(true);
+    setDndStatus(null);
+    try {
+      const res = await fetch(`/api/import-dndbeyond?id=${characterId}`);
+      const json = await res.json() as { pc?: Omit<Pc, "id">; error?: string };
+      if (!res.ok || json.error) {
+        setDndStatus({ ok: false, msg: json.error ?? `HTTP ${res.status}` });
+      } else if (json.pc) {
+        addPc({
+          ...json.pc,
+          persistToCloud: persistImportedPc,
+          importSource: "dndbeyond",
+          importId: characterId,
+        });
+        setDndInput("");
+        setDndStatus({
+          ok: true,
+          msg: `Imported "${json.pc.name}" (${json.pc.className} ${json.pc.level})${persistImportedPc ? "" : " — local only"}`,
+        });
+        setDndSyncStatus(null);
+      }
+    } catch {
+      setDndStatus({ ok: false, msg: "Network error — is the dev server running?" });
+    } finally {
+      setDndLoading(false);
+    }
+  };
+
+  const handleDndSyncAll = async () => {
+    const importedPcs = state.pcs.filter(
+      (pc) => pc.importSource === "dndbeyond" && pc.importId
+    );
+    if (importedPcs.length === 0) {
+      setDndSyncStatus({ ok: false, msg: "No D&D Beyond imports to sync." });
+      return;
+    }
+    setDndSyncing(true);
+    setDndSyncStatus(null);
+    const results = await Promise.allSettled(
+      importedPcs.map(async (pc) => {
+        const res = await fetch(`/api/import-dndbeyond?id=${pc.importId}`);
+        const json = (await res.json()) as { pc?: Omit<Pc, "id">; error?: string };
+        if (!res.ok || json.error || !json.pc) {
+          throw new Error(json.error ?? `HTTP ${res.status}`);
+        }
+        updatePc(pc.id, {
+          ...json.pc,
+          persistToCloud: pc.persistToCloud ?? true,
+          importSource: "dndbeyond",
+          importId: pc.importId,
+          pin: pc.pin ?? null,
+        });
+      })
+    );
+
+    const failures = results.filter((r) => r.status === "rejected");
+    const successCount = results.length - failures.length;
+    if (failures.length === 0) {
+      setDndSyncStatus({
+        ok: true,
+        msg: `Synced ${successCount} D&D Beyond character${successCount === 1 ? "" : "s"}.`,
+      });
+    } else {
+      const lastFailure = failures[0];
+      const errorMsg =
+        lastFailure.status === "rejected" && lastFailure.reason instanceof Error
+          ? lastFailure.reason.message
+          : "Unknown error";
+      setDndSyncStatus({
+        ok: false,
+        msg: `Synced ${successCount}/${results.length}. Last error: ${errorMsg}`,
+      });
+    }
+    setDndSyncing(false);
+  };
 
   const handleAdd = () => {
     if (!form.name.trim()) return;
@@ -119,9 +216,35 @@ export default function PartyPage() {
             </label>
           ))}
         </div>
-        <Button className="mt-4" onClick={handleAdd}>
-          Add PC
-        </Button>
+        <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+          <Checkbox
+            checked={persistImportedPc}
+            onChange={(e) => setPersistImportedPc(e.target.checked)}
+            disabled={dndLoading}
+          />
+          <span>Persist to database (sync across devices)</span>
+        </label>
+        {state.pcs.some((pc) => pc.importSource === "dndbeyond" && pc.importId) && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              onClick={handleDndSyncAll}
+              disabled={dndSyncing || dndLoading}
+            >
+              {dndSyncing ? "Syncing…" : "Sync imported PCs"}
+            </Button>
+          </div>
+        )}
+        {dndStatus && (
+          <p className={`mt-2 text-xs ${dndStatus.ok ? "text-[var(--hp-full)]" : "text-[var(--hp-low)]"}`}>
+            {dndStatus.msg}
+          </p>
+        )}
+        {dndSyncStatus && (
+          <p className={`mt-2 text-xs ${dndSyncStatus.ok ? "text-[var(--hp-full)]" : "text-[var(--hp-low)]"}`}>
+            {dndSyncStatus.msg}
+          </p>
+        )}
       </div>
     </PageShell>
   );

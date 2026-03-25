@@ -10,6 +10,7 @@ import {
   FieldLabel,
   HpBar,
   Input,
+  Pill,
   Textarea,
 } from "./ui";
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -118,7 +119,7 @@ function ProfDot({
       aria-label={`Proficiency: ${state}. Click to cycle.`}
       className={cn(
         "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[0.75rem] leading-none transition",
-        state === "none" && "text-black/25 hover:text-black/40",
+        state === "none" && "text-muted hover:text-foreground",
         state === "proficient" && "text-accent",
         state === "expertise" && "text-accent"
       )}
@@ -782,11 +783,11 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
           </div>
         </div>
 
-        {/* Stat badges */}
+        {/* Stat pills */}
         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-          <StatBadge label="AC" value={pc.ac} />
-          <StatBadge label="Init" value={formatMod(initBonus)} />
-          <StatBadge label="PP" value={passivePerc} />
+          <Pill label={`AC ${pc.ac}`} tone="stat" />
+          <Pill label={`Init ${formatMod(initBonus)}`} tone="stat" />
+          <Pill label={`PP ${passivePerc}`} tone="stat" />
         </div>
 
         {/* Conditions (collapsed, max 2) */}

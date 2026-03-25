@@ -1,0 +1,10 @@
+{
+  "id": "bestiary-v1",
+  "artStyle": "painted fantasy illustration",
+  "lighting": "soft directional studio light",
+  "palette": ["earth", "muted jewel", "bone", "steel"],
+  "composition": "portrait composition, centered subject, clear silhouette, chest-up framing",
+  "background": "subtle textured backdrop, low contrast, no scenery",
+  "rendering": "high detail, painterly brushwork, crisp edges on face and weapons",
+  "negativePrompt": "text, watermark, logo, modern clothing, photoreal, oversaturated, cluttered background"
+}

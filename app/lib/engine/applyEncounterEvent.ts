@@ -219,6 +219,16 @@ export function applyEncounterEvent(
         ),
       };
     }
+    case "CONCENTRATION_SET": {
+      return {
+        ...encounter,
+        participants: encounter.participants.map((participant) =>
+          participant.id === event.participantId
+            ? { ...participant, concentrating: event.value }
+            : participant
+        ),
+      };
+    }
     case "COMBAT_MODE_SET": {
       return {
         ...encounter,

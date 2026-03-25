@@ -1,0 +1,186 @@
+// app/encounters/player/CombatParticipantList.tsx
+"use client";
+import { useState, useCallback, useRef } from "react";
+import { Plus } from "lucide-react";
+import { CombatParticipantRow } from "../../components/CombatParticipantRow";
+import { MonsterPicker } from "../../components/MonsterPicker";
+import { Dialog, DialogContent, DialogTitle } from "../../components/ui";
+import { useAppStore } from "../../lib/store/appStore";
+import type { Encounter, Monster } from "../../lib/models/types";
+
+interface Props {
+  encounter: Encounter;
+  pinnedInspectorId: string | null;
+  onPin: (id: string | null) => void;
+}
+
+export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: Props) {
+  const { dispatchEncounterEvent, updatePc, state } = useAppStore();
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [isAddMonsterOpen, setIsAddMonsterOpen] = useState(false);
+  // concentrationNudgeId: participant currently showing the nudge banner.
+  // Auto-dismissed after 2.5s via timeout ref.
+  const [concentrationNudgeId, setConcentrationNudgeId] = useState<string | null>(null);
+  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Collapse expanded row when clicking on empty list area (outside any row)
+  const handleListClick = () => setExpandedRowId(null);
+
+  const handlePin = useCallback((id: string) => {
+    // Toggle: pin if not already pinned, unpin if same id
+    onPin(pinnedInspectorId === id ? null : id);
+  }, [pinnedInspectorId, onPin]);
+
+  const handleDamage = useCallback((participantId: string, amount: number) => {
+    // Check concentration BEFORE dispatching — state will change after event.
+    const participant = encounter.participants.find((p) => p.id === participantId);
+    dispatchEncounterEvent(encounter.id, { t: "DAMAGE_APPLIED", participantId, amount });
+    if (participant?.concentrating) {
+      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+      setConcentrationNudgeId(participantId);
+      nudgeTimer.current = setTimeout(() => setConcentrationNudgeId(null), 2500);
+    }
+  }, [encounter.id, encounter.participants, dispatchEncounterEvent]);
+
+  const handleHeal = useCallback((participantId: string, amount: number) => {
+    dispatchEncounterEvent(encounter.id, { t: "HEAL_APPLIED", participantId, amount });
+  }, [encounter.id, dispatchEncounterEvent]);
+
+  const handleAddMonster = useCallback((monster: Monster, hp: number) => {
+    const dexMod = Math.floor((monster.abilities.dex - 10) / 2);
+    const initiative = Math.floor(Math.random() * 20) + 1 + dexMod;
+    dispatchEncounterEvent(encounter.id, {
+      t: "PARTICIPANT_ADDED",
+      participant: {
+        name: monster.name,
+        kind: "monster",
+        refId: monster.id,
+        initiative,
+        ac: monster.ac,
+        maxHp: hp,
+        currentHp: hp,
+        tempHp: null,
+        conditions: [],
+        notes: "",
+        visual: monster.visual ?? { fallback: "initials" },
+        concentrating: false,
+        deathSaves: null,
+      },
+    });
+    setIsAddMonsterOpen(false);
+  }, [encounter.id, dispatchEncounterEvent]);
+
+  // "Active" = currentHp > 0; "Downed" = currentHp <= 0.
+  // Design decision: PCs at 0 HP are DOWNED (not defeated) — they remain interactive
+  // so the DM can apply healing, track death saves via avatar pin, etc.
+  // Downed rows are NOT pointer-events-none.
+  const active = [...encounter.participants]
+    .filter((p) => (p.currentHp ?? 1) > 0)
+    .sort((a, b) => {
+      if (a.initiative === null && b.initiative === null) return a.name.localeCompare(b.name);
+      if (a.initiative === null) return 1;
+      if (b.initiative === null) return -1;
+      if (b.initiative !== a.initiative) return b.initiative - a.initiative;
+      return a.name.localeCompare(b.name);
+    });
+
+  const downed = encounter.participants.filter((p) => (p.currentHp ?? 1) <= 0);
+
+  return (
+    // handleListClick collapses expanded row when user clicks empty list area
+    <div className="overflow-y-auto flex flex-col gap-1 p-2" onClick={handleListClick}>
+      <div
+        className="text-[0.6rem] font-bold uppercase tracking-widest px-1 pt-1 pb-0.5"
+        style={{ color: "var(--combat-fg-muted)" }}
+      >
+        Active Combatants
+      </div>
+
+      {active.map((p) => {
+        const pc = p.kind === "pc" && p.refId ? state.pcs.find((x) => x.id === p.refId) : null;
+        return (
+          <CombatParticipantRow
+            key={p.id}
+            participant={p}
+            isActive={p.id === encounter.activeParticipantId}
+            isExpanded={expandedRowId === p.id}
+            onExpand={(id) => setExpandedRowId(id)}
+            onCollapse={() => setExpandedRowId(null)}
+            onPin={handlePin}
+            onDamage={handleDamage}
+            onHeal={handleHeal}
+            inspiration={pc?.inspiration}
+            onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+            concentrating={p.concentrating}
+            onToggleConcentration={() => dispatchEncounterEvent(encounter.id, {
+              t: "CONCENTRATION_SET", participantId: p.id, value: !p.concentrating,
+            })}
+            concentrationNudge={concentrationNudgeId === p.id}
+          />
+        );
+      })}
+
+      {downed.length > 0 && (
+        <>
+          <div
+            className="text-[0.6rem] font-bold uppercase tracking-widest px-1 pt-3 pb-0.5 border-t mt-2"
+            style={{ color: "var(--combat-fg-muted)", borderColor: "var(--combat-border)" }}
+          >
+            Downed
+          </div>
+          {/* Downed rows remain interactive — DM can heal them or pin to inspector for death saves */}
+          {downed.map((p) => {
+            const pc = p.kind === "pc" && p.refId ? state.pcs.find((x) => x.id === p.refId) : null;
+            return (
+              <div key={p.id} className="opacity-50">
+                <CombatParticipantRow
+                  participant={p}
+                  isActive={false} isExpanded={expandedRowId === p.id}
+                  onExpand={(id) => setExpandedRowId(id)}
+                  onCollapse={() => setExpandedRowId(null)}
+                  onPin={handlePin} onDamage={handleDamage} onHeal={handleHeal}
+                  inspiration={pc?.inspiration}
+                  onToggleInspiration={pc ? () => updatePc(pc.id, { inspiration: !pc.inspiration }) : undefined}
+                  concentrating={p.concentrating}
+                  onToggleConcentration={() => dispatchEncounterEvent(encounter.id, {
+                    t: "CONCENTRATION_SET", participantId: p.id, value: !p.concentrating,
+                  })}
+                  concentrationNudge={concentrationNudgeId === p.id}
+                />
+              </div>
+            );
+          })}
+        </>
+      )}
+      {/* Add Monster button */}
+      <div className="pt-2 pb-1 px-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setIsAddMonsterOpen(true)}
+          className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-md border transition-colors"
+          style={{
+            color: "var(--combat-fg-muted)",
+            borderColor: "var(--combat-border)",
+            backgroundColor: "transparent",
+          }}
+        >
+          <Plus size={12} />
+          Add Monster
+        </button>
+      </div>
+
+      <Dialog open={isAddMonsterOpen} onOpenChange={setIsAddMonsterOpen}>
+        <DialogContent maxWidth="lg">
+          <DialogTitle>Add Monster to Combat</DialogTitle>
+          <div className="mt-4">
+            <MonsterPicker
+              monsters={state.monsters}
+              onPickMonster={(monster) => handleAddMonster(monster, monster.hp)}
+              onRollAdd={(monster, rolledHp) => handleAddMonster(monster, rolledHp)}
+              listClassName="max-h-[24rem]"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

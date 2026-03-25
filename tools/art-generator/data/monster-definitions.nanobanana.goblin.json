@@ -1,0 +1,16 @@
+[
+  {
+    "monsterId": "mon-goblin",
+    "name": "Goblin",
+    "size": "small",
+    "type": "humanoid",
+    "species": "goblin",
+    "role": "scout",
+    "mood": "cunning",
+    "framing": "bust",
+    "tags": ["goblin", "scout"],
+    "output": {
+      "portrait": { "width": 768, "height": 1024, "format": "png" }
+    }
+  }
+]
