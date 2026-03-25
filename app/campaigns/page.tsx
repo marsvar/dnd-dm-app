@@ -57,7 +57,7 @@ function CampaignPartySection({ campaignId }: { campaignId: string }) {
         {members.map((pc) => (
           <li
             key={pc.id}
-            className="flex items-center gap-3 rounded-xl border border-black/5 bg-surface-strong px-3 py-2"
+            className="flex items-center gap-3 rounded-xl border border-black/10 bg-surface-strong px-3 py-2"
           >
             <ParticipantAvatar name={pc.name} visual={pc.visual} size="sm" />
             <div className="min-w-0 flex-1">

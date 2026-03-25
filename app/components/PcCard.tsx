@@ -80,7 +80,7 @@ function AbilityBlock({
 }) {
   const mod = getAbilityMod(score);
   return (
-    <div className="flex flex-col items-center gap-1 rounded-2xl border border-black/10 bg-surface p-2 text-center">
+    <div className="flex flex-col items-center gap-1 rounded-2xl border border-black/10 bg-surface-strong p-2 text-center">
       <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted">
         {ABILITY_ABBREV[abilityKey]}
       </p>
@@ -91,7 +91,7 @@ function AbilityBlock({
         type="number"
         value={score}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-12 rounded-lg border border-black/10 bg-surface-strong px-1 py-0.5 text-center text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-1 focus:ring-[var(--ring)]"
+        className="w-12 rounded-lg border border-black/10 bg-surface px-1 py-0.5 text-center text-sm font-mono text-foreground outline-none focus:border-accent focus:ring-1 focus:ring-[var(--ring)]"
       />
     </div>
   );
@@ -739,10 +739,10 @@ export function PcCard({ pc, onUpdate, onRemove }: PcCardProps) {
   ];
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-surface-strong overflow-hidden">
+    <div className="rounded-2xl border border-black/10 bg-surface overflow-hidden">
       {/* ── Collapsed header (always visible) ── */}
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-surface transition-colors"
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-surface-strong transition-colors"
         onClick={() => setExpanded((v) => !v)}
         role="button"
         aria-expanded={expanded}
