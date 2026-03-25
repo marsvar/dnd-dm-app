@@ -88,7 +88,7 @@ export function CombatParticipantList({ encounter, pinnedInspectorId, onPin }: P
 
   return (
     // handleListClick collapses expanded row when user clicks empty list area
-    <div className="overflow-y-auto flex flex-col gap-1 p-2" onClick={handleListClick}>
+    <div className="overflow-y-auto flex flex-col gap-1 p-2" style={{ backgroundColor: "var(--combat-surface)" }} onClick={handleListClick}>
       <div
         className="text-[0.6rem] font-bold uppercase tracking-widest px-1 pt-1 pb-0.5"
         style={{ color: "var(--combat-fg-muted)" }}
