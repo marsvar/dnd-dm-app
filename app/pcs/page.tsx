@@ -173,12 +173,99 @@ export default function PartyPage() {
 
   return (
     <PageShell>
-      <SectionTitle title="Party" subtitle="Track your players' characters and stats." />
+      {/* Header row: title + add toggle */}
+      <div className="flex items-center justify-between">
+        <SectionTitle title="Party" subtitle="Player characters in your campaign." />
+        <button
+          onClick={() => setIsAddOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-full border border-black/10 bg-surface px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <span>{isAddOpen ? "Close" : "+ Add PC"}</span>
+          <ChevronDown
+            size={12}
+            style={{
+              display: "inline-block",
+              transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
+              transform: isAddOpen ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Collapsible add form */}
+      <div
+        style={{
+          overflow: "hidden",
+          maxHeight: isAddOpen ? "24rem" : "0",
+          opacity: isAddOpen ? 1 : 0,
+          transition: "max-height 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease",
+        }}
+      >
+        <div className="rounded-2xl border border-black/10 bg-surface p-5 space-y-4">
+          {/* Identity fields */}
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted mb-2">Identity</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  { key: "name", label: "Name *" },
+                  { key: "playerName", label: "Player" },
+                  { key: "className", label: "Class" },
+                  { key: "race", label: "Race" },
+                ] as { key: keyof typeof EMPTY_FORM; label: string }[]
+              ).map(({ key, label }) => (
+                <label key={key} className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">{label}</span>
+                  <Input
+                    value={form[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+          {/* Stats fields */}
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted mb-2">Stats</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  { key: "level", label: "Level" },
+                  { key: "maxHp", label: "Max HP" },
+                  { key: "ac", label: "AC" },
+                  { key: "imageUrl", label: "Image URL" },
+                ] as { key: keyof typeof EMPTY_FORM; label: string }[]
+              ).map(({ key, label }) => (
+                <label key={key} className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">{label}</span>
+                  <Input
+                    type={key === "imageUrl" ? "text" : "number"}
+                    value={form[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+          <Button onClick={handleAdd} disabled={!form.name.trim()}>Add PC</Button>
+        </div>
+      </div>
+
+      {/* PC list */}
       <div className="space-y-6">
         {state.pcs.length === 0 && (
-          <p className="text-sm text-muted">
-            No PCs yet — add one below.
-          </p>
+          <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">No player characters yet</p>
+            <p className="mt-1 text-sm text-muted">
+              Use{" "}
+              <button className="text-accent hover:underline" onClick={() => setIsAddOpen(true)}>
+                Add PC
+              </button>{" "}
+              above or import from D&D Beyond below.
+            </p>
+          </div>
         )}
         {state.pcs.map((pc) => (
           <PcCard
@@ -190,31 +277,24 @@ export default function PartyPage() {
         ))}
       </div>
 
-      <div className="mt-10 border-t border-black/10 pt-6">
-        <SectionTitle title="Add PC" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mt-4">
-          {(
-            [
-              { key: "name", label: "Name *" },
-              { key: "playerName", label: "Player" },
-              { key: "className", label: "Class" },
-              { key: "race", label: "Race" },
-              { key: "level", label: "Level", type: "number" },
-              { key: "maxHp", label: "Max HP", type: "number" },
-              { key: "ac", label: "AC", type: "number" },
-              { key: "imageUrl", label: "Image URL" },
-            ] as { key: keyof typeof EMPTY_FORM; label: string; type?: string }[]
-          ).map(({ key, label, type }) => (
-            <label key={key} className="flex flex-col gap-1">
-              <span className="text-xs text-muted">{label}</span>
-              <Input
-                type={type ?? "text"}
-                value={form[key]}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              />
-            </label>
-          ))}
+      {/* D&D Beyond import */}
+      <div className="border-t border-black/10 pt-6">
+        <SectionTitle title="Import from D&D Beyond" />
+        <p className="mt-1 text-xs text-muted">
+          Paste a character ID or full dndbeyond.com/characters/… URL. The character must have public sharing enabled.
+        </p>
+        <div className="mt-3 flex gap-2 items-center">
+          <Input
+            className="max-w-xs"
+            placeholder="144304045 or dndbeyond.com/characters/…"
+            value={dndInput}
+            onChange={(e) => { setDndInput(e.target.value); setDndStatus(null); }}
+            onKeyDown={(e) => e.key === "Enter" && !dndLoading && handleDndImport()}
+            disabled={dndLoading}
+          />
+          <Button onClick={handleDndImport} disabled={dndLoading || !dndInput.trim()}>
+            {dndLoading ? "Importing…" : "Import"}
+          </Button>
         </div>
         <label className="mt-3 flex items-center gap-2 text-xs text-muted">
           <Checkbox
