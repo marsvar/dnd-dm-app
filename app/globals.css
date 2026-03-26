@@ -5,6 +5,7 @@
   --foreground: #1f1b16;
   --surface: #FBF5EA;
   --surface-strong: #EDE0CB;
+  --surface-raised: #E8D8BE;
   --accent: #8B5220;
   --accent-strong: #513010;
   --muted: #6B5C4D;
@@ -27,6 +28,35 @@
   /* Active row (Grimoire) */
   --active-row-bg: rgba(139, 82, 32, 0.06);
   --active-row-border: rgba(139, 82, 32, 0.3);
+
+  /* Combat phase — dark overlay palette used in the encounter runner */
+  --combat-bg: #1e1409;
+  --combat-surface: #281c10;
+  --combat-surface-raised: #33221a;
+  --combat-border: rgba(232, 176, 96, 0.15);
+  --combat-border-raised: rgba(232, 176, 96, 0.3);
+  --combat-fg: #f0e5d0;
+  --combat-fg-muted: rgba(240, 229, 208, 0.55);
+  --combat-active-row-bg: rgba(232, 176, 96, 0.12);
+  --combat-active-border: #E8B060;
+  --combat-active-name: #E8B060;
+  --combat-active-avatar-ring: #E8B060;
+  --combat-active-bg: rgba(232, 176, 96, 0.2);
+  --combat-active-fg: #E8B060;
+  --combat-live-bg: rgba(45, 122, 58, 0.2);
+  --combat-live-fg: #6fcf8a;
+  --combat-live-dot: #6fcf8a;
+  --combat-round-number: #f0e5d0;
+
+  /* Encounter difficulty */
+  --diff-easy: #2d7a3a;
+  --diff-easy-bg: #d4f0da;
+  --diff-medium: #8a6200;
+  --diff-medium-bg: #fdecc8;
+  --diff-hard: #b55c00;
+  --diff-hard-bg: #ffe5c8;
+  --diff-deadly: #b83030;
+  --diff-deadly-bg: #fcd8d8;
 }
 
 @theme inline {
@@ -91,6 +121,7 @@
     --foreground: #F0E5D0;
     --surface: #171109;
     --surface-strong: #201810;
+    --surface-raised: #2a2018;
     --accent: #E8B060;
     --accent-strong: #F5CC88;
     --muted: #A89070;
@@ -112,6 +143,35 @@
 
     --active-row-bg: rgba(232, 176, 96, 0.08);
     --active-row-border: rgba(232, 176, 96, 0.3);
+
+    /* Combat phase (dark) */
+    --combat-bg: #0a0705;
+    --combat-surface: #131009;
+    --combat-surface-raised: #1c1710;
+    --combat-border: rgba(232, 176, 96, 0.12);
+    --combat-border-raised: rgba(232, 176, 96, 0.25);
+    --combat-fg: #f0e5d0;
+    --combat-fg-muted: rgba(240, 229, 208, 0.5);
+    --combat-active-row-bg: rgba(232, 176, 96, 0.1);
+    --combat-active-border: #E8B060;
+    --combat-active-name: #E8B060;
+    --combat-active-avatar-ring: #E8B060;
+    --combat-active-bg: rgba(232, 176, 96, 0.15);
+    --combat-active-fg: #E8B060;
+    --combat-live-bg: rgba(111, 207, 138, 0.15);
+    --combat-live-fg: #6fcf8a;
+    --combat-live-dot: #6fcf8a;
+    --combat-round-number: #f0e5d0;
+
+    /* Encounter difficulty (dark) */
+    --diff-easy: #6fcf8a;
+    --diff-easy-bg: #1a3d23;
+    --diff-medium: #e8b84d;
+    --diff-medium-bg: #3a2e0a;
+    --diff-hard: #e8844a;
+    --diff-hard-bg: #3a2010;
+    --diff-deadly: #e87070;
+    --diff-deadly-bg: #3a1515;
   }
 }
 

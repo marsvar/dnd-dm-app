@@ -255,6 +255,24 @@ export const Nav = () => {
                 </Link>
               </li>
             ))}
+            {/* Secondary links */}
+            {secondaryLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActivePath(link.href) ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-surface-strong hover:text-foreground",
+                    isActivePath(link.href)
+                      ? "text-accent"
+                      : "text-muted"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
             <li className="mt-2 border-t border-black/10 pt-2">
               {dmUserId && (
                 <button
