@@ -149,9 +149,9 @@ export function MonsterPicker({
             {filteredMonsters.map((monster) => {
               const isHighlighted = effectiveHighlightedMonsterId === monster.id;
               return (
+                <div key={monster.id} className="relative">
                 <button
-                  key={monster.id}
-                  className={`flex min-h-[96px] flex-col rounded-lg border p-2.5 text-left transition ${
+                  className={`flex min-h-[96px] w-full flex-col rounded-lg border p-2.5 text-left transition ${
                     isHighlighted
                       ? "border-accent bg-surface-strong"
                       : "border-black/10 bg-surface"
@@ -185,6 +185,7 @@ export function MonsterPicker({
                         <span className="rounded-full bg-surface-strong px-1.5 py-0.5 font-mono leading-none text-foreground">HP {monster.hp}</span>
                       </div>
                     </div>
+                  </div>
                   </button>
                   {onRollAdd && !disabled && (
                     <button

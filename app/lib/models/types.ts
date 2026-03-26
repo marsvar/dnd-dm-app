@@ -218,6 +218,12 @@ export type Pc = {
   bonds: string;
   flaws: string;
   pin?: string | null;
+  /** When false, this PC is local-only and not synced to cloud storage. Defaults to true. */
+  persistToCloud?: boolean;
+  /** Source platform the PC was imported from, e.g. "dndbeyond". */
+  importSource?: string;
+  /** External ID from the import source (e.g. D&D Beyond character ID). */
+  importId?: string;
 };
 
 export type EncounterParticipant = {
