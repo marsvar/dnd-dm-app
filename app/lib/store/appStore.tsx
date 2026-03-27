@@ -301,18 +301,26 @@ const getPersistableState = (state: AppState): AppState => {
 };
 
 const mergeLocalOnlyPcs = (remote: AppState, local: AppState): AppState => {
-  const localOnlyPcs = local.pcs.filter((pc) => pc.persistToCloud === false);
-  if (localOnlyPcs.length === 0) return remote;
-  const localOnlyIds = new Set(localOnlyPcs.map((pc) => pc.id));
+  // Preserve two categories of local PCs that remote fetch should not clobber:
+  //   (a) explicitly local-only PCs (persistToCloud === false) — never synced
+  //   (b) newly added PCs that exist locally but haven't reached Supabase yet
+  //       (race condition: user adds a PC, INITIAL_SESSION fetch completes before
+  //        the 500ms debounced sync fires, wiping the new PC from state)
+  const remotePcIds = new Set(remote.pcs.map((pc) => pc.id));
+  const pcsToMerge = local.pcs.filter(
+    (pc) => pc.persistToCloud === false || !remotePcIds.has(pc.id)
+  );
+  if (pcsToMerge.length === 0) return remote;
+  const mergeIds = new Set(pcsToMerge.map((pc) => pc.id));
   return {
     ...remote,
     pcs: [
-      ...remote.pcs.filter((pc) => !localOnlyIds.has(pc.id)),
-      ...localOnlyPcs,
+      ...remote.pcs.filter((pc) => !mergeIds.has(pc.id)),
+      ...pcsToMerge,
     ],
     campaignMembers: [
-      ...remote.campaignMembers.filter((m) => !localOnlyIds.has(m.pcId)),
-      ...local.campaignMembers.filter((m) => localOnlyIds.has(m.pcId)),
+      ...remote.campaignMembers.filter((m) => !mergeIds.has(m.pcId)),
+      ...local.campaignMembers.filter((m) => mergeIds.has(m.pcId)),
     ],
   };
 };
