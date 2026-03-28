@@ -88,9 +88,12 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 
 ### Campaign depth
 - Campaign timeline and session summaries.
-  - Searchable notes and tagged highlights.
-- Encounter templates and reuse.
-  - Save, clone, and version encounters.
+   - Searchable notes and tagged highlights.
+ - Encounter templates and reuse.
+   - Save, clone, and version encounters.
+
+### User management
+- Dedicated admin page for managing users, roles, and campaign access.
 
 ### Technical debt
 - **Schema migration chain** — replace current reset-to-seed strategy with a proper `migrate(raw) → current` function. Only urgent once real campaign data is persisted across schema changes.
