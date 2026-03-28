@@ -40,6 +40,7 @@ function PlayerSelectContent() {
   const { campaignId, setCampaignId, selectPc, clearSession } = usePlayerSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [needsAssignment, setNeedsAssignment] = useState(false);
 
   // If the URL contains ?u=<dmUserId>, connect to that DM's game then
   // strip the param so it doesn't persist in the address bar.
@@ -59,6 +60,24 @@ function PlayerSelectContent() {
       setCampaignId(campaigns[0].id);
     }
   }, [campaigns, campaignId, setCampaignId]);
+
+  useEffect(() => {
+    let ignore = false;
+    const loadRecovery = async () => {
+      try {
+        const res = await fetch("/api/invites/recover");
+        if (!res.ok) return;
+        const data = (await res.json()) as { attempts: { id: string }[] };
+        if (!ignore) setNeedsAssignment(data.attempts.length > 0);
+      } catch {
+        // Ignore recovery fetch errors.
+      }
+    };
+    loadRecovery();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // PCs visible to the player: scoped to the selected campaign (via join table),
   // or the full global list when no campaign is selected (zero-campaign legacy mode).
@@ -107,6 +126,21 @@ function PlayerSelectContent() {
   return (
     <div className="flex min-h-[calc(100dvh-65px)] flex-col items-center justify-start px-4 pt-12">
       <div className="w-full max-w-md">
+        {needsAssignment ? (
+          <Card className="mb-6 border-accent/30 bg-accent/5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Assignment needed</p>
+                <p className="text-xs text-muted">
+                  Finish assigning your character to unlock your player view.
+                </p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => router.push("/player/recover") }>
+                Recover
+              </Button>
+            </div>
+          </Card>
+        ) : null}
         {/* --- Campaign picker --- */}
         {campaigns.length > 1 && (
           <div className="mb-8">

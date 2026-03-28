@@ -8,9 +8,9 @@ A DM-first tool for running live D&D 5e sessions (theatre-of-the-mind). Built fo
 - **Encounter builder** — assemble encounters from the SRD bestiary; add monsters with average or rolled HP
 - **Combat tracker** — event-driven initiative order, HP tracking, conditions, death saves, inspiration, undo
 - **Notes & log** — session notes and an auto-generated combat event log
-- **Player companion** — PIN-gated player access with full character sheet editing, skill/save/ability display, and a live encounter view during combat
+- **Player companion** — account-based player access with character sheet editing, skill/save/ability display, and a live encounter view during combat
 
-All game data is stored locally in your browser (`localStorage`) and synced to the cloud when signed in.
+All game data is stored locally in your browser (`localStorage`) and synced to the cloud when signed in. The cloud is the source of truth (normalized Supabase tables + RLS), and localStorage is a fast cache.
 
 ## Who it's for
 
@@ -25,7 +25,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Sign up or log in with email and password. On first load you'll choose your role (DM or Player). DM tools require an account; players join via a shareable link.
+Sign up or log in with email and password. On first load you'll choose your role (DM or Player). DM tools require an account; players join via a shareable invite link.
 
 ## Other commands
 
@@ -41,6 +41,12 @@ See [CLAUDE.md](./CLAUDE.md) for full architecture details, design system, and d
 
 The roadmap is in [docs/ROADMAP.md](./docs/ROADMAP.md).
 
+## Player onboarding wizard
+
+- Invite token exchange with short-lived context cookies.
+- Welcome + choose wizard with Create/Import paths.
+- Context TTL heartbeat + cleanup and recovery for assignments.
+
 ## Tech stack
 
 - Next.js 15 (App Router)
@@ -50,7 +56,7 @@ The roadmap is in [docs/ROADMAP.md](./docs/ROADMAP.md).
 - Zustand (client state)
 - Radix UI (dialogs)
 - lucide-react (icons)
-- localStorage + Supabase `user_app_state` for persistence
+- localStorage cache + normalized Supabase tables for persistence
 
 ## Content
 

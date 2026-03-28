@@ -41,6 +41,15 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 - Inspiration tracking in encounters — `Zap` pip on PC combatant rows; DM can grant/remove inspiration with one tap; writes to persistent PC state.
 - Pin emoji replaced with Lucide `Pin` icon in combat inspector (icon governance).
 
+### Accounts + normalized persistence (2026-03-23)
+- Campaign invites with per-campaign roles.
+- Normalized Supabase schema (`campaigns`, `pcs`, `encounters`, `encounter_events`, `notes`, `log_entries`, `pc_assignments`).
+- RLS policies for DM/player access boundaries.
+
+### Player onboarding wizard (2026-03-27)
+- Invite-gated welcome + choose flow with create/import.
+- Context exchange, TTL heartbeat, and recovery banner.
+
 ---
 
 ## Now
@@ -73,13 +82,9 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 ### Tactical DM features
 - **Legendary actions / lair actions** — reminder system for boss monsters. Notes field covers this adequately for now.
 
-### Accounts and sharing (Phase 2)
-- Player accounts and PC ownership — players claim their own character rather than using a shared link.
-- Campaign invites — DM invites players by email/link; removes per-PC PIN from the player flow.
-- Normalized Supabase schema (`campaigns`, `pcs`, `encounters`, `encounter_events`).
+### Realtime sharing
 - Supabase Realtime for live encounter state sync across devices.
 - Real-time updates and shared rolls.
-- **Before building this:** define what data is stored, where, and under what terms. GDPR applies to Norwegian users.
 
 ### Campaign depth
 - Campaign timeline and session summaries.

@@ -29,138 +29,213 @@ import type { EncounterEvent, EncounterEventInput } from "../engine/encounterEve
 import { applyEncounterEvent } from "../engine/applyEncounterEvent";
 import { canStartCombat, deleteCampaignFromState } from "../engine/campaignReducers";
 import { buildPlayerViewSnapshot } from "../engine/playerViewProjection";
+import { buildStateFromRows, type DbEncounterEventRow, type DbPcAssignmentRow } from "./normalizedState";
+import type { DbCampaignRow } from "../supabase/queries/campaigns";
+import type { DbPcRow } from "../supabase/queries/pcs";
+import type { DbEncounterRow } from "../supabase/queries/encounters";
+import type { DbNoteRow } from "../supabase/queries/notes";
+import type { DbLogRow } from "../supabase/queries/log";
 
-// ── Phase 2a: entity-table helpers ─────────────────────────────────────────
-// campaigns / pcs / campaign_members are mirrored to dedicated Supabase tables
-// so players can access DM data via proper per-entity RLS instead of relying
-// on the full blob being world-readable.
+// ── Normalized persistence helpers ─────────────────────────────────────────
 
-/** Upsert campaigns, pcs, and campaign_members to their dedicated tables.
- *  Also removes rows that no longer exist in the local state (orphan cleanup). */
-async function syncEntityTables(
+async function fetchNormalizedState(
+  supabase: SupabaseClient
+): Promise<AppState | null> {
+  const [campaignsRes, pcsRes, assignmentsRes, encountersRes, eventsRes, notesRes, logRes] =
+    await Promise.all([
+      supabase.from("campaigns").select("id, name, description, created_at"),
+      supabase
+        .from("pcs")
+        .select("id, campaign_id, name, data, created_by, created_at"),
+      supabase.from("pc_assignments").select("pc_id, campaign_id, user_id, assigned_at"),
+      supabase
+        .from("encounters")
+        .select("id, campaign_id, name, location, status, baseline, created_at"),
+      supabase
+        .from("encounter_events")
+        .select("encounter_id, event, created_at")
+        .order("created_at", { ascending: true }),
+      supabase.from("notes")
+        .select("id, campaign_id, title, body, tags, created_at"),
+      supabase
+        .from("log_entries")
+        .select("id, campaign_id, encounter_id, text, timestamp, created_at, source"),
+    ]);
+
+  if (
+    campaignsRes.error ||
+    pcsRes.error ||
+    assignmentsRes.error ||
+    encountersRes.error ||
+    eventsRes.error ||
+    notesRes.error ||
+    logRes.error
+  ) {
+    return null;
+  }
+
+  return buildStateFromRows({
+    campaigns: (campaignsRes.data ?? []) as DbCampaignRow[],
+    pcs: (pcsRes.data ?? []) as DbPcRow[],
+    pcAssignments: (assignmentsRes.data ?? []) as DbPcAssignmentRow[],
+    encounters: (encountersRes.data ?? []) as DbEncounterRow[],
+    encounterEvents: (eventsRes.data ?? []) as DbEncounterEventRow[],
+    notes: (notesRes.data ?? []) as DbNoteRow[],
+    logEntries: (logRes.data ?? []) as DbLogRow[],
+    seed: seedState,
+  });
+}
+
+async function deleteOrphans(
   supabase: SupabaseClient,
-  state: AppState,
-  userId: string
-): Promise<void> {
-  // ── Upsert campaigns ──────────────────────────────────────────────────────
-  if (state.campaigns.length > 0) {
-    await supabase.from("campaigns").upsert(
-      state.campaigns.map((c) => ({
-        id: c.id,
-        dm_user_id: userId,
-        name: c.name,
-        description: c.description ?? null,
-        created_at: c.createdAt,
-      })),
-      { onConflict: "id" }
-    );
-  }
-
-  // ── Upsert pcs ────────────────────────────────────────────────────────────
-  if (state.pcs.length > 0) {
-    await supabase.from("pcs").upsert(
-      state.pcs.map((pc) => ({
-        id: pc.id,
-        dm_user_id: userId,
-        name: pc.name,
-        pin: pc.pin ?? null,
-        data: pc as unknown as Record<string, unknown>,
-      })),
-      { onConflict: "id" }
-    );
-  }
-
-  // ── Upsert campaign_members ───────────────────────────────────────────────
-  if (state.campaignMembers.length > 0) {
-    await supabase.from("campaign_members").upsert(
-      state.campaignMembers.map((m) => ({
-        id: m.id,
-        campaign_id: m.campaignId,
-        pc_id: m.pcId,
-      })),
-      { onConflict: "id" }
-    );
-  }
-
-  // ── Orphan cleanup ────────────────────────────────────────────────────────
-  // Read IDs that exist in the DB for this DM and delete any that are no
-  // longer present in local state (handles deletes that failed to propagate).
-  const [existingCampaigns, existingPcs] = await Promise.all([
-    supabase.from("campaigns").select("id").eq("dm_user_id", userId),
-    supabase.from("pcs").select("id").eq("dm_user_id", userId),
-  ]);
-
-  const stateCampaignIds = new Set(state.campaigns.map((c) => c.id));
-  const orphanCampaignIds = (existingCampaigns.data ?? [])
-    .map((r: { id: string }) => r.id)
-    .filter((id) => !stateCampaignIds.has(id));
-  if (orphanCampaignIds.length > 0) {
-    await supabase.from("campaigns").delete().in("id", orphanCampaignIds);
-    // campaign_members are cascade-deleted via FK
-  }
-
-  const statePcIds = new Set(state.pcs.map((p) => p.id));
-  const orphanPcIds = (existingPcs.data ?? [])
-    .map((r: { id: string }) => r.id)
-    .filter((id) => !statePcIds.has(id));
-  if (orphanPcIds.length > 0) {
-    await supabase.from("pcs").delete().in("id", orphanPcIds);
-    // campaign_members are cascade-deleted via FK
+  table: string,
+  idField: string,
+  desiredIds: string[]
+) {
+  const { data } = await supabase.from(table).select(idField);
+  const existing = ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) =>
+    String(row[idField])
+  );
+  const desired = new Set(desiredIds);
+  const orphans = existing.filter((id) => !desired.has(id));
+  if (orphans.length > 0) {
+    await supabase.from(table).delete().in(idField, orphans);
   }
 }
 
-/** Fetch campaigns, pcs, and campaign_members for a specific DM from entity tables. */
-async function fetchEntityTables(
+async function persistNormalizedState(
   supabase: SupabaseClient,
-  dmUserId: string
-): Promise<{ campaigns: Campaign[]; pcs: Pc[]; campaignMembers: CampaignMember[] }> {
-  const [campaignsRes, pcsRes] = await Promise.all([
-    supabase
-      .from("campaigns")
-      .select("id, name, description, created_at")
-      .eq("dm_user_id", dmUserId),
-    supabase
-      .from("pcs")
-      .select("id, name, pin, data")
-      .eq("dm_user_id", dmUserId),
-  ]);
-
-  const campaigns: Campaign[] = (campaignsRes.data ?? []).map(
-    (r: { id: string; name: string; description: string | null; created_at: string }) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description ?? undefined,
-      createdAt: r.created_at,
-    })
+  state: AppState,
+  userId: string
+) {
+  const persistable = getPersistableState(state);
+  const pcCampaignMap = new Map(
+    persistable.campaignMembers.map((member) => [member.pcId, member.campaignId])
   );
+  const defaultCampaignId =
+    persistable.activeCampaignId ?? persistable.campaigns[0]?.id ?? null;
 
-  const pcs: Pc[] = (pcsRes.data ?? []).map(
-    (r: { id: string; name: string; pin: string | null; data: Record<string, unknown> }) => ({
-      ...(r.data as Pc),
-      id: r.id,
-      pin: r.pin ?? null,
-    })
-  );
-
-  const campaignIds = campaigns.map((c) => c.id);
-  let campaignMembers: CampaignMember[] = [];
-
-  if (campaignIds.length > 0) {
-    const { data: membersData } = await supabase
-      .from("campaign_members")
-      .select("id, campaign_id, pc_id")
-      .in("campaign_id", campaignIds);
-
-    campaignMembers = (membersData ?? []).map(
-      (m: { id: string; campaign_id: string; pc_id: string }) => ({
-        id: m.id,
-        campaignId: m.campaign_id,
-        pcId: m.pc_id,
-      })
+  if (persistable.campaigns.length > 0) {
+    await supabase.from("campaigns").upsert(
+      persistable.campaigns.map((campaign) => ({
+        id: campaign.id,
+        dm_user_id: userId,
+        name: campaign.name,
+        description: campaign.description ?? null,
+        created_at: campaign.createdAt,
+      })),
+      { onConflict: "id" }
     );
   }
 
-  return { campaigns, pcs, campaignMembers };
+  if (persistable.pcs.length > 0) {
+    await supabase.from("pcs").upsert(
+      persistable.pcs
+        .map((pc) => {
+          const campaignId = pcCampaignMap.get(pc.id) ?? defaultCampaignId;
+          if (!campaignId) return null;
+          return {
+            id: pc.id,
+            campaign_id: campaignId,
+            name: pc.name,
+            data: pc as unknown as Record<string, unknown>,
+            created_by: userId,
+          };
+        })
+        .filter(
+          (row): row is {
+            id: string;
+            campaign_id: string;
+            name: string;
+            data: Record<string, unknown>;
+            created_by: string;
+          } => Boolean(row)
+        ),
+      { onConflict: "id" }
+    );
+  }
+
+  if (persistable.campaignMembers.length > 0) {
+    await supabase.from("pc_assignments").upsert(
+      persistable.campaignMembers.map((member) => ({
+        pc_id: member.pcId,
+        campaign_id: member.campaignId,
+        user_id: userId,
+      })),
+      { onConflict: "pc_id" }
+    );
+  }
+
+  if (persistable.encounters.length > 0) {
+    await supabase.from("encounters").upsert(
+      persistable.encounters.map((encounter) => ({
+        id: encounter.id,
+        campaign_id: encounter.campaignId ?? null,
+        name: encounter.name,
+        location: encounter.location ?? null,
+        status:
+          encounter.status === "completed"
+            ? "completed"
+            : encounter.isRunning
+              ? "active"
+              : "planned",
+        baseline: getEncounterBaseline(encounter),
+      })),
+      { onConflict: "id" }
+    );
+
+    for (const encounter of persistable.encounters) {
+      await supabase.from("encounter_events").delete().eq("encounter_id", encounter.id);
+      if (encounter.eventLog.length > 0) {
+        await supabase.from("encounter_events").insert(
+          encounter.eventLog.map((event) => ({
+            encounter_id: encounter.id,
+            event,
+          }))
+        );
+      }
+    }
+  }
+
+  if (persistable.notes.length > 0) {
+    await supabase.from("notes").upsert(
+      persistable.notes.map((note) => ({
+        id: note.id,
+        campaign_id: note.campaignId ?? persistable.activeCampaignId,
+        title: note.title,
+        body: note.body,
+        tags: note.tags,
+        created_at: note.createdAt,
+      })),
+      { onConflict: "id" }
+    );
+  }
+
+  if (persistable.log.length > 0) {
+    await supabase.from("log_entries").upsert(
+      persistable.log.map((entry) => ({
+        id: entry.id,
+        campaign_id: entry.campaignId ?? persistable.activeCampaignId,
+        encounter_id: entry.encounterId ?? null,
+        text: entry.text,
+        timestamp: entry.timestamp,
+        source: entry.source ?? "manual",
+      })),
+      { onConflict: "id" }
+    );
+  }
+
+  await deleteOrphans(supabase, "campaigns", "id", persistable.campaigns.map((c) => c.id));
+  await deleteOrphans(supabase, "pcs", "id", persistable.pcs.map((pc) => pc.id));
+  await deleteOrphans(supabase, "encounters", "id", persistable.encounters.map((e) => e.id));
+  await deleteOrphans(supabase, "notes", "id", persistable.notes.map((n) => n.id));
+  await deleteOrphans(supabase, "log_entries", "id", persistable.log.map((l) => l.id));
+  await deleteOrphans(
+    supabase,
+    "pc_assignments",
+    "pc_id",
+    persistable.campaignMembers.map((m) => m.pcId)
+  );
 }
 
 async function upsertPlayerView(
@@ -521,47 +596,10 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       const { createSupabaseClient } = await import("../supabase/client");
       const supabase = createSupabaseClient();
 
-      const fetchRemoteState = async (userId: string) => {
+      const fetchRemoteState = async () => {
         setSyncing(true);
         try {
-          // Step 1: fetch the blob (full state for encounters, notes, monsters, etc.)
-          const { data: blobData } = await supabase
-            .from("user_app_state")
-            .select("state")
-            .eq("user_id", userId)
-            .single();
-
-          let remote: AppState | null = blobData?.state
-            ? normalizeState(blobData.state as AppState)
-            : null;
-
-          // Step 2: fetch entity tables and overlay (tables are authoritative for
-          // campaigns / pcs / campaign_members because they support proper RLS).
-          try {
-            const entities = await fetchEntityTables(supabase, userId);
-            if (
-              entities.campaigns.length > 0 ||
-              entities.pcs.length > 0 ||
-              entities.campaignMembers.length > 0
-            ) {
-              const base = remote ?? { ...seedState };
-              remote = {
-                ...base,
-                campaigns: entities.campaigns,
-                pcs: entities.pcs.map((pc) => ({
-                  ...pc,
-                  visual: normalizeVisual(pc.visual),
-                  skillProficiencies:
-                    pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
-                  pin: pc.pin ?? null,
-                })),
-                campaignMembers: entities.campaignMembers,
-              };
-            }
-          } catch {
-            // Entity table fetch failure is non-fatal — continue with blob state.
-          }
-
+          const remote = await fetchNormalizedState(supabase);
           if (!cancelled && remote) {
             const merged = mergeLocalOnlyPcs(remote, loadState());
             setState(merged);
@@ -581,7 +619,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           (event === "INITIAL_SESSION" || event === "SIGNED_IN") &&
           session?.user
         ) {
-          fetchRemoteState(session.user.id);
+          fetchRemoteState();
         } else if (event === "INITIAL_SESSION" && !session?.user) {
           // Unauthenticated page load — check for a stored DM user ID.
           // This powers the "Player Connect" flow: the player visited
@@ -591,7 +629,8 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
               ? window.localStorage.getItem(PLAYER_CONNECT_KEY)
               : null;
           if (connectId) {
-            fetchRemoteState(connectId);
+            // With normalized persistence, player access expects auth membership.
+            // Keep local cache if unauthenticated.
           }
         }
       });
@@ -620,17 +659,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const persistableState = getPersistableState(state);
-
-        // Sync full blob (existing behaviour — source of truth for encounters, notes, etc.)
-        await supabase.from("user_app_state").upsert({
-          user_id: user.id,
-          state: persistableState as unknown as Record<string, unknown>,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-        // Also sync entity tables (campaigns, pcs, campaign_members).
-        await syncEntityTables(supabase, persistableState, user.id);
+        await persistNormalizedState(supabase, state, user.id);
       } catch {
         // Sync failure is non-fatal — state is safely in localStorage.
       }
@@ -832,7 +861,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
         const supabase = createSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) await supabase.from("pcs").delete().eq("id", id);
-        // campaign_members cascade-deleted via FK
+        // pc_assignments cascade-deleted via FK
       } catch { /* non-fatal */ }
     })();
   }, []);
@@ -1270,10 +1299,11 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await supabase
-              .from("campaign_members")
+              .from("pc_assignments")
               .delete()
               .eq("campaign_id", campaignId)
-              .eq("pc_id", pcId);
+              .eq("pc_id", pcId)
+              .eq("user_id", user.id);
           }
         } catch { /* non-fatal */ }
       })();
@@ -1299,44 +1329,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
       const { createSupabaseClient } = await import("../supabase/client");
       const supabase = createSupabaseClient();
 
-      // Fetch the full blob (for encounters, notes, monsters, etc.)
-      const { data: blobData } = await supabase
-        .from("user_app_state")
-        .select("state")
-        .eq("user_id", dmUserId)
-        .single();
-
-      let remote: AppState | null = blobData?.state
-        ? normalizeState(blobData.state as AppState)
-        : null;
-
-      // Overlay entity tables (campaigns / pcs / members are more reliably
-      // up-to-date here than in the blob, especially after Phase 2 migrations).
-      try {
-        const entities = await fetchEntityTables(supabase, dmUserId);
-        if (
-          entities.campaigns.length > 0 ||
-          entities.pcs.length > 0 ||
-          entities.campaignMembers.length > 0
-        ) {
-          const base = remote ?? { ...seedState };
-          remote = {
-            ...base,
-            campaigns: entities.campaigns,
-            pcs: entities.pcs.map((pc) => ({
-              ...pc,
-              visual: normalizeVisual(pc.visual),
-              skillProficiencies:
-                pc.skillProficiencies ?? { ...DEFAULT_SKILL_PROFICIENCIES },
-              pin: pc.pin ?? null,
-            })),
-            campaignMembers: entities.campaignMembers,
-          };
-        }
-      } catch {
-        // Non-fatal — fall back to blob-only state.
-      }
-
+      const remote = await fetchNormalizedState(supabase);
       if (remote) {
         setState(remote);
         if (typeof window !== "undefined") {

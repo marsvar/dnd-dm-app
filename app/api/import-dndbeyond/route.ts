@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   let res: Response;
   try {
     res = await fetch(ddbUrl, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "User-Agent": "dnd-dm-app-importer" },
       // 10-second timeout via AbortSignal
       signal: AbortSignal.timeout(10_000),
     });
@@ -38,6 +38,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (!res.ok) {
+    if (res.status === 429) {
+      return NextResponse.json(
+        { error: "D&D Beyond rate limit hit. Please wait a minute and try again." },
+        { status: 429 }
+      );
+    }
     if (res.status === 401 || res.status === 403) {
       return NextResponse.json(
         { error: "Character is private. Enable sharing on D&D Beyond first." },

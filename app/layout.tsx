@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Alegreya_Sans, Marcellus, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
@@ -32,11 +33,15 @@ export const metadata: Metadata = {
   description: "Local-first D&D 5e DM assistant for encounter tracking and notes.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerList = await headers();
+  const suppressAnalytics = headerList.get("x-invite-suppress-analytics") === "true";
+  const minimalShell = headerList.get("x-invite-minimal") === "true";
+
   return (
     <html lang="en">
       <body
@@ -45,16 +50,24 @@ export default function RootLayout({
         <AppStoreProvider>
           <RoleStoreProvider>
             <div className="min-h-screen">
-              <Nav />
-              <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-16 sm:px-8">
-                <DmLayoutGuard>{children}</DmLayoutGuard>
-              </main>
+              {minimalShell ? (
+                <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-16 sm:px-8">
+                  {children}
+                </main>
+              ) : (
+                <>
+                  <Nav />
+                  <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-16 sm:px-8">
+                    <DmLayoutGuard>{children}</DmLayoutGuard>
+                  </main>
+                </>
+              )}
             </div>
-            <CombatActivePill />
+            {!minimalShell && <CombatActivePill />}
           </RoleStoreProvider>
         </AppStoreProvider>
-        <Analytics />
-        <SpeedInsights />
+        {!suppressAnalytics && <Analytics />}
+        {!suppressAnalytics && <SpeedInsights />}
       </body>
     </html>
   );
