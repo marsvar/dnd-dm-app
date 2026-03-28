@@ -12,6 +12,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/select-role", "/design-system"];
 const PUBLIC_PREFIXES = ["/player/", "/_next/", "/favicon"];
+const INVITE_CONTEXT_COOKIE = "invite_context";
+const INVITE_FALLBACK_COOKIE = "invite_context_fallback";
 
 function isPublicRoute(pathname: string) {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -19,13 +21,59 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  // Skip auth entirely for public routes (avoids requiring Supabase env vars).
-  if (isPublicRoute(request.nextUrl.pathname)) {
-    return NextResponse.next({ request });
+  const { pathname, searchParams } = request.nextUrl;
+  const hasToken = searchParams.has("token");
+  const hasContext = searchParams.has("context");
+  const hasInviteCookie = Boolean(request.cookies.get(INVITE_CONTEXT_COOKIE)?.value);
+  const hasFallbackCookie = Boolean(request.cookies.get(INVITE_FALLBACK_COOKIE)?.value);
+
+  const isPlayerWelcome = pathname === "/player/welcome";
+  const isPlayerOnboarding = pathname.startsWith("/player/onboarding");
+  const isPlayerImport = pathname.startsWith("/player/import");
+  const isInviteExchange = pathname === "/invite/exchange";
+
+  const inviteGated = hasInviteCookie && (isPlayerOnboarding || isPlayerImport);
+  const suppressAnalytics = hasToken || hasContext || hasFallbackCookie || inviteGated;
+  const requiresNoStore = isPlayerWelcome || isInviteExchange || inviteGated;
+  const shouldRedactQuery = isPlayerWelcome || hasContext || hasFallbackCookie;
+  const minimalShell = hasToken || hasContext;
+
+  const response = NextResponse.next({ request });
+
+  if (requiresNoStore) {
+    response.headers.set("Cache-Control", "no-store");
   }
 
-  // Build a mutable response so we can forward refreshed auth cookies.
-  const response = NextResponse.next({ request });
+  if (isPlayerWelcome || isPlayerOnboarding || isPlayerImport || isInviteExchange) {
+    response.headers.set("Referrer-Policy", "no-referrer");
+  }
+
+  if (suppressAnalytics) {
+    response.headers.set("x-invite-suppress-analytics", "true");
+  }
+
+  if (minimalShell) {
+    response.headers.set("x-invite-minimal", "true");
+  }
+
+  if (shouldRedactQuery) {
+    response.headers.set("x-redact-query", "true");
+  }
+
+  if (hasContext) {
+    response.cookies.set(INVITE_FALLBACK_COOKIE, "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/player",
+      maxAge: 10 * 60,
+    });
+  }
+
+  // Skip auth entirely for public routes (avoids requiring Supabase env vars).
+  if (isPublicRoute(pathname)) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,8 +93,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users on protected routes to /login.
   if (!user && !isPublicRoute(pathname)) {
