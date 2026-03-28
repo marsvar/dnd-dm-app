@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *   /login, /signup, /select-role, /player/**, /_next/**, /favicon.ico
  */
 
-const PUBLIC_PATHS = ["/login", "/signup", "/select-role", "/design-system"];
+const PUBLIC_PATHS = ["/login", "/signup", "/select-role", "/design-system", "/player"];
 const PUBLIC_PREFIXES = ["/player/", "/_next/", "/favicon"];
 const INVITE_CONTEXT_COOKIE = "invite_context";
 const INVITE_FALLBACK_COOKIE = "invite_context_fallback";
