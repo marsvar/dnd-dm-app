@@ -10,9 +10,9 @@
 > **Update this section before each working session.** This is the most important section for consistent results.
 
 ```
-Last worked on: 2026-03-20
-Current focus:  CLAUDE.md roadmap sync
-Recently completed: Encounter builder redesign, combat color polish, UI governance pass, death save tracking, HP roll on monster add, inspiration tracking, concentration tracking, short/long rest.
+Last worked on: 2026-03-27
+Current focus:  PC persistence race condition fix (done); regression fixes from PR history
+Recently completed: Regression audit (player page, CSS combat tokens, mobile nav, bestiary, D&D Beyond importer), landing page redesign, PC persistence race condition fix (mergeLocalOnlyPcs), entity table Phase 2a already live.
 Blocked on / open questions: —
 Next task: Player section (party dashboard, character access, controlled DM note sharing)
 ```
@@ -32,8 +32,13 @@ Next task: Player section (party dashboard, character access, controlled DM note
 | Error boundaries | 📋 Planned | No try/catch around reducer; silent failures possible |
 | Player view | ✅ Done | PIN-gated PC selection; full character sheet edit; roll input in encounter + character sheet |
 | Character sheet UI | ✅ Done | Full pen-and-paper style sheet: Overview, Skills, Combat, Bio, Rolls tabs |
-| Death save tracking | 📋 Planned | `isDead` flag conceptual only; no 3-success/3-failure in types |
-| Inspiration (combat) | 📋 Planned | `Pc.inspiration` exists; not tracked per combatant in encounters |
+| Death save tracking | ✅ Done | `DEATH_SAVES_SET` event; 3-success/3-failure circle UI in combat inspector |
+| Inspiration (combat) | ✅ Done | `Zap` pip on PC combatant rows; DM grants/removes with one tap; writes to PC state |
+| Mobile nav | ✅ Done | Secondary links (Bestiary, Campaigns, Notes, Log) in mobile dropdown |
+| D&D Beyond importer | ✅ Done | URL import + `persistToCloud`/`importSource`/`importId` fields on Pc |
+| PC persistence race condition | ✅ Done | `mergeLocalOnlyPcs` now also rescues locally-added PCs not yet synced to Supabase |
+| Landing page redesign | ✅ Done | StatTile, CommandCard, active encounter banner, command deck |
+| Combat CSS tokens | ✅ Done | All `--combat-*` and `--diff-*` tokens defined in `:root` (light + dark) |
 | Export / session log | 📋 Planned | Log entries exist; no export UI |
 
 ---
@@ -424,6 +429,7 @@ Current coverage: unit tests exist and are well-structured. Integration and smok
 - **`hydrated` is hardcoded to `true` in appStore** — `const hydrated = true`. The hydration flash prevention is incomplete (roleStore has it properly; appStore does not).
 - **Button has icon-only usage in some pages** — `campaigns/page.tsx` uses `<Trash2>` in a Button without a text label (aria-label only). Revisit for consistency.
 - **Auth pattern: always use `onAuthStateChange`, never one-shot `getUser()`** — Components in the root layout (DmLayoutGuard, Nav, appStore) mount before the user is logged in. `getUser()` with `[]` deps runs once, gets null, and never re-runs. Use `onAuthStateChange` with subscription cleanup for any component that needs to react to auth state. In appStore, only fire the Supabase fetch on `INITIAL_SESSION` and `SIGNED_IN` events (not `TOKEN_REFRESHED`).
+- **`mergeLocalOnlyPcs` race condition (FIXED 2026-03-27)** — The function previously only preserved `persistToCloud === false` PCs from local state. When `fetchRemoteState` completed (INITIAL_SESSION) before the 500ms debounced Supabase sync, newly added PCs were wiped. Fixed: function now also preserves any local PC whose ID is not yet in remote state.
 
 ---
 
@@ -450,5 +456,4 @@ See `docs/ROADMAP.md` for the full roadmap with sequencing rationale.
 ## Deferred (do not implement yet)
 - Color scheme enforcement / dark-mode audit
 - `SectionCardHeader` shared primitive
-- Mobile nav (hamburger / drawer)
 - Avatar upload / local file support

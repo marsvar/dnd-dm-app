@@ -12,6 +12,12 @@ This roadmap keeps the app DM-first and table-ready. It favors speed, clarity, a
 
 ## Done
 
+### Regression fixes + landing page redesign (2026-03-27)
+- **Regression audit** — identified and restored code reverted by stale-base PRs: player page (1,672 lines from last known-good commit), D&D Beyond importer UI (`handleDndImport` was dead code), mobile nav secondary links (Bestiary/Campaigns/Notes/Log missing from dropdown), bestiary duplicate add-monster form (duplicate Card removed).
+- **Combat CSS tokens** — all `--combat-*` and `--diff-*` tokens were referenced in `@theme inline` but never defined in `:root`. Added full warm dark palette definitions for both light and dark mode.
+- **Landing page redesign** — new `StatTile` and `CommandCard` local components; accent eyebrow + three-line hero headline; Campaign Pulse 4-tile stat grid; Active Encounter Banner with combat palette; Command Deck full-card links with icon badges and ChevronRight affordance.
+- **PC persistence race condition fix** — `mergeLocalOnlyPcs` in `appStore.tsx` now preserves newly-added PCs that exist in localStorage but haven't yet reached Supabase (race: INITIAL_SESSION remote fetch completing before the 500ms debounced sync). Previously only `persistToCloud === false` PCs survived the overlay; now any local PC absent from remote state is preserved.
+
 ### Encounter builder redesign (2026-03-17)
 - Info-dense encounter cards: difficulty pill, adjusted XP, CR, combatant count, Launch/Resume button.
 - Inline monster picker in Create dialog (always-visible two-column layout).

@@ -87,3 +87,31 @@ Decisions made about this project. Record a new entry whenever a significant arc
 **Alternatives considered:** OAuth/real auth from day one (rejected: vastly over-engineered for a local-first tool used by one group); PIN-per-device (rejected: unnecessary complexity); no player input (rejected: player edit of their own PC is low risk and expected).
 
 **Consequences:** Player view reads and writes DM-owned data via shared `appStore`. In the future, a separate read/write path per device will be needed for multi-device sync (Supabase RLS per PC, PINs become Supabase auth tokens).
+
+---
+
+## Entity tables as authoritative source for campaigns/pcs/campaign_members (Phase 2a)
+
+**Date:** 2026-03-20 (implemented; documented 2026-03-27)
+
+**Decision:** Campaigns, PCs, and campaign_members are mirrored to dedicated Supabase tables (`campaigns`, `pcs`, `campaign_members`) in addition to the full-state blob in `user_app_state`. The entity tables are authoritative for these entities; the blob is authoritative for everything else (encounters, notes, monsters, log).
+
+**Reasoning:** The full blob approach stores all DM state in one JSON column, which works well for DM-only data. Player access requires per-entity RLS so players can read only their own PC. Row-level security is not possible on a single opaque JSON blob. Entity tables enable proper Supabase RLS policies per entity type.
+
+**Implementation:** `syncEntityTables()` upserts all three entity types after every state change (500ms debounce). `fetchEntityTables()` fetches on auth events and overlays the remote blob. Orphan cleanup runs on sync to handle deleted rows.
+
+**Consequences:** Two sync targets per save (blob + entity tables). Entity table fetch can fail independently of blob fetch (both are non-fatal). The `data` column on the `pcs` table stores the full PC object as JSONB, allowing the entity row to be the single source without duplication.
+
+---
+
+## mergeLocalOnlyPcs preserves unsynced new PCs (race condition fix)
+
+**Date:** 2026-03-27
+
+**Decision:** `mergeLocalOnlyPcs(remote, local)` must preserve not only explicitly local-only PCs (`persistToCloud === false`) but also any PC that exists in local state but is absent from remote state (i.e. newly added PCs that haven't completed their Supabase sync yet).
+
+**Reasoning:** There is an inherent race condition between: (a) the user adding a PC — saved to localStorage immediately, Supabase sync debounced 500ms — and (b) `fetchRemoteState` completing on `INITIAL_SESSION` and overwriting state. If the remote fetch wins, any new PC with `persistToCloud: true` that hasn't yet synced is silently wiped. The fix: treat "local PC not present in remote" as a signal that the PC is newly added and must survive the overlay.
+
+**Alternatives considered:** Timestamp-based merge (rejected: requires `updatedAt` on all PCs, adds complexity); blocking remote fetch until sync completes (rejected: makes initial load async and dependent on Supabase availability); explicit "pending sync" flag on PCs (rejected: adds state that must be cleaned up; the ID-presence check is equivalent and simpler).
+
+**Consequences:** If a PC is deleted from another device between sessions, it will be "resurrected" by the local state until the next page load after the deletion has synced. Acceptable trade-off: silent data loss (the original bug) is worse than a stale resurrection that resolves on next refresh.
