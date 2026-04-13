@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import * as RadixTooltip from "@radix-ui/react-tooltip";
 import * as RadixPopover from "@radix-ui/react-popover";
+import * as RadixTabs from "@radix-ui/react-tabs";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import React, {
@@ -250,11 +251,13 @@ function hpBarColors(current: number, max: number): { fg: string; bg: string } {
 export const HpBar = ({
   current,
   max,
+  tempHp,
   className,
   showLabel,
 }: {
   current: number;
   max: number;
+  tempHp?: number | null;
   className?: string;
   showLabel?: boolean;
 }) => {
@@ -270,6 +273,7 @@ export const HpBar = ({
             ? { text: "Bloodied", color: "var(--hp-mid)" }
             : null
       : null;
+  const tempPct = max > 0 && tempHp ? Math.min(1, tempHp / max) : 0;
   return (
     <div className={cn("w-full", showLabel && label ? "space-y-0.5" : "")}>
       <div
@@ -286,6 +290,17 @@ export const HpBar = ({
           style={{ width: `${pct * 100}%`, backgroundColor: fg }}
         />
       </div>
+      {tempPct > 0 && (
+        <div
+          className="mt-0.5 overflow-hidden rounded-full"
+          style={{ height: 3, backgroundColor: "var(--hp-temp-bg)" }}
+        >
+          <div
+            className="h-full rounded-full transition-[width] duration-300"
+            style={{ width: `${tempPct * 100}%`, backgroundColor: "var(--hp-temp)" }}
+          />
+        </div>
+      )}
       {label && (
         <span
           className="text-[0.6rem] font-semibold uppercase tracking-[0.15em]"
@@ -546,3 +561,127 @@ export const PopoverContent = ({
     />
   </RadixPopover.Portal>
 );
+
+// ---------------------------------------------------------------------------
+// Tabs — accessible tab navigation built on @radix-ui/react-tabs.
+// Uses "line" variant by default (underline active tab) which fits the
+// existing design token palette without needing a pill/chip background.
+//
+// Usage:
+//   <Tabs defaultValue="prep">
+//     <TabsList>
+//       <TabsTrigger value="prep">Prep</TabsTrigger>
+//       <TabsTrigger value="live">Live Combat</TabsTrigger>
+//     </TabsList>
+//     <TabsContent value="prep">…</TabsContent>
+//     <TabsContent value="live">…</TabsContent>
+//   </Tabs>
+// ---------------------------------------------------------------------------
+export const Tabs = RadixTabs.Root;
+
+export const TabsList = ({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTabs.List>) => (
+  <RadixTabs.List
+    className={cn(
+      "flex items-center gap-1 border-b border-black/10",
+      className
+    )}
+    {...props}
+  />
+);
+
+export const TabsTrigger = ({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTabs.Trigger>) => (
+  <RadixTabs.Trigger
+    className={cn(
+      "relative px-4 py-2.5 text-sm font-medium text-muted transition-colors",
+      "hover:text-foreground",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:rounded",
+      "data-[state=active]:text-foreground",
+      // Underline indicator on active tab — matches accent token
+      "after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-accent after:opacity-0 after:transition-opacity",
+      "data-[state=active]:after:opacity-100",
+      className
+    )}
+    {...props}
+  />
+);
+
+export const TabsContent = ({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof RadixTabs.Content>) => (
+  <RadixTabs.Content
+    className={cn("outline-none", className)}
+    {...props}
+  />
+);
+
+// ---------------------------------------------------------------------------
+// Skeleton — animated placeholder for loading states.
+// Based on shadcn/ui Skeleton pattern; uses surface-strong as the base color
+// so it blends naturally with card backgrounds.
+// ---------------------------------------------------------------------------
+export const Skeleton = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "animate-pulse rounded-xl bg-surface-strong",
+      className
+    )}
+    {...props}
+  />
+);
+
+// ---------------------------------------------------------------------------
+// EncounterStatusBadge — semantic encounter status with animated live dot.
+// Replaces the plain Pill("Live"/"Prep"/"Completed") pattern throughout the
+// encounter runner. The pulsing green dot is immediately recognisable mid-
+// combat without requiring the DM to read the label text.
+// ---------------------------------------------------------------------------
+type EncounterStatus = "live" | "prep" | "completed";
+
+const encounterStatusConfig: Record<
+  EncounterStatus,
+  { label: string; dotColor: string; textColor: string; bg: string; pulse: boolean }
+> = {
+  live:      { label: "Live",      dotColor: "var(--combat-live-dot)", textColor: "var(--combat-live-fg)", bg: "var(--combat-live-bg)", pulse: true  },
+  prep:      { label: "Prep",      dotColor: "var(--hp-mid)",          textColor: "var(--hp-mid)",          bg: "var(--hp-mid-bg)",      pulse: false },
+  completed: { label: "Completed", dotColor: "var(--muted)",           textColor: "var(--muted)",           bg: "var(--surface-strong)", pulse: false },
+};
+
+export const EncounterStatusBadge = ({
+  status,
+  className,
+}: {
+  status: EncounterStatus;
+  className?: string;
+}) => {
+  const cfg = encounterStatusConfig[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        className
+      )}
+      style={{ backgroundColor: cfg.bg, color: cfg.textColor }}
+    >
+      <span className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+        {cfg.pulse && (
+          <span
+            className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+            style={{ backgroundColor: cfg.dotColor }}
+          />
+        )}
+        <span
+          className="relative inline-flex h-2 w-2 rounded-full"
+          style={{ backgroundColor: cfg.dotColor }}
+        />
+      </span>
+      {cfg.label}
+    </span>
+  );
+};

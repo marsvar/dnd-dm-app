@@ -20,6 +20,8 @@
   --hp-low-bg: #fcd8d8;
   --hp-zero: #5a4f45;
   --hp-zero-bg: #e8e0d8;
+  --hp-temp: #2a6e9c;
+  --hp-temp-bg: #d0e8f5;
 
   /* Condition chip */
   --condition-bg: #ede0cf;
@@ -81,6 +83,8 @@
   --color-hp-low-bg: var(--hp-low-bg);
   --color-hp-zero: var(--hp-zero);
   --color-hp-zero-bg: var(--hp-zero-bg);
+  --color-hp-temp: var(--hp-temp);
+  --color-hp-temp-bg: var(--hp-temp-bg);
 
   /* Condition */
   --color-condition-bg: var(--condition-bg);
@@ -136,6 +140,8 @@
     --hp-low-bg: #3a1515;
     --hp-zero: #b5a495;
     --hp-zero-bg: #241c16;
+    --hp-temp: #7ab8d4;
+    --hp-temp-bg: #152535;
 
     /* Condition chip (dark) */
     --condition-bg: #2e2218;

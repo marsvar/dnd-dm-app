@@ -251,7 +251,7 @@ function CombatTab({ pc, update }: { pc: Pc; update: (u: Partial<Pc>) => void })
     <div className="space-y-4">
       {/* HP */}
       <div>
-        <HpBar current={pc.currentHp} max={pc.maxHp} className="mb-2" />
+        <HpBar current={pc.currentHp} max={pc.maxHp} tempHp={pc.tempHp} className="mb-2" />
         <div className="grid grid-cols-3 gap-2">
           <div>
             <FieldLabel>Current HP</FieldLabel>
