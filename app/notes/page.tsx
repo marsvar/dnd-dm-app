@@ -67,7 +67,7 @@ export default function NotesPage() {
           <Card key={note.id} className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold">{note.title}</h3>
+                <h3 className="text-base font-semibold">{note.title}</h3>
                 <p className="text-xs text-muted">
                   {new Date(note.createdAt).toLocaleDateString()}
                 </p>
@@ -97,7 +97,7 @@ export default function NotesPage() {
       </div>
 
       <Card className="space-y-4">
-        <h3 className="text-lg font-semibold">Add a note</h3>
+        <h3 className="text-base font-semibold">Add a note</h3>
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.25em] text-muted">Title</p>
           <Input

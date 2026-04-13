@@ -242,7 +242,7 @@ export function CombatInspector({ encounter, pinnedId, onUnpin }: Props) {
             </span>
           )}
         </div>
-        <HpBar current={p.currentHp ?? 0} max={p.maxHp ?? 0} className="h-1.5 mb-3" />
+        <HpBar current={p.currentHp ?? 0} max={p.maxHp ?? 0} tempHp={p.tempHp} className="h-1.5 mb-3" />
       </div>
 
       {/* Quick stats */}

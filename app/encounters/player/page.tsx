@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MonsterPicker } from "../../components/MonsterPicker";
 import { ParticipantAvatar } from "../../components/ParticipantAvatar";
-import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, cn } from "../../components/ui";
+import { Button, Card, ConditionChip, ConditionPicker, Dialog, DialogClose, DialogContent, DialogTitle, EncounterStatusBadge, FieldLabel, HpBar, Input, PageShell, Pill, SectionTitle, Select, Tabs, TabsContent, TabsList, TabsTrigger, cn } from "../../components/ui";
 import { SRD_CONDITIONS } from "../../lib/data/srd";
 import { suggestUniqueName } from "../../lib/engine/selectors";
 import { getPassivePerception } from "../../lib/engine/pcEngine";
@@ -481,9 +481,8 @@ export default function EncounterPlayerPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-semibold">{selectedEncounter.name}</h3>
-                    <Pill
-                      label={selectedEncounter.status === "completed" ? "Completed" : selectedEncounter.isRunning ? "Live" : "Prep"}
-                      tone={selectedEncounter.status === "completed" ? "neutral" : selectedEncounter.isRunning ? "accent" : "neutral"}
+                    <EncounterStatusBadge
+                      status={selectedEncounter.status === "completed" ? "completed" : selectedEncounter.isRunning ? "live" : "prep"}
                     />
                   </div>
                   <p className="text-sm text-muted">
@@ -508,32 +507,58 @@ export default function EncounterPlayerPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedEncounter.status === "completed" ? (
-                    <div className="w-full rounded-xl border border-black/10 bg-surface-strong px-4 py-3 text-sm text-muted">
-                      <span className="font-semibold text-foreground">Encounter complete.</span>{" "}
-                      This encounter is read-only. Start a new encounter to continue playing.
-                    </div>
-                  ) : (
-                    <>
-                  {combatMode ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => dispatchEncounterEvent(selectedEncounter.id, { t: "COMBAT_MODE_SET", mode: "prep" })}
+                {selectedEncounter.status === "completed" ? (
+                  <div className="w-full rounded-xl border border-black/10 bg-surface-strong px-4 py-3 text-sm text-muted">
+                    <span className="font-semibold text-foreground">Encounter complete.</span>{" "}
+                    This encounter is read-only. Start a new encounter to continue playing.
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Mode tabs — dispatches persisted COMBAT_MODE_SET event on change */}
+                    <Tabs
+                      value={combatMode ? "live" : "prep"}
+                      onValueChange={(val) =>
+                        dispatchEncounterEvent(selectedEncounter.id, {
+                          t: "COMBAT_MODE_SET",
+                          mode: val as "prep" | "live",
+                        })
+                      }
                     >
-                      Back to prep mode
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => dispatchEncounterEvent(selectedEncounter.id, { t: "COMBAT_MODE_SET", mode: "live" })}
-                      disabled={!selectedEncounter.isRunning && !combatRequirementsMet}
-                    >
-                      Go to combat mode
-                    </Button>
-                  )}
-                  {combatMode ? (
-                    <>
-                      {!selectedEncounter.isRunning ? (
+                      <TabsList>
+                        <TabsTrigger value="prep">Prep</TabsTrigger>
+                        <TabsTrigger
+                          value="live"
+                          disabled={!selectedEncounter.isRunning && !combatRequirementsMet}
+                          title={!combatRequirementsMet ? combatRequirementsMessage : undefined}
+                        >
+                          Live Combat
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    {/* Turn controls — only in live mode */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {combatMode && (
+                        <>
+                          {!selectedEncounter.isRunning ? (
+                            <Button
+                              variant="outline"
+                              onClick={() => startEncounter(selectedEncounter.id)}
+                              disabled={!combatRequirementsMet}
+                            >
+                              Start
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              onClick={() => stopEncounter(selectedEncounter.id)}
+                            >
+                              Stop
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {!combatMode && !selectedEncounter.isRunning && (
                         <Button
                           variant="outline"
                           onClick={() => startEncounter(selectedEncounter.id)}
@@ -541,7 +566,8 @@ export default function EncounterPlayerPage() {
                         >
                           Start
                         </Button>
-                      ) : (
+                      )}
+                      {!combatMode && selectedEncounter.isRunning && (
                         <Button
                           variant="outline"
                           onClick={() => stopEncounter(selectedEncounter.id)}
@@ -549,113 +575,83 @@ export default function EncounterPlayerPage() {
                           Stop
                         </Button>
                       )}
+                      {/* End Encounter — graduates this encounter to 'completed' */}
                       <Button
                         variant="outline"
-                        onClick={() => advanceEncounterTurn(selectedEncounter.id, -1)}
-                        disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
+                        className="text-xs"
+                        onClick={() => { setEndEncounterNotes(""); setIsEndEncounterOpen(true); }}
+                        disabled={selectedEncounter.isRunning}
                       >
-                        Prev
+                        End Encounter
                       </Button>
-                      <Button
-                        onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
-                        disabled={!selectedEncounter.isRunning || !orderedParticipants.length}
-                      >
-                        Next
-                      </Button>
-                    </>
-                  ) : (
-                    !selectedEncounter.isRunning ? (
-                      <Button
-                        variant="outline"
-                        onClick={() => startEncounter(selectedEncounter.id)}
-                        disabled={!combatRequirementsMet}
-                      >
-                        Start
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => stopEncounter(selectedEncounter.id)}
-                      >
-                        Stop
-                      </Button>
-                    )
-                  )}
-                  {/* End Encounter — graduates this encounter to 'completed' */}
-                  <Button
-                    variant="outline"
-                    className="ml-auto text-xs"
-                    onClick={() => { setEndEncounterNotes(""); setIsEndEncounterOpen(true); }}
-                    disabled={selectedEncounter.isRunning}
-                  >
-                    End Encounter
-                  </Button>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {combatMode ? (
                 <>
                   <div className="flex items-stretch overflow-hidden rounded-2xl border border-black/10 bg-surface-strong text-xs text-muted">
-                    {/* Segment 1 — Round controls */}
-                    <div className="flex items-center gap-2 px-3 py-2">
-                      <span className="uppercase tracking-[0.25em]">Round</span>
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => adjustRound(-1)}
-                      >
-                        -
-                      </Button>
-                      <span className="text-sm font-semibold text-foreground">
+                    {/* Left — Active participant */}
+                    <div className="flex min-w-0 flex-1 items-center gap-2 px-4 py-2">
+                      <span className="shrink-0 uppercase tracking-[0.25em]">Active</span>
+                      {activeParticipant ? (
+                        <>
+                          <span className="truncate text-sm font-semibold text-foreground">
+                            {activeParticipant.name}
+                          </span>
+                          <span className="shrink-0 text-[0.6rem] uppercase tracking-wide text-muted">
+                            {activeParticipant.kind}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted">--</span>
+                      )}
+                    </div>
+                    {/* Divider */}
+                    <div className="w-px self-stretch bg-black/10" />
+                    {/* Center — Round number (prominent) */}
+                    <div className="flex shrink-0 flex-col items-center justify-center gap-0 px-6 py-1.5">
+                      <span className="font-mono text-2xl font-bold leading-none text-accent">
                         {selectedEncounter.round}
                       </span>
+                      <span className="text-[0.55rem] uppercase tracking-[0.3em] text-muted">Round</span>
+                    </div>
+                    {/* Divider */}
+                    <div className="w-px self-stretch bg-black/10" />
+                    {/* Right — Undo + round adjust + keyboard hint */}
+                    <div className="flex shrink-0 items-center gap-1.5 px-3 py-2">
                       <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
+                        variant="ghost"
+                        className="px-2 py-1 text-xs"
+                        onClick={() => adjustRound(-1)}
+                      >
+                        −
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1 text-xs"
                         onClick={() => adjustRound(1)}
                       >
                         +
                       </Button>
                       <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
+                        variant="ghost"
+                        className="px-2 py-1 text-xs"
                         onClick={() => undoEncounterEvent(selectedEncounter.id)}
                         disabled={!selectedEncounter.eventLog.length}
                       >
                         Undo
                       </Button>
+                      {selectedEncounter.isRunning ? (
+                        <span className="pl-1 text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                          N/P
+                        </span>
+                      ) : null}
+                      {!selectedEncounter.isRunning && !combatRequirementsMet ? (
+                        <p className="max-w-[10rem] text-xs text-muted">{combatRequirementsMessage}</p>
+                      ) : null}
                     </div>
-                    {/* Divider */}
-                    <div className="w-px self-stretch bg-black/10" />
-                    {/* Segment 2 — Active participant */}
-                    <div className="flex min-w-0 items-center gap-2 px-3 py-2">
-                      <span className="shrink-0 uppercase tracking-[0.25em]">Active</span>
-                      <span className="truncate text-sm text-foreground">
-                        {activeParticipant ? activeParticipant.name : "--"}
-                      </span>
-                    </div>
-                    {/* Divider */}
-                    <div className="w-px self-stretch bg-black/10" />
-                    {/* Segment 3 — Last action */}
-                    <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2">
-                      <span className="shrink-0 uppercase tracking-[0.25em]">Last</span>
-                      <span className="truncate max-w-[16rem] text-sm text-foreground">
-                        {formatEventSummary(lastEvent)}
-                      </span>
-                    </div>
-                    {/* Keyboard hint */}
-                    {selectedEncounter.isRunning ? (
-                      <div className="ml-auto flex shrink-0 items-center px-3 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
-                        N / P
-                      </div>
-                    ) : null}
-                    {!selectedEncounter.isRunning && !combatRequirementsMet ? (
-                      <div className="flex items-center px-3 py-2">
-                        <p className="text-xs text-muted">{combatRequirementsMessage}</p>
-                      </div>
-                    ) : null}
                   </div>
 
                   <div className="grid gap-4 xl:grid-cols-[0.65fr_1.1fr_0.9fr]">
@@ -735,6 +731,22 @@ export default function EncounterPlayerPage() {
                             ) : null}
                           </div>
                         </div>
+                        {effectiveTargetId && (() => {
+                          const _t = selectedEncounter.participants.find(p => p.id === effectiveTargetId);
+                          if (!_t || _t.maxHp == null || _t.currentHp == null) return null;
+                          return (
+                            <div className="rounded-xl border border-black/10 bg-surface px-3 py-2.5">
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-mono text-2xl font-bold text-foreground leading-none">{_t.currentHp}</span>
+                                <span className="font-mono text-sm text-muted">/ {_t.maxHp}</span>
+                                {_t.tempHp ? (
+                                  <span className="font-mono text-sm text-accent">+{_t.tempHp}</span>
+                                ) : null}
+                              </div>
+                              <HpBar current={_t.currentHp} max={_t.maxHp} tempHp={_t.tempHp} className="mt-1.5 h-1.5 w-full" />
+                            </div>
+                          );
+                        })()}
                         <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
                           <Input
                             type="text"
@@ -923,6 +935,7 @@ export default function EncounterPlayerPage() {
                                 <HpBar
                                   current={participant.currentHp}
                                   max={participant.maxHp}
+                                  tempHp={participant.tempHp}
                                   className="h-1.5 w-20 shrink-0"
                                 />
                                 <span className="font-mono text-xs text-muted">
@@ -992,6 +1005,15 @@ export default function EncounterPlayerPage() {
                   {!orderedParticipants.length ? (
                     <p className="text-sm text-muted">No active participants to run.</p>
                   ) : null}
+                  {combatMode && orderedParticipants.length > 0 && (
+                    <Button
+                      className="mt-3 w-full py-3 text-base"
+                      onClick={() => advanceEncounterTurn(selectedEncounter.id, 1)}
+                      disabled={!selectedEncounter.isRunning}
+                    >
+                      Next Turn →
+                    </Button>
+                  )}
                   {defeatedParticipants.length ? (
                     <div className="pt-3">
                       <p className="text-xs uppercase tracking-[0.3em] text-muted">Defeated</p>

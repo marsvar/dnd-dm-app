@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Checkbox, Input, PageShell, SectionTitle } from "../components/ui";
+import { useEffect, useState } from "react";
+import { Button, Checkbox, Input, PageShell, SectionTitle, Skeleton } from "../components/ui";
 import { PcCard } from "../components/PcCard";
 import { useAppStore } from "../lib/store/appStore";
 import { DEFAULT_SKILL_PROFICIENCIES, getProficiencyBonus } from "../lib/engine/pcEngine";
@@ -28,6 +28,7 @@ const EMPTY_FORM = {
 
 export default function PartyPage() {
   const { state, addPc, updatePc, removePc } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [dndInput, setDndInput] = useState("");
@@ -36,6 +37,8 @@ export default function PartyPage() {
   const [persistImportedPc, setPersistImportedPc] = useState(true);
   const [dndSyncing, setDndSyncing] = useState(false);
   const [dndSyncStatus, setDndSyncStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const handleDndImport = async () => {
     const characterId = parseDndBeyondId(dndInput);
@@ -255,7 +258,13 @@ export default function PartyPage() {
 
       {/* PC list */}
       <div className="space-y-6">
-        {state.pcs.length === 0 && (
+        {!mounted ? (
+          // Skeleton placeholders prevent layout flash while localStorage hydrates
+          <>
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </>
+        ) : state.pcs.length === 0 ? (
           <div className="rounded-xl border border-black/10 bg-surface-strong px-5 py-8 text-center">
             <p className="text-sm font-medium text-foreground">No player characters yet</p>
             <p className="mt-1 text-sm text-muted">
@@ -266,15 +275,16 @@ export default function PartyPage() {
               above or import from D&D Beyond below.
             </p>
           </div>
+        ) : (
+          state.pcs.map((pc) => (
+            <PcCard
+              key={pc.id}
+              pc={pc}
+              onUpdate={handleUpdate(pc.id)}
+              onRemove={() => removePc(pc.id)}
+            />
+          ))
         )}
-        {state.pcs.map((pc) => (
-          <PcCard
-            key={pc.id}
-            pc={pc}
-            onUpdate={handleUpdate(pc.id)}
-            onRemove={() => removePc(pc.id)}
-          />
-        ))}
       </div>
 
       {/* D&D Beyond import */}
